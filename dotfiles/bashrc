@@ -119,5 +119,8 @@ cd ~
 
 # Create alias for switching to windows directory
 windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')
-windows_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
-alias cdwin='cd "$windows_path"'
+dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
+alias cdwin='cd "$dropbox_path"'
+
+# Create alias for rsyncing to and from dropbox 
+#alias rsync2drobpox='rsync -av ~/dotfiles/ "${dropbox_path}dotfiles/"'
