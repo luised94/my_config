@@ -4,6 +4,29 @@
 2. sudo apt autoclean && sudo apt autoremove
 3. Run $apt-get update and upgrade.
 4. Run $sudo apt-get install build-essential.
+
+## Install neovim
+Download most recent neovim release, decompress and create symbolic link.
+```{bash}
+curl -L -o nvim-linux64.tar.gz https://github.com/neovim/neovim/releases/download/stable/nvim-linux64.tar.gz
+tar -xzvf nvim-linux64.tar.gz
+sudo ln -s ~/nvim-linux64/bin/nvim /usr/local/bin/nvim
+```
+Run neovim command $nvim to confirm that "installation" was succesful. 
+## Before cloning neovim configuration 
+This neovim config is meant to be used with the my_config directory to manage my dotfiles and neovimconfiguration in one repository. (for now) 
+
+This requires you to setup symbolic links from this repository to the ~/.config/nvim folder.
+Create the my_config directory. Move the different files to the my_config directory then create the symbolic links. There is one example below. 
+```{bash}
+mkdir my_config
+mv ~/.config/nvim ~/my_config/nvim
+ln -s ~/my_config/nvim ~/.config/nvim
+```
+## Install kickstart.nvim
+1. git clone https://github.com/nvim-lua/kickstart.nvim.git ~/my_config/ (Can probably use git clone command as well.)
+2. Run nvim and it should install. It should be apparent that it worked from how the menu looks. You should write on a file and see snippet to ensure that kickstart worked. 
+
 ## Install quarto  
 
 1. You can check the current version of quarto at the website but you can technically with any version. $export QUARTO_VERSION="1.4.550"
@@ -11,20 +34,10 @@
 3. sudo tar -xzf quarto.tar.gz -C /opt/ (Adjust this line if you want. For example, to have different quarto installations.)
 4. /opt/quarto-"${QUARTO_VERSION}"/bin/quarto check (Reverify this line depending on how it extracted)
 
+The rest of the section is alternative distributions that can be used and some requirements for some plugins that need to be configured before they can work appropriately. 
+I have not extensively tested the distributions below but from my quick impressions, the LazyNvim distribution seems to be the best out-of-the-box that balances completeness but also extensibility. 
 
-## Install the neovim and quarto kickstarter 
-1. curl -L -o nvim-linux64.tar.gz https://github.com/neovim/neovim/releases/download/stable/nvim-linux64.tar.gz (Follow redirects and name of output file)
-2. Run tar xzvf nvim-linux64.tar.gz. Run ./nvim-linux64/bin/nvim to check that it works. 
-3. Make directory for kickstart config. mkdir -p ~/.config/nvim
-4. If you installed the previous kickstart.nvim config, run rm -rf ~/.config/nvim to delete the lua configurations.
-5. Remake the directory. $mkdir -p ~/.config/nvim
-6. Run $git clone https://github.com/jmbuhr/quarto-nvim-kickstarter.git ~/.config/nvim
-7. Run nvim and it should install. 
-8. Create the symbolic links. 
-$sudo ln -s ~/nvim-linux64/bin/nvim /usr/local/bin/nvim
-$sudo ln -s /opt/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
-
-## Optional: Install other requirements for full utilization of quarto and kickstart plugin
+## Alternatives: Install other requirements for full utilization of quarto and kickstart plugin
 1. $quarto install tinytex
 2. $sudo apt install python3-pip
 3. $python3 -m pip install jupyter
@@ -34,12 +47,13 @@ $sudo ln -s /opt/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
 7. curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
 8. source ~/.bashrc (Check by running $nvm)
 9. nvm install --lts (Check installation with $node --version)
-Tested: 2024_02_22
 
-## Alternative: Install kickstart.nvim
-1. git clone https://github.com/nvim-lua/kickstart.nvim.git ~/.config/nvim (Can probably use git clone command as well.)
-2. Run nvim and it should install. It should be apparent that it worked from how the menu looks. You should write on a file and see snippet to ensure that kickstart worked. 
-3. sudo ln -s ~/nvim-linux64/bin/nvim /usr/local/bin/nvim
+## Alternative: Install the quarto kickstarter 
+1. Remake the directory. $mkdir -p ~/.config/nvim
+2. Run $git clone https://github.com/jmbuhr/quarto-nvim-kickstarter.git ~/.config/nvim
+3. Run nvim and it should install. 
+4. Create the symbolic links. 
+$sudo ln -s /opt/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
 
 ## Alternative: Install lazy.nvim
 1. Back up files and clone the starter. 
@@ -54,7 +68,6 @@ rm -rf ~/.config/nvim/.git
 sudo apt install ripgrep
 nvim
 ```
-
 ## Alternative: Install CyberNvim
 1. Back up files as before.
 '''{bash}
@@ -66,7 +79,6 @@ cp ~/.config/nvim/lua/example_user_config.lua ~/.config/nvim/lua/user/user_confi
 1. git clone https://github.com/pgosar/CyberNvim ~/.config/cyber_nvim 
 2. git clone https://github.com/jmbuhr/quarto-nvim-kickstarter.git ~/.config/quarto_nvim
 3. git clone https://github.com/LazyVim/starter ~/.config/lazy_nvim
-
 
 ## Other useful command line utilities
 
