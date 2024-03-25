@@ -1,9 +1,12 @@
 # Configuring neovim kickstart, quarto, and zotero
 ## If you installed using package manager and it was a outdated version 
-1. sudo apt remove neovim
-2. sudo apt autoclean && sudo apt autoremove
-3. Run $apt-get update and upgrade.
-4. Run $sudo apt-get install build-essential.
+I initially installed an outdated version of neovim distro (not compatible with plugins).
+```{bash}
+sudo apt remove neovim
+sudo apt autoclean && sudo apt autoremove
+apt-get update and upgrade.
+sudo apt-get install build-essential make ripgrep unzip gcc
+```
 
 ## Install neovim
 Download most recent neovim release, decompress and create symbolic link.
@@ -26,6 +29,20 @@ ln -s ~/my_config/nvim ~/.config/nvim
 ## Install kickstart.nvim
 1. git clone https://github.com/nvim-lua/kickstart.nvim.git ~/my_config/ (Can probably use git clone command as well.)
 2. Run nvim and it should install. It should be apparent that it worked from how the menu looks. You should write on a file and see snippet to ensure that kickstart worked. 
+3. Clean up the neovim kickstart.nvim cloned repo so that it gets included into the git repository.
+```{bash}
+cd ~/my_config/nvim
+rm -rf .git 
+rm .gitignore
+git rm --cached ~/my_config/nvim/
+git status
+git add .
+```
+Use git status to check that the files within the nvim directory are now part of the my_config directory. When first cloned, the nvim directory is treated as a submodule. This could be useful for some.
+
+## Reorganize the kickstart configuration.
+I reorganize the kickstart configuration manually since this makes me read the init.lua file and think about what the best way to organize the neovim configuration. At the same time, it is better to hhave the configuration in one file if possible.
+If you would like to skip this, you can clone the kickstart modular neovim repository for an initial modular organization. I agree with this configuration but preferred to do it myself to go through the init.lua file and think about the organization.
 
 ## Install quarto  
 
