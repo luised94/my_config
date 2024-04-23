@@ -122,4 +122,5 @@ windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')
 dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
 alias cdwin='cd "$dropbox_path"'
 
-
+# After installing Java for configuring R
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
