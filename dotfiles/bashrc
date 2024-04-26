@@ -122,5 +122,12 @@ windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')
 dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
 alias cdwin='cd "$dropbox_path"'
 
+# Create alias for with no save by default
+alias R='R --no-save'
+
 # After installing Java for configuring R
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
+# export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
+
+# Create alias for rsyncing to and from dropbox 
+#alias rsync2drobpox='rsync -av ~/my_config/ "${dropbox_path}my_config/"'
+#alias rsyncfromdropbox='rsync -av "${dropbox_path}my_config/" ~/my_config'
