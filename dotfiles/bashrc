@@ -121,7 +121,7 @@ cd ~
 windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')
 dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
 alias cdwin='cd "$dropbox_path"'
-
+export WINDOWS_USER=$windows_user
 # Create alias for with no save by default
 alias R='R --no-save'
 
