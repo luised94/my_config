@@ -18,6 +18,8 @@ git clone -b feature/nvim-from-scratch https://github.com/luised94/my_config.git
 * Configure setup for bash.
 * Configure setup for Zotero and citations.
 * Configure setup for quarto. 
+* Setup for multiple files and navigation.
+* Integration with Tmux. 
 
 ## References 
 
