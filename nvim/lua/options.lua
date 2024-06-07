@@ -20,3 +20,9 @@ vim.opt.breakindent = true
 --   vim.fn.mkdir(vim.opt.undodir:get(), "p")
 -- end
 -- -- find ~/.vim/undo -type f -mtime +30 -delete --Useful for managing undo files to prevent clutteror persistence.
+
+-- Add tab setting to make it 4 spaces.
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+
