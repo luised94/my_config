@@ -8,6 +8,15 @@ vim.opt.relativenumber = true
 
 -- vim.opt.showmode = false
 
+-- Set autoindent explicilty
+vim.opt.autoindent = true
+
+-- Detect filetype automatically
+vim.cmd('filetype plugin indent on')
+
+-- Enable syntax highlighting
+vim.cmd('syntax on')
+
 -- Lines will wrap with indent if the original line is indented. 
 vim.opt.breakindent = true
 
