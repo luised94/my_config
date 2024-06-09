@@ -35,7 +35,7 @@ vim.opt.breakindent = true
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
-
+vim.opt.smarttab = true
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
@@ -65,6 +65,16 @@ vim.opt.inccommand = 'split'
 
 -- Show which line your cursor is on
 vim.opt.cursorline = true
+vim.opt.cursorlineopt = "number"
 
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
+
+-- Remove the ~ that fill the lines below
+vim.opt.fillchars:append(',eob: ')
+
+-- Tells me if line is wrapped 
+-- vim.g.showbreak = ' '
+
+vim.opt.clipboard = "unnamedplus"
+vim.opt.mouse = "r"
