@@ -1,4 +1,3 @@
-print("I used neovim, btw")
 
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
@@ -20,8 +19,6 @@ vim.api.nvim_create_autocmd('TextYankPost', {
 })
 
 require 'lazy-bootstrap'
--- require 'lazy-plugins'
-require 'dashboard'
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et

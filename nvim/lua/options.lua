@@ -76,5 +76,6 @@ vim.opt.fillchars:append(',eob: ')
 -- Tells me if line is wrapped 
 -- vim.g.showbreak = ' '
 
+-- Enable copy/pasting from mouse
 vim.opt.clipboard = "unnamedplus"
-vim.opt.mouse = "r"
+vim.opt.mouse = "a"
