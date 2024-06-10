@@ -79,3 +79,5 @@ vim.opt.fillchars:append(',eob: ')
 -- Enable copy/pasting from mouse
 vim.opt.clipboard = "unnamedplus"
 vim.opt.mouse = "a"
+
+vim.opt.showmode = false
