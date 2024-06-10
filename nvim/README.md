@@ -11,8 +11,8 @@ git clone -b feature/nvim-from-scratch https://github.com/luised94/my_config.git
 ```
 
 ## TODO
+IN_PROGRESS: Configure options.
 * Figure out how to specify how to git clone the specific nvim folder without cloning the my_config repository.
-* Configure options.
 * Configure autocomplete and snippets.
 * Configure setup for R.
 * Configure setup for bash.
