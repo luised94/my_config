@@ -11,9 +11,7 @@ git clone -b feature/nvim-from-scratch https://github.com/luised94/my_config.git
 ```
 
 ## TODO
-IN_PROGRESS: Configure options.
 * Figure out how to specify how to git clone the specific nvim folder without cloning the my_config repository.
-* Configure autocomplete and snippets.
 * Configure setup for R.
 * Configure setup for bash.
 * Configure setup for Zotero and citations.
@@ -21,8 +19,12 @@ IN_PROGRESS: Configure options.
 * Setup for multiple files and navigation.
 * Integration with Tmux. 
 
-## References 
+## Completed
+Configure options: Mostly taken from kickstart neovim
+Configure autocomplete and snippets: Mostly taken from kickstart neovim
 
+## References 
+[Kickstart Neovim](https://github.com/nvim-lua/kickstart.nvim)
 [Teaching Neovim From Scratch To A Noob](https://www.youtube.com/watch?v=-ybCiHPWKNA)
 [The Only Video You Need to Get Started with Neovim ](https://www.youtube.com/watch?v=m8C0Cq9Uv9o&t=1s)
 [0 to LSP : Neovim RC From Scratch](https://www.youtube.com/watch?v=w7i4amO_zaE)
