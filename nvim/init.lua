@@ -4,8 +4,7 @@ vim.g.maplocalleader = ' '
 vim.g.have_nerd_font = false
 
 require('core.options')
-
--- require 'keymaps'
+require('core.keymaps')
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
