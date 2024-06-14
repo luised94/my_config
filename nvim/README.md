@@ -10,6 +10,8 @@ Reference the neovim-config.md file to see how neovim was installed.
 git clone -b feature/nvim-from-scratch https://github.com/luised94/my_config.git
 ```
 
+## Description
+
 ## TODO
 * Figure out how to specify how to git clone the specific nvim folder without cloning the my_config repository.
 * Configure setup for R.
