@@ -8,6 +8,7 @@ return {
     "tris203/precognition.nvim",
     event = "VeryLazy",
     config = {
+            -- These are the defaults for all the settings
     -- startVisible = true,
     -- showBlankVirtLine = true,
     -- highlightColor = { link = "Comment" },
