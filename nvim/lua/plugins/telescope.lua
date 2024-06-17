@@ -20,7 +20,15 @@ return {
           end,
         },
         { 'nvim-telescope/telescope-ui-select.nvim' },
-                                                                                                                       
+      --{ jmbuhr/telescope-zotero.nvim,
+            --enabled = true,
+            --dev = false,
+            --dependencies = {
+            -- { 'kkharji/sqlite.lua' },
+            --},
+            --config = function()
+                --vim.keymap.set('n', '<leader>fz', ':Telescope zotero<cr>', {desc = '[z]otero'})
+        --}
         -- Useful for getting pretty icons, but requires a Nerd Font.
         { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
       },
