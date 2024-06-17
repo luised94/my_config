@@ -131,3 +131,5 @@ alias R='R --no-save'
 # Create alias for rsyncing to and from dropbox 
 #alias rsync2drobpox='rsync -av ~/my_config/ "${dropbox_path}my_config/"'
 #alias rsyncfromdropbox='rsync -av "${dropbox_path}my_config/" ~/my_config'
+
+export GIT_EDITOR="nvim"

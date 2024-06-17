@@ -5,7 +5,7 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
-sudo apt-get install build-essential make ripgrep unzip gcc
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel
 ```
 
 ## Install neovim
@@ -15,7 +15,9 @@ curl -L -o nvim-linux64.tar.gz https://github.com/neovim/neovim/releases/downloa
 tar -xzvf nvim-linux64.tar.gz
 sudo ln -s ~/nvim-linux64/bin/nvim /usr/local/bin/nvim
 ```
+If you have already downloaded and unzipped neovim previously, only the first two steps are required. Probably could setup a cron job to update automatically.
 Run neovim command $nvim to confirm that "installation" was succesful. 
+
 ## Before cloning neovim configuration 
 This neovim config is meant to be used with the my_config directory to manage my dotfiles and neovimconfiguration in one repository. (for now) 
 
