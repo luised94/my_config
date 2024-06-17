@@ -19,7 +19,9 @@ vim.cmd('syntax on')
 
 -- Lines will wrap with indent if the original line is indented. 
 vim.opt.breakindent = true
-
+vim.wo.wrap = true
+vim.wo.showbreak = '|'
+vim.wo.linebreak = true
 -- Keeps undo files across sessions in project_undodir
 -- Modified undofile option but kept commented since I am not sure if it will be super useful to me.
 -- local project_undodir = vim.fn.expand("./.vimundo//")
