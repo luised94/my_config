@@ -36,8 +36,10 @@ Use git status to check that the files within the nvim directory are now part of
 
 1. You can check the current version of quarto at the website but you can technically with any version. $export QUARTO_VERSION="1.4.550"
 2. sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
-3. sudo tar -xzf quarto.tar.gz -C /opt/ (Adjust this line if you want. For example, to have different quarto installations.)
-4. /opt/quarto-"${QUARTO_VERSION}"/bin/quarto check (Reverify this line depending on how it extracted)
+3. mkdir quarto/
+3. sudo tar -xzvf quarto.tar.gz -C quarto/ (Adjust this line if you want. For example, to have different quarto installations.)
+4. quarto/quarto-"${QUARTO_VERSION}"/bin/quarto check (Reverify this line depending on how it extracted)
+
 
 The rest of the section is alternative distributions that can be used and some requirements for some plugins that need to be configured before they can work appropriately. 
 I have not extensively tested the distributions below but from my quick impressions, the LazyNvim distribution seems to be the best out-of-the-box that balances completeness but also extensibility. 
