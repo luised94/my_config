@@ -34,4 +34,3 @@ return {
     }
 }
 
--- require("hardtime").setup()

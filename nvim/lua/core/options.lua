@@ -17,7 +17,7 @@ vim.cmd('filetype plugin indent on')
 -- Enable syntax highlighting
 vim.cmd('syntax on')
 
--- Lines will wrap with indent if the original line is indented. 
+-- Lines will wrap with indent if the original line is indented.
 vim.opt.breakindent = true
 vim.wo.wrap = true
 vim.wo.showbreak = '|'
@@ -75,7 +75,7 @@ vim.opt.scrolloff = 10
 -- Remove the ~ that fill the lines below
 vim.opt.fillchars:append(',eob: ')
 
--- Tells me if line is wrapped 
+-- Tells me if line is wrapped
 -- vim.g.showbreak = ' '
 
 -- Enable copy/pasting from mouse
