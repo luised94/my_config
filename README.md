@@ -17,6 +17,7 @@ curl -L -o nvim-linux64.tar.gz https://github.com/neovim/neovim/releases/downloa
 tar -xzvf nvim-linux64.tar.gz
 sudo ln -s ~/nvim-linux64/bin/nvim /usr/local/bin/nvim
 ```
+If you are working on a server that allows you to install software and the symbolic link is not pointing corretly, then you can edit your .bashrc file to create an alias to nvim.
 If you have already downloaded and unzipped neovim previously, only the first two steps are required. Probably could setup a cron job to update automatically.
 Run neovim command $nvim to confirm that "installation" was succesful. 
 

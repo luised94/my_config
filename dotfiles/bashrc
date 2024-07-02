@@ -133,3 +133,6 @@ alias R='R --no-save'
 #alias rsyncfromdropbox='rsync -av "${dropbox_path}my_config/" ~/my_config'
 
 export GIT_EDITOR="nvim"
+
+# For working on linux cluster
+# alias nvim="$HOME/nvim-linux64/bin/nvim"
