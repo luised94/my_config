@@ -1,4 +1,4 @@
-# ~/.bashrc: executed by bash(1) for non-login shells.
+#~/.bashrc: executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
@@ -134,5 +134,6 @@ alias R='R --no-save'
 
 export GIT_EDITOR="nvim"
 
+set -o vi
 # For working on linux cluster
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
