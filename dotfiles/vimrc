@@ -1,0 +1,22 @@
+set nocompatible
+syntax enable
+set autoindent
+set relativenumber
+set expandtab
+set smarttab
+set tabstop=4
+set mouse=a
+set hlsearch
+set shiftwidth=4
+set cursorline
+colorscheme desert
+set ruler
+set autoread
+set encoding=utf8
+set nobackup
+set nowb
+set noswapfile
+set laststatus=2
+set statusline=%F%m%r%h%w\ (%{&ff}){%Y}\ [%l,%v][%p%%]
+au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+set fillchars+=eob:\ 

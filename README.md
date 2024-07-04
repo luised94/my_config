@@ -33,6 +33,13 @@ ln -s ~/my_config/nvim ~/.config/nvim
 ```
 Use git status to check that the files within the nvim directory are now part of the my_config directory. When first cloned, the nvim directory is treated as a submodule. This could be useful for some.
 
+## Alternative vimrc file
+I also have a vimrc file with a pretty minimal set of options enabled that I can use in my institution's linux cluster since I dont want to mess around with installing a lot of files to be able to use my neovim configuration there.
+```{bash}
+rm ~/.vimrc # if there is a file there
+ln -s ~/my_config/dotfiles/vimrc ~/.vimrc
+```
+
 ## Install quarto  
 
 1. You can check the current version of quarto at the website but you can technically with any version. $export QUARTO_VERSION="1.4.550"
