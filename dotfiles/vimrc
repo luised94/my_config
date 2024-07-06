@@ -2,6 +2,7 @@ set nocompatible
 syntax enable
 set autoindent
 set relativenumber
+" set clipboard=unnamed
 set expandtab
 set smarttab
 set tabstop=4
@@ -20,3 +21,89 @@ set laststatus=2
 set statusline=%F%m%r%h%w\ (%{&ff}){%Y}\ [%l,%v][%p%%]
 au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
 set fillchars+=eob:\ 
+
+" function! HighlightYankedText(timer)
+"     call matchdelete(b:yank_highlight_id)
+" endfunction
+" 
+" function! HighlightYank() abort
+"     if ! exists('##TextYankPost')
+"         return
+"     endif
+"     let start = getpos("'[")
+"     let end  = getpos("']")
+"     let lines  = getline(start[1], end[1])
+"     if len(lines) == 0
+"         return
+"     endif
+"     let lines[-1] = lines[-1][:end[2]-1]
+"     let lines[0] = lines[0][start[2]-1:]
+" 
+"     let region = join(lines, "\n")
+"     let b:yank_highlight_id = matchadd('IncSearch', '\V' . escape(join(region, "\n"), '\'))
+"     call timer_start(700, 'HighlightYankedText')
+" endfunction
+" 
+" augroup highlight_yank
+"     autocmd!
+"     autocmd TextYankPost * call HighlightYank()
+" augroup END
+"     
+
+function! s:highlight_yank(duration) abort
+    if !exists('##TextYankPost')
+        return
+    endif
+    let l:pos1 = getpos("'[")
+    let l:pos2 = getpos("']")
+    let l:highlight = 'IncSearch'
+    let l:unite = function('unite#util#smart_word_bounds')
+    if l:pos1[1] != l:pos2[1]  " Multiple lines yanked
+        let l:pattern = '^\%>' . (l:pos1[1] - 1) . 'l'
+    \             . '\%<' . (l:pos2[1] + 1) . 'l.'
+    elseif l:pos1[2] > l:pos2[2]  " Characterwise and reversed
+        let l:pattern = '\%' . l:pos1[1] . 'l'
+        \             . '\%>' . (l:pos2[2] - 1) . 'v'
+        \             . '\%<' . (l:pos1[2] + 1) . 'v.'
+    else  " Characterwise
+        let l:pattern = '\%' . l:pos1[1] . 'l'
+        \             . '\%>' . (l:pos1[2] - 1) . 'v'
+        \             . '\%<' . (l:pos2[2] + 1) . 'v.'
+    endif
+    let l:id = matchadd(l:highlight, l:pattern)
+    call timer_start(a:duration, {-> matchdelete(l:id)})
+endfunction
+
+augroup highlight_yank
+    autocmd!
+    autocmd TextYankPost * call s:highlight_yank(700)
+augroup END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
