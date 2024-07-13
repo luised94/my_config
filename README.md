@@ -7,9 +7,16 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel treesitter
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel 
 ```
 
+Install treesitter cli binary
+```{bash}
+wget https://github.com/tree-sitter/tree-sitter/releases/download/v0.22.6/tree-sitter-linux-x64.gz
+gunzip tree-sitter-linux-x64.gz
+chmod +x tree-sitter-linux-x64
+mv tree-sitter-linux-x64 /usr/local/bin/tree-sitter
+```
 ## Install neovim
 Download most recent neovim release, decompress and create symbolic link.
 ```{bash}
