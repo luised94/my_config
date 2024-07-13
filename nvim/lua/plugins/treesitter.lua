@@ -3,19 +3,54 @@ return {
     { -- Highlight, edit, and navigate code
       'nvim-treesitter/nvim-treesitter',
       build = ':TSUpdate',
-        --dependencies{},
+      dependencies = {
+            { 'nvim-treesitter/nvim-treesitter-textobjects'},
+        },
       opts = {
-        ensure_installed = { 'bash', 'c', 'html', 'lua', 'markdown', 'vim', 'vimdoc', 'r' , 'markdown_inline'},
-        -- Autoinstall languages that are not installed
+        ensure_installed = {
+                'bash',
+                'c',
+                'html',
+                'lua',
+                'markdown',
+                'vim',
+                'vimdoc',
+                'r',
+                'markdown_inline',
+                'julia',
+                'yaml',
+                'query',
+                'vimdoc',
+                'css',
+                'dot',
+                'javascript',
+                'mermaid',
+                'typescript',
+                'python',
+                'latex'
+
+            },
         auto_install = true,
         highlight = {
           enable = true,
           -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-          --  If you are experiencing weird indenting issues, add the language to
-          --  the list of additional_vim_regex_highlighting and disabled languages for indent.
+          --  Add them to additional_vim_regex_highlighting and indent if you have problems.
           additional_vim_regex_highlighting = { 'ruby' },
         },
-        indent = { enable = true, disable = { 'ruby' } },
+        indent = { enable = true,
+                   disable = { 'ruby'
+                   }
+        },
+        incremental_selection = {
+                enable = true,
+                keymaps = {
+                    init_selection = 'gnn',
+                    node_incremental = 'grn',
+                    scope_incremental = 'grc',
+                    node_decremental = 'grm',
+                }
+            }
+        
       },
       config = function(_, opts)
         -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
