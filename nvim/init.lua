@@ -1,7 +1,7 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 vim.g.have_nerd_font = false
-
+vim.o.termguicolors = true
 require('core.options')
 require('core.keymaps')
 
