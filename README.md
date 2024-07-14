@@ -17,6 +17,9 @@ gunzip tree-sitter-linux-x64.gz
 chmod +x tree-sitter-linux-x64
 mv tree-sitter-linux-x64 /usr/local/bin/tree-sitter
 ```
+If you installed some treesitter libraries that you dont need, remove them from the treesitter.lua file and uninstall them using :TSUninstall {lang}.
+
+
 ## Install neovim
 Download most recent neovim release, decompress and create symbolic link.
 ```{bash}
