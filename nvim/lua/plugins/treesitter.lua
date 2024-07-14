@@ -16,7 +16,6 @@ return {
                 'vimdoc',
                 'r',
                 'markdown_inline',
-                'julia',
                 'yaml',
                 'vimdoc',
                 'css',

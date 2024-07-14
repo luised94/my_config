@@ -7,7 +7,7 @@ return {
     {
     "tris203/precognition.nvim",
     event = "VeryLazy",
-    config = {
+    opts = {
             -- These are the defaults for all the settings
     -- startVisible = true,
     -- showBlankVirtLine = true,
