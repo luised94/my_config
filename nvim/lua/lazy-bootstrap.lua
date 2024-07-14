@@ -16,6 +16,7 @@ vim.opt.rtp:prepend(lazypath)
 -- They are separated by plugin and should be self-contained for the most part. Only the breaking_bad_habits.lua  has two plugins but they serve the same purpose and dont have complicated setups.
 --This loads all lua files in the plugins directory.
 require("lazy").setup({
+    -- Load the plugins directory
     spec = {
         { import = "plugins" },
     }, {
