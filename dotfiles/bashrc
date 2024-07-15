@@ -139,5 +139,6 @@ set -o vi
 #set vi-ins-mode-string "\1\e[34;1m\2[I]\1\e[0m\2"
 #set vi-cmd-mode-string "\1\e[35;1m\2[N]\1\e[0m\2"
 
+alias explorer="explorer.exe ."
 # For working on linux cluster
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
