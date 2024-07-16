@@ -20,5 +20,11 @@ set noswapfile
 set laststatus=2
 set statusline=%F%m%r%h%w\ (%{&ff}){%Y}\ [%l,%v][%p%%]
 au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
-set fillchars+=eob:\ 
 
+if has('patch-8.1.0360')
+    " Vim 8.1.0360 or above supports eob in fillchars
+    set fillchars+=eob:\ 
+else
+    " For older versions use highlighting to hide the characters
+    highlight NonText ctermfg=black guifg=black
+endif
