@@ -6,7 +6,7 @@ set relativenumber
 set expandtab
 set smarttab
 set tabstop=4
-set mouse=a
+"set mouse=a
 set hlsearch
 set shiftwidth=4
 set cursorline
