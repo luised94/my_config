@@ -140,5 +140,7 @@ set -o vi
 #set vi-cmd-mode-string "\1\e[35;1m\2[N]\1\e[0m\2"
 
 alias explorer="explorer.exe ."
+# Required for nvim-treesitter
+export PATH=$PATH:~/node-v22.5.1-linux-x64/bin
 # For working on linux cluster
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
