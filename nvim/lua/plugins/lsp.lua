@@ -13,21 +13,13 @@ return {
 
         -- `neodev` configures Lua LSP for your Neovim config, runtime and plugins
         -- used for completion, annotations and signatures of Neovim apis
-        { 'folke/neodev.nvim', opts = {} },
+        { 'folke/neodev.nvim', opts = {}, enabled = false },
+        { 'folke/neoconf.nvim', opts = {}, enabled = false },
       },
       config = function()
         -- LSP stands for Language Server Protocol. It's a protocol that helps editors
         -- and language tooling communicate in a standardized fashion.
-
-        -- LSP provides Neovim with features like:
-        --  - Go to definition
-        --  - Find references
-        --  - Autocompletion
-        --  - Symbol Search
-        --  - and more!
-
-        -- If you're wondering about lsp vs treesitter, you can check out the wonderfully
-        -- and elegantly composed help section, `:help lsp-vs-treesitter`
+        -- `:help lsp-vs-treesitter`
 
         --  This function gets run when an LSP attaches to a particular buffer.
         --    That is to say, every time a new file is opened that is associated with
@@ -43,7 +35,6 @@ return {
             end
 
             -- Jump to the definition of the word under your cursor.
-            --  This is where a variable was first declared, or where a function is defined, etc.
             --  To jump back, press <C-t>.
             map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
 
@@ -51,20 +42,15 @@ return {
             map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
 
             -- Jump to the implementation of the word under your cursor.
-            --  Useful when your language has ways of declaring types without an actual implementation.
             map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
 
             -- Jump to the type of the word under your cursor.
-            --  Useful when you're not sure what type a variable is and you want to see
-            --  the definition of its *type*, not where it was *defined*.
             map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
 
-            -- Fuzzy find all the symbols in your current document.
-            --  Symbols are things like variables, functions, types, etc.
+            -- Fuzzy find all the symbols in your current document, things like variables, functions, types.
             map('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
 
             -- Fuzzy find all the symbols in your current workspace.
-            --  Similar to document symbols, except searches over your entire project.
             map('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
 
             -- Rename the variable under your cursor.

@@ -7,8 +7,18 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel 
 ```
+
+Install treesitter cli binary
+```{bash}
+wget https://github.com/tree-sitter/tree-sitter/releases/download/v0.22.6/tree-sitter-linux-x64.gz
+gunzip tree-sitter-linux-x64.gz
+chmod +x tree-sitter-linux-x64
+mv tree-sitter-linux-x64 /usr/local/bin/tree-sitter
+```
+If you installed some treesitter libraries that you dont need, remove them from the treesitter.lua file and uninstall them using :TSUninstall {lang}.
+
 
 ## Install neovim
 Download most recent neovim release, decompress and create symbolic link.
@@ -21,6 +31,7 @@ If you are working on a server that allows you to install software and the symbo
 If you have already downloaded and unzipped neovim previously, only the first two steps are required. Probably could setup a cron job to update automatically.
 Run neovim command $nvim to confirm that "installation" was succesful. 
 
+
 ## Before cloning neovim configuration 
 This neovim config is meant to be used with the my_config directory to manage my dotfiles and neovim configuration in one repository. (for now) 
 
@@ -32,6 +43,8 @@ mv ~/.config/nvim ~/my_config/nvim
 ln -s ~/my_config/nvim ~/.config/nvim
 ```
 Use git status to check that the files within the nvim directory are now part of the my_config directory. When first cloned, the nvim directory is treated as a submodule. This could be useful for some.
+
+Run checkhealth to see errors for any plugins and run :Lazy and U to update plugins.
 
 ## Alternative vimrc file
 I also have a vimrc file with a pretty minimal set of options enabled that I can use in my institution's linux cluster since I dont want to mess around with installing a lot of files to be able to use my neovim configuration there.
