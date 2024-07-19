@@ -19,6 +19,18 @@ mv tree-sitter-linux-x64 /usr/local/bin/tree-sitter
 ```
 If you installed some treesitter libraries that you dont need, remove them from the treesitter.lua file and uninstall them using :TSUninstall {lang}.
 
+Install nodejs
+```{bash}
+apt install npm
+```
+or from source 
+```{bash}
+wget https://nodejs.org/dist/latest/node-v22.5.1-linux-x64.tar.gz
+tar xzvf node-v22.5.1-linux-x64.tar.gz
+cd node-v22.5.1-linux-x64
+export PATH=$PATH:~/node-v22.5.1-linux-x64/bin
+```
+This is required for the latex treesitter.
 
 ## Install neovim
 Download most recent neovim release, decompress and create symbolic link.
