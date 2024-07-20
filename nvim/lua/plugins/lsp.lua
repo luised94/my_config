@@ -93,10 +93,55 @@ return {
         capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
         -- Enable snippet support for lsp. Tell LSP that neovim can handle snippets in completion.
         capabilities.textDocument.completion.completionItem.snippetSupport = true
+        -- Ensure capabilities are initialized.
+        if capabilities.workspace == nil then
+            capabilities.workspace = {}
+        end
+        if capabilities.workspace.didChangeWatchedFiles == nil then
+            capabilities.workspace.didChangeWatchedFiles = {}
+        end
+        capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = true
+
         local lsp_flags = {
             allow_incremental_sync = true, -- Send modified parts of document to LSP.
             debounce_text_changes = 150, -- millisecond delay to send text changes
-            }
+        }
+        local function strsplit(s, delimiter)
+            local result = {}
+            for match in (s .. delimiter):gmatch('(.-)' .. delimiter) do
+                table.insert(result, match)
+            end
+            return result
+        end
+
+        -- Function to get Quarto resource path
+        local function get_quarto_resource_path()
+                local success, output = pcall(function()
+                        local f = assert(io.popen('quarto --paths', 'r'))
+                        local s = assert(f:read '*a')
+                        f:close()
+                        return s
+                    end)
+                if success then
+                    local paths = strsplit(output, '\n')
+                    return paths[2]
+                else
+                    vim.notify('Error getting Quarto path: ' .. tostring(output), vim.log.levels.WARN)
+                    return nil
+                end
+        end
+
+        -- Gather Neovim runtime files and prepare for Quarto integration
+        local lua_library_files = vim.api.nvim_get_runtime_file('', true)
+        local lua_plugin_paths = {}
+        local resource_path = get_quarto_resource_path()
+        if resource_path then
+            table.insert(lua_library_files, resource_path .. '/lua-types')
+            table.insert(lua_plugin_paths, resource_path .. '/lua-plugin/plugin.lua')
+        else
+            vim.notify('Quarto not found or error occurred, lua library files not loaded', vim.log.levels.WARN)
+        end
+
         -- Enable the following language servers
         --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
         --  Add any additional override configuration in the following tables. Available keys are:
@@ -161,6 +206,13 @@ return {
                     globals = { 'vim' , 'quarto', 'pandoc'}
                     --disable = { 'missing-fields' } 
                 },
+                workspace = {
+                    library = lua_library_files,
+                    checkThirdParty = false,
+                },
+                telemetry = {
+                    enable = false,
+                },
               },
             },
           },
@@ -179,7 +231,7 @@ return {
         local ensure_installed = vim.tbl_keys(servers or {})
         vim.list_extend(ensure_installed, {
           'stylua', -- Used to format Lua code
-          'shfmt',
+          'shfmt', -- Used to format bash code
         })
         require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
