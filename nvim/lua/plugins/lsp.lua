@@ -151,17 +151,6 @@ return {
         --  - settings (table): Override the default settings passed when initializing the server.
         local servers = {
           -- Add more servers here. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-          r_language_server = {
-                capabilities = capabilities,
-                flags = lsp_flags,
-                settings = {
-                        r = {
-                          lsp = {
-                              rich_documentation = false,
-                          },
-                        },
-                },
-          },
           bashls = {
                 capabilities = capabilities,
                 flags = lsp_flags,
@@ -247,6 +236,45 @@ return {
             end,
           },
         }
+        -- R language setup. 
+        -- Mason was unable to install r_language_server. After verifying that R and languageserver package are installed
+        -- this runs an R command to run the languageserver::run() function.
+        local r_language_server = {
+                cmd = function()
+                    -- Determine if R is installed or not.
+                    if vim.fn.executable('R') == 0 then
+                        vim.notify("R is not installed or not in PATH", vim.log.levels.WARN)
+                        return nil
+                    end
+                -- Determine if languageserver package is installed.
+                local check_languageserver = io.popen("R --slave -e if(!require('languageserver')) quit(status = 1)")
+                local success, exit = check_languageserver:close() -- Ignore warning. If statement below checks close()
+                if not success then
+                        vim.notify("Error closing languageserver check: " .. tostring(exit), vim.log.levels.ERROR)
+                        return nil
+                end
+                if exit ~= 0 then
+                    vim.notify("R languageserver package not installed. Use install.packages.", vim.log.levels.WARN)
+                    return nil
+                end
+
+                return { "R", "--slave", "-e", "languageserver::run()" }
+            end,
+            capabilities = capabilities,
+            flags = lsp_flags,
+            settings = {
+                    r = {
+                        lsp = {
+                            rich_documentation = false
+                        }
+                    }
+                }
+            }
+            if lspconfig.r_language_server then
+                lspconfig.r_language_server.setup(r_language_server)
+            else
+                vim.notify("r_language_server is not available in lspconfig", vim.log.levels.WARN)
+            end
       end,
     },
 }
