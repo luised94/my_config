@@ -143,3 +143,12 @@ Make sure to refresh keys.
 ```{bash}
 sudo apt install tmux 
 ```
+
+## Errors I encountered during installation
+
+### Tree-sitter r_language_server lsp
+
+Mason was giving me errors during installation of the r-languageserver.
+To see how I resolved the issue, look at the -- R r-languageserver section and 001_setupR directory from my lab_utils repository.
+Briefly, I installed r-languageserver via R using install.packages() and then setup the r-languageserver by itself in the lsp.lua config file.
+This way, Mason doesnt try to install it everytime I open Neovim.

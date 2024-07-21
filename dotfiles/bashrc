@@ -142,5 +142,7 @@ set -o vi
 alias explorer="explorer.exe ."
 # Required for nvim-treesitter
 export PATH=$PATH:~/node-v22.5.1-linux-x64/bin
+export R_HOME=/usr/local/bin/R
+export R_LIBS_USER=~/R/library/
 # For working on linux cluster
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
