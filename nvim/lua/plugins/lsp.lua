@@ -142,6 +142,7 @@ return {
             vim.notify('Quarto not found or error occurred, lua library files not loaded', vim.log.levels.WARN)
         end
 
+        -- [[ SERVER CONFIGURATION ]]
         -- Enable the following language servers
         --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
         --  Add any additional override configuration in the following tables. Available keys are:
@@ -206,7 +207,6 @@ return {
             },
           },
         }
-
         -- Ensure the servers and tools above are installed
         --  To check the current status of installed tools and/or manually install
         --  other tools, you can run
@@ -239,6 +239,7 @@ return {
         -- R language setup. 
         -- Mason was unable to install r_language_server. After verifying that R and languageserver package are installed
         -- this runs an R command to run the languageserver::run() function.
+        -- Any other language server that is giving trouble or you would like more customization can also be defined following this pattern.
         local r_language_server = {
                 cmd = function()
                     -- Determine if R is installed or not.

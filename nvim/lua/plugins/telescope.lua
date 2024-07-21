@@ -9,8 +9,7 @@ return {
         { -- If encountering errors, see telescope-fzf-native README for installation instructions
           'nvim-telescope/telescope-fzf-native.nvim',
 
-          -- `build` is used to run some command when the plugin is installed/updated.
-          -- This is only run then, not every time Neovim starts up.
+          -- Build is only run upon installation, not everytime Neovim starts.
           build = 'make',
 
           -- `cond` is a condition used to determine whether this plugin should be
