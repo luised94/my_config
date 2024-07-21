@@ -106,6 +106,14 @@ return {
                     { name = 'cmdline' }
                 })
             })
+            -- Search / completion setup
+      cmp.setup.cmdline('/', {
+                mapping = cmp.mapping.preset.cmdline(),
+                sources = {
+                    { name = "buffer" }
+                }
+
+            })
       -- Load snippets from snippets directory
       require('luasnip.loaders.from_vscode').lazy_load()
       require('luasnip.loaders.from_vscode').lazy_load { paths = { vim.fn.stdpath 'config' .. '/snippets' } }
