@@ -262,6 +262,7 @@ return {
             end,
             capabilities = capabilities,
             flags = lsp_flags,
+            filetypes = { 'r', 'R' },
             settings = {
                     r = {
                         lsp = {
@@ -270,6 +271,7 @@ return {
                     }
                 }
             }
+            -- Run the language server for R
             if lspconfig.r_language_server then
                 lspconfig.r_language_server.setup(r_language_server)
             else
