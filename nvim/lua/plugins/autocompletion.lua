@@ -29,6 +29,7 @@ return {
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-path',
       'hrsh7th/cmp-cmdline', -- For command line mode and bash files
+      'jmbuhr/otter.nvim', -- for quarto code chunks
     },
     config = function()
         require('luasnip.loaders.from_vscode').lazy_load()
@@ -76,11 +77,13 @@ return {
         },
         sources = {
           { name = 'nvim_lsp' },
-          { name = 'buffer' },
+          { name = 'buffer' , keyword_length = 5, max_item_count = 5},
           { name = 'luasnip' },
           { name = 'path' },
           { name = 'pandoc_references' },
           { name = 'cmp_nvim_r' },
+          { name = 'otter' }, -- for code chunks in quarto
+          { name = 'nvim_lsp_signature_help' },
         },
         formatting = {
                     format = lspkind.cmp_format({
@@ -94,8 +97,14 @@ return {
                             path = '[Path]',
                             pandoc_references = '[Ref]',
                             cmp_nvim_r = '[R]',
+                            otter = '[otter]',
                         }
                     })
+        },
+        window = {
+                    documentation = {
+                        border = "rounded",
+                    },
                 },
       }
             -- Command Line completion setup
