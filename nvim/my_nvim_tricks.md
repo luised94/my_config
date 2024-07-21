@@ -1,7 +1,7 @@
 # Introduction
 Some moves and commands that I use in neovim.
 
-# Working with multiple files in a project
+## Working with multiple files in a project
 
 Use a find command to search for files then pass to neovim with process substitution. 
 ```{bash}

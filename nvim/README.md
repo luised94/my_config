@@ -59,3 +59,5 @@ Could serve as the file to place dashboard settings but currently has a funny pl
 [The Only Video You Need to Get Started with Neovim ](https://www.youtube.com/watch?v=m8C0Cq9Uv9o&t=1s)
 [0 to LSP : Neovim RC From Scratch](https://www.youtube.com/watch?v=w7i4amO_zaE)
 [From 0 to IDE in NEOVIM from scratch | FREE COURSE // EP 1](https://www.youtube.com/watch?v=zHTeCSVAFNY)
+[NeoVim configuration optimized for writing in LaTeX](https://github.com/benbrastmckie/.config)
+[Quarto Nvim Kickstart](https://github.com/jmbuhr/quarto-nvim-kickstarter)
