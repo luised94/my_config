@@ -146,3 +146,7 @@ export R_HOME=/usr/local/bin/R
 export R_LIBS_USER=~/R/library/
 # For working on linux cluster
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
+
+# For use with Quarto and Neovim
+export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
+#export BROWSER="wslview"
