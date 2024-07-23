@@ -1,6 +1,7 @@
 # my_config
+Read common errors section.
 
-# Configuring neovim kickstart, quarto, and zotero
+# Install neovim kickstart, quarto, and zotero
 ## If you installed using package manager and it was a outdated version 
 I initially installed an outdated version of neovim distro (not compatible with plugins).
 ```{bash}
@@ -148,6 +149,9 @@ sudo apt install tmux
 -[] Ensure all checks for quarto check are fulfilled or use wslview/w3m.
 
 ## Errors I encountered during installation
+
+### Working with dropbox files
+Ensure that when you are moving a file from dropbox, it is downloaded. If you move a file from dropbox using wsl and the file isnt downloaded, it essentially delete the file.
 
 ### Tree-sitter r_language_server lsp
 
