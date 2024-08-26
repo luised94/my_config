@@ -150,3 +150,6 @@ export R_LIBS_USER=~/R/library/
 # For use with Quarto and Neovim
 export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
 #export BROWSER="wslview"
+
+# add ls -ltr | grep -v '^d' | tail -n 5 to get the last 5 modified files. Use awk '/^-/ {print $9}' Use with my refresher script
+# add search and edit function grep -rn "$1" "${2:-.}" | xargs -I {} nvim +{} {}
