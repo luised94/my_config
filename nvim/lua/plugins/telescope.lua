@@ -30,6 +30,7 @@ return {
         --}
         -- Useful for getting pretty icons, but requires a Nerd Font.
         { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+        'nvim-telescope/telescope-bibtex.nvim',
       },
       config = function()
         -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -63,14 +64,30 @@ return {
           -- },
           -- pickers = {}
           extensions = {
-            ['ui-select'] = {
-              require('telescope.themes').get_dropdown(),
-            },
+            ['ui-select'] = { require('telescope.themes').get_dropdown(), },
+            bibtex = {
+                        depth = 1,
+                        global_files = { '~/mylibrary.bib'},
+                        search_keys = { 'author', 'year', 'title', 'citekey' },
+                        citation_format = '@{{citekey}}',
+                        citation_trim_firstname = true,
+                        citation_max_auth = 2,
+                        custom_formats = {
+                    { id = 'qcite', cite_maker = '@{{citekey}}' },
+                    { id = 'qcites', cite_maker = '@{{citekey}}; @{{citekey}}' },
+
+                        },
+                    },
+                        format = 'qcite',
+                        context = true,
+                        context_fallback = true,
+                        wrap = false,
           },
         }
         -- Enable Telescope extensions if they are installed
         pcall(require('telescope').load_extension, 'fzf')
         pcall(require('telescope').load_extension, 'ui-select')
+        pcall(require('telescope').load_extension, 'bibtex')
 
         -- See `:help telescope.builtin`
         local builtin = require 'telescope.builtin'
@@ -84,7 +101,7 @@ return {
         vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
         vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
         vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-
+        vim.keymap.set('n', '<leader>fc', '<cmd>Telescope bibtex<cr>', { desc = 'Find citation' })
         -- Slightly advanced example of overriding default behavior and theme
         vim.keymap.set('n', '<leader>/', function()
           -- You can pass additional configuration to Telescope to change the theme, layout, etc.
