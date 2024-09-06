@@ -153,3 +153,6 @@ export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Applicati
 
 # add ls -ltr | grep -v '^d' | tail -n 5 to get the last 5 modified files. Use awk '/^-/ {print $9}' Use with my refresher script
 # add search and edit function grep -rn "$1" "${2:-.}" | xargs -I {} nvim +{} {}
+#
+# For neovim clipboard support.
+#export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
