@@ -9,7 +9,7 @@ set tabstop=4
 "set mouse=a
 set hlsearch
 set shiftwidth=4
-set cursorline
+"set cursorline
 colorscheme desert
 set ruler
 set autoread
