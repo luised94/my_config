@@ -74,7 +74,7 @@ return {
                         citation_max_auth = 2,
                         custom_formats = {
                     { id = 'qcite', cite_maker = '@{{citekey}}' },
-                    { id = 'qcites', cite_maker = '@{{citekey}}; @{{citekey}}' },
+                    { id = 'qcites', cite_maker = '[@{{citekey}}; @{{citekey}}]' },
 
                         },
                     },
