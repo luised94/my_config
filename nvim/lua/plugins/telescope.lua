@@ -58,6 +58,12 @@ return {
           -- You can put your default mappings / updates / etc. in here
           --  All the info you're looking for is in `:help telescope.setup()`
           -- defaults = {
+          --    file_sorter = require('telescope.sorters').get_fzy_sorter,
+          --    generic_sorter = require('telescope.sorters').get_generic_fuzzy_sorter,
+          -- file_previewer = require('telescope.previewers').vim_buffer_cat.new,
+          -- grep_previewer = require('telescope.previewers').vim_buffer_vimgrep.new,
+          -- qflist_previewer = require('telescope.previewers').vim_buffer_qflist.new,
+          -- },
           --   mappings = {
           --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
           --   },
@@ -79,8 +85,8 @@ return {
                         },
                     },
                         format = 'qcite',
-                        context = true,
-                        context_fallback = true,
+                        context = false,
+                        context_fallback = false,
                         wrap = false,
           },
         }
@@ -88,7 +94,13 @@ return {
         pcall(require('telescope').load_extension, 'fzf')
         pcall(require('telescope').load_extension, 'ui-select')
         pcall(require('telescope').load_extension, 'bibtex')
-
+        -- Define functions
+        function CitePicker()
+                local citation = vim.fn.system('rg -o "@\\w+" ' .. vim.fn.expand('~/mylibrary.bib') .. ' | fzf')
+                if citation ~= '' then
+                    vim.api.nvim_put({citation:gsub('\n', '')}, '', false, true)
+                end
+        end
         -- See `:help telescope.builtin`
         local builtin = require 'telescope.builtin'
         vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
@@ -101,7 +113,8 @@ return {
         vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
         vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
         vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-        vim.keymap.set('n', '<leader>fc', '<cmd>Telescope bibtex<cr>', { desc = 'Find citation' })
+        --vim.keymap.set('n', '<leader>fc', '<cmd>Telescope bibtex<cr>', { desc = 'Find citation' })
+        vim.keymap.set('n', '<leader>fc', CitePicker, { desc = 'Find citation' })
         -- Slightly advanced example of overriding default behavior and theme
         vim.keymap.set('n', '<leader>/', function()
           -- You can pass additional configuration to Telescope to change the theme, layout, etc.
