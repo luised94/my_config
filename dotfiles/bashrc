@@ -156,5 +156,5 @@ export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Applicati
 #
 # For neovim clipboard support.
 #export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
-alias nvim_all='nvim $(find . -type f -name "*.R" -o -name "*.sh" -o -name "*.md")'
+alias nvim_all='nvim $(find . -type f -name "*.R" -o -name "*.sh" -o -name "*.md" -o -name "*.lua")'
 #alias nvim_all='nvim $(rg --files -g "*.{R,sh,md}")'

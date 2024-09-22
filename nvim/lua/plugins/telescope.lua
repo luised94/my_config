@@ -95,12 +95,30 @@ return {
         pcall(require('telescope').load_extension, 'ui-select')
         pcall(require('telescope').load_extension, 'bibtex')
         -- Define functions
-        function CitePicker()
-                local citation = vim.fn.system('rg -o "@\\w+" ' .. vim.fn.expand('~/mylibrary.bib') .. ' | fzf')
-                if citation ~= '' then
-                    vim.api.nvim_put({citation:gsub('\n', '')}, '', false, true)
-                end
-        end
+function CitePicker()
+  -- Adjust the path to your actual Zotero library bib file
+  local bib_file = vim.fn.expand('~/mylibrary.bib')
+  -- Use grep instead of rg and avoid piping to fzf
+  local command = string.format("grep -oP '@[^{]+\\{\\K[^,]+' %s", bib_file)
+  local citations = vim.fn.system(command)
+  -- Split the output into a table of citations
+  local citation_list = vim.split(citations, "\n")
+  -- Use vim.ui.select for interactive selection
+  vim.ui.select(citation_list, {
+    prompt = "Select citation:",
+    format_item = function(item)
+      return "@" .. item
+    end,
+  }, function(choice)
+    if choice then
+      -- Insert the selected citation at the cursor position
+      vim.api.nvim_put({"@" .. choice}, 'c', true, true)
+    else
+      print("No citation selected")
+    end
+  end)
+end
+
         -- See `:help telescope.builtin`
         local builtin = require 'telescope.builtin'
         vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
