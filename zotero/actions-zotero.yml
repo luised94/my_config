@@ -1,0 +1,21 @@
+
+type: ActionsTagsBackup
+author: liused94
+platformVersion: 7.0.5
+pluginVersion: 2.0.2
+timestamp: '2024-10-02T20:07:44.314Z'
+actions:
+  1727808383102-ipmo6vOB:
+    event: 2
+    operation: 4
+    data: "/**\r\n * Add __in_progress tag when file is opened if no __in_progress or __read tag present\r\n * @author [Your Name]\r\n * @usage Add to Zotero Actions and Tags plugin\r\n */\r\nif (!item) return;\r\n\r\nconst inProgressTag = \"__in_progress\";\r\nconst readTag = \"__read\";\r\n\r\nasync function addInProgressTag(targetItem) {\r\n    if (!targetItem.hasTag(inProgressTag) && !targetItem.hasTag(readTag)) {\r\n        targetItem.addTag(inProgressTag);\r\n        await targetItem.saveTx();\r\n        return `Added ${inProgressTag} tag to: ${targetItem.getField(\"title\")}`;\r\n    }\r\n    return `No action needed for: ${targetItem.getField(\"title\")}`;\r\n}\r\n\r\nif (item.isAttachment()) {\r\n    const parentItem = Zotero.Items.getTopLevel([item])[0];\r\n    const result = await addInProgressTag(parentItem);\r\n    return result;\r\n}\r\nelse if (item.isRegularItem()) {\r\n    const result = await addInProgressTag(item);\r\n    return result;\r\n}\r\nelse {\r\n    return \"Selected item is neither an attachment nor a regular item.\";\r\n}"
+    shortcut: ''
+    enabled: true
+    menu: ''
+    name: Add in progress tag
+    showInMenu:
+      item: true
+      collection: true
+      tools: true
+      reader: true
+      readerAnnotation: true
