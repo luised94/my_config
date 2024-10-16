@@ -73,15 +73,16 @@
                     stats.noAction++;
                 }
 
-        batchOutput.push({
-            title: item.getField('title'),
-            currentTags: item.getTags().map(tag => tag.tag),
-            extraContent: extra,
-            action: action
-        });
+                batchOutput.push({
+                    title: item.getField('title'),
+                    currentTags: item.getTags().map(tag => tag.tag),
+                    extraContent: extra,
+                    action: action
+                });
 
-        // Uncomment to apply changes
-        // await item.saveTx();
+                // Uncomment to apply changes
+                // await item.saveTx();
+            }
 
             processedCount++;
             progressIndicator.setProgress(processedCount / Math.min(items.length, MAX_ITEMS_TO_PROCESS) * 100);
@@ -110,7 +111,6 @@
     resultMessage += `Tags Replaced: ${stats.tagReplaced}\n`;
     resultMessage += `Unopened Tags Added: ${stats.unopenedAdded}\n`;
     resultMessage += `Check the debug output for details.`;
-
-    Zotero.debug(resultMessage);
+    resultMessage.split('\n').forEach(line => Zotero.debug(line));
     return resultMessage;
 })();
