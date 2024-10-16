@@ -1,7 +1,7 @@
 (async function() {
     const VALID_TAGS = ['__not_reading', '__in_progress', '__to_read', '__read', '__unopened'];
     const BATCH_SIZE = 100;
-    const MAX_ITEMS_TO_PROCESS = 500; // Adjust this number as needed
+    const MAX_ITEMS_TO_PROCESS = 500; // Adjust this number as needed, set to Infinity to process all.
 
     const library = Zotero.Libraries.userLibrary;
     const items = await Zotero.Items.getAll(library.id);
