@@ -1,44 +1,48 @@
 (async function() {
     const BATCH_SIZE = 100;
-    const MAX_ITEMS_TO_PROCESS = 500;
-    const VALID_TAGS = ['__not_reading','__in_progress', '__to_read', '__read', '__unopened'];
+    const MAX_ITEMS_TO_PROCESS = 500; // Set to a number or "Infinity" for testing
+    const VALID_TAGS = ['__not_reading', '__in_progress', '__to_read', '__read', '__unopened'];
 
-    let library = Zotero.Libraries.userLibrary;
-    let items = await Zotero.Items.getAll(library.id);
+    const library = Zotero.Libraries.userLibrary;
+    const items = await Zotero.Items.getAll(library.id);
     let processedCount = 0;
     let batchCount = 0;
-    let stats = {
+
+    const stats = {
         noAction: 0,
         tagAdded: 0,
         tagReplaced: 0,
-        unopenedAdded: 0
+        unopenedAdded: 0,
+        multipleTagsResolved: 0
     };
 
-    let progressWindow = new Zotero.ProgressWindow({closeOnClick: false});
+    const progressWindow = new Zotero.ProgressWindow({closeOnClick: false});
     progressWindow.changeHeadline("Processing Zotero Items");
     progressWindow.show();
-    let progressIndicator = new progressWindow.ItemProgress(
+    const progressIndicator = new progressWindow.ItemProgress(
         "chrome://zotero/skin/tick.png",
         "Processing items..."
     );
 
     for (let i = 0; i < items.length && processedCount < MAX_ITEMS_TO_PROCESS; i += BATCH_SIZE) {
-        let batch = items.slice(i, Math.min(i + BATCH_SIZE, items.length, i + MAX_ITEMS_TO_PROCESS - processedCount));
-        let batchOutput = [];
+        const batch = items.slice(i, Math.min(i + BATCH_SIZE, items.length, i + MAX_ITEMS_TO_PROCESS - processedCount));
+        const batchOutput = [];
         
-        for (let item of batch) {
+        for (const item of batch) {
             if (item.isRegularItem() && !item.isAnnotation() && !item.isNote()) {
-                let extra = item.getField('extra');
-                let existingTags = item.getTags().filter(tag => VALID_TAGS.includes(tag.tag));
+                const extra = item.getField('extra');
+                const allTags = item.getTags();
+                const validTags = allTags.filter(tag => VALID_TAGS.includes(tag.tag));
                 let action = '';
 
-                if (extra && extra.match(/Read_Status:\s*(.+)/)) {
-                    let match = extra.match(/Read_Status:\s*(.+)/);
-                    let status = match[1].trim().toLowerCase();
-                    let newTag = status === 'not reading' ? '__not_reading' : `__${status.replace(/\s+/g, '_')}`;
+                const readStatusMatch = extra ? extra.match(/Read_Status:\s*(.+)/) : null;
+                const readStatus = readStatusMatch ? readStatusMatch[1].trim().toLowerCase() : null;
 
-                    if (existingTags.length > 0) {
-                        if (existingTags.some(tag => tag.tag === '__unopened')) {
+                if (readStatus) {
+                    const newTag = readStatus === 'not reading' ? '__not_reading' : `__${readStatus.replace(/\s+/g, '_')}`;
+                    
+                    if (validTags.length > 0) {
+                        if (validTags.some(tag => tag.tag === '__unopened')) {
                             if (['__in_progress', '__read', '__not_reading'].includes(newTag)) {
                                 action = `Replace __unopened with ${newTag}`;
                                 stats.tagReplaced++;
@@ -52,8 +56,12 @@
                                 action = 'No action (Prioritize existing __unopened)';
                                 stats.noAction++;
                             }
+                        } else if (validTags.length > 1) {
+                            action = `Resolve multiple tags: ${validTags.map(t => t.tag).join(', ')}`;
+                            stats.multipleTagsResolved++;
+                            // Implement logic to resolve multiple tags
                         } else {
-                            action = 'No action (Prioritize existing tag)';
+                            action = 'No action (Existing valid tag matches Read_Status)';
                             stats.noAction++;
                         }
                     } else if (newTag !== '__new') {
@@ -64,18 +72,23 @@
                         action = 'No action (New status)';
                         stats.noAction++;
                     }
-                } else if (existingTags.length === 0) {
-                    action = 'Add __unopened tag';
-                    stats.unopenedAdded++;
-                    // item.addTag('__unopened');
+                } else if (validTags.length === 0) {
+                    if (allTags.length === 0 || !allTags.some(tag => tag.tag.startsWith('__'))) {
+                        action = 'Add __unopened tag';
+                        stats.unopenedAdded++;
+                        // item.addTag('__unopened');
+                    } else {
+                        action = 'No action (Existing non-valid double underscore tag)';
+                        stats.noAction++;
+                    }
                 } else {
-                    action = 'No action (Existing tag without Read_Status)';
+                    action = 'No action (Existing valid tag without Read_Status)';
                     stats.noAction++;
                 }
 
                 batchOutput.push({
                     title: item.getField('title'),
-                    currentTags: item.getTags().map(tag => tag.tag),
+                    currentTags: allTags.map(tag => tag.tag),
                     extraContent: extra,
                     action: action
                 });
@@ -89,13 +102,13 @@
         }
 
         // Print batch output
-        for (let item of batchOutput) {
+        batchOutput.forEach(item => {
             Zotero.debug("Title: " + item.title);
             Zotero.debug("Current Tags: " + item.currentTags.join(", "));
             Zotero.debug("Extra Content: " + item.extraContent);
             Zotero.debug("Proposed Action: " + item.action);
             Zotero.debug("-----------------------------------");
-        }
+        });
 
         batchCount++;
         Zotero.debug(`Completed batch ${batchCount}. Items processed: ${processedCount}`);
@@ -104,13 +117,17 @@
 
     progressWindow.close();
 
-    let resultMessage = `Processed ${processedCount} out of ${items.length} items in ${batchCount} batches.\n`;
-    resultMessage += `Statistics:\n`;
-    resultMessage += `No Action: ${stats.noAction}\n`;
-    resultMessage += `Tags Added: ${stats.tagAdded}\n`;
-    resultMessage += `Tags Replaced: ${stats.tagReplaced}\n`;
-    resultMessage += `Unopened Tags Added: ${stats.unopenedAdded}\n`;
-    resultMessage += `Check the debug output for details.`;
-    resultMessage.split('\n').forEach(line => Zotero.debug(line));
+    const resultMessage = [
+        `Processed ${processedCount} out of ${items.length} items in ${batchCount} batches.`,
+        "Statistics:",
+        `No Action: ${stats.noAction}`,
+        `Tags Added: ${stats.tagAdded}`,
+        `Tags Replaced: ${stats.tagReplaced}`,
+        `Unopened Tags Added: ${stats.unopenedAdded}`,
+        `Multiple Tags Resolved: ${stats.multipleTagsResolved}`,
+        "Check the debug output for details."
+    ].join('\n');
+
+    Zotero.debug(resultMessage);
     return resultMessage;
 })();
