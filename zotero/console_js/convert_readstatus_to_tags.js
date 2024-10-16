@@ -10,7 +10,8 @@
     let stats = {
         noAction: 0,
         tagAdded: 0,
-        tagReplaced: 0
+        tagReplaced: 0,
+        unopenedAdded: 0
     };
 
     let progressWindow = new Zotero.ProgressWindow({closeOnClick: false});
@@ -28,62 +29,72 @@
         for (let item of batch) {
             if (item.isRegularItem() && !item.isAnnotation() && !item.isNote()) {
                 let extra = item.getField('extra');
-                if (extra) {
-                    let match = extra.match(/Read_Status:\s*(.+)/);
-                    if (match) {
-                        let status = match[1].trim().toLowerCase();
-                        let newTag = `__${status.replace(/\s+/g, '_')}`;
-                        let existingTags = item.getTags().filter(tag => VALID_TAGS.includes(tag.tag));
-                        let action = '';
+                let existingTags = item.getTags().filter(tag => VALID_TAGS.includes(tag.tag));
+                let action = '';
 
-                        if (existingTags.length > 0) {
-                            if (existingTags.some(tag => tag.tag === '__unopened')) {
-                                if (['__in_progress', '__read'].includes(newTag)) {
-                                    action = `Replace __unopened with ${newTag}`;
-                                    stats.tagReplaced++;
-                                    // Commented out save logic
-                                    /*
-                                    item.removeTag('__unopened');
-                                    item.addTag(newTag);
-                                    await item.saveTx();
-                                    */
-                                } else if (newTag === '__to_read') {
-                                    action = `Add ${newTag}`;
-                                    stats.tagAdded++;
-                                    // Commented out save logic
-                                    /*
-                                    item.addTag(newTag);
-                                    await item.saveTx();
-                                    */
-                                } else {
-                                    action = 'No action (Prioritize existing __unopened)';
-                                    stats.noAction++;
-                                }
+                if (extra && extra.match(/Read_Status:\s*(.+)/)) {
+                    let match = extra.match(/Read_Status:\s*(.+)/);
+                    let status = match[1].trim().toLowerCase();
+                    let newTag = `__${status.replace(/\s+/g, '_')}`;
+
+                    if (existingTags.length > 0) {
+                        if (existingTags.some(tag => tag.tag === '__unopened')) {
+                            if (['__in_progress', '__read'].includes(newTag)) {
+                                action = `Replace __unopened with ${newTag}`;
+                                stats.tagReplaced++;
+                                // Commented out save logic
+                                /*
+                                item.removeTag('__unopened');
+                                item.addTag(newTag);
+                                await item.saveTx();
+                                */
+                            } else if (newTag === '__to_read') {
+                                action = `Add ${newTag}`;
+                                stats.tagAdded++;
+                                // Commented out save logic
+                                /*
+                                item.addTag(newTag);
+                                await item.saveTx();
+                                */
                             } else {
-                                action = 'No action (Prioritize existing tag)';
+                                action = 'No action (Prioritize existing __unopened)';
                                 stats.noAction++;
                             }
-                        } else if (newTag !== '__new') {
-                            action = `Add ${newTag}`;
-                            stats.tagAdded++;
-                            // Commented out save logic
-                            /*
-                            item.addTag(newTag);
-                            await item.saveTx();
-                            */
                         } else {
-                            action = 'No action (New status)';
+                            action = 'No action (Prioritize existing tag)';
                             stats.noAction++;
                         }
-                        
-                        batchOutput.push({
-                            title: item.getField('title'),
-                            currentTags: item.getTags().map(tag => tag.tag),
-                            extraContent: extra,
-                            action: action
-                        });
+                    } else if (newTag !== '__new') {
+                        action = `Add ${newTag}`;
+                        stats.tagAdded++;
+                        // Commented out save logic
+                        /*
+                        item.addTag(newTag);
+                        await item.saveTx();
+                        */
+                    } else {
+                        action = 'No action (New status)';
+                        stats.noAction++;
                     }
+                } else if (existingTags.length === 0) {
+                    action = 'Add __unopened tag';
+                    stats.unopenedAdded++;
+                    // Commented out save logic
+                    /*
+                    item.addTag('__unopened');
+                    await item.saveTx();
+                    */
+                } else {
+                    action = 'No action (Existing tag without Read_Status)';
+                    stats.noAction++;
                 }
+                
+                batchOutput.push({
+                    title: item.getField('title'),
+                    currentTags: item.getTags().map(tag => tag.tag),
+                    extraContent: extra,
+                    action: action
+                });
             }
 
             processedCount++;
@@ -111,6 +122,7 @@
     resultMessage += `No Action: ${stats.noAction}\n`;
     resultMessage += `Tags Added: ${stats.tagAdded}\n`;
     resultMessage += `Tags Replaced: ${stats.tagReplaced}\n`;
+    resultMessage += `Unopened Tags Added: ${stats.unopenedAdded}\n`;
     resultMessage += `Check the debug output for details.`;
 
     Zotero.debug(resultMessage);
