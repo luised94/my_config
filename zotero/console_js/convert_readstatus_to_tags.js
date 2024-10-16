@@ -1,7 +1,7 @@
 (async function() {
     const BATCH_SIZE = 100;
     const MAX_ITEMS_TO_PROCESS = 500;
-    const VALID_TAGS = ['__in_progress', '__to_read', '__read', '__unopened'];
+    const VALID_TAGS = ['__not_reading','__in_progress', '__to_read', '__read', '__unopened'];
 
     let library = Zotero.Libraries.userLibrary;
     let items = await Zotero.Items.getAll(library.id);
@@ -35,27 +35,19 @@
                 if (extra && extra.match(/Read_Status:\s*(.+)/)) {
                     let match = extra.match(/Read_Status:\s*(.+)/);
                     let status = match[1].trim().toLowerCase();
-                    let newTag = `__${status.replace(/\s+/g, '_')}`;
+                    let newTag = status === 'not reading' ? '__not_reading' : `__${status.replace(/\s+/g, '_')}`;
 
                     if (existingTags.length > 0) {
                         if (existingTags.some(tag => tag.tag === '__unopened')) {
-                            if (['__in_progress', '__read'].includes(newTag)) {
+                            if (['__in_progress', '__read', '__not_reading'].includes(newTag)) {
                                 action = `Replace __unopened with ${newTag}`;
                                 stats.tagReplaced++;
-                                // Commented out save logic
-                                /*
-                                item.removeTag('__unopened');
-                                item.addTag(newTag);
-                                await item.saveTx();
-                                */
+                                // item.removeTag('__unopened');
+                                // item.addTag(newTag);
                             } else if (newTag === '__to_read') {
                                 action = `Add ${newTag}`;
                                 stats.tagAdded++;
-                                // Commented out save logic
-                                /*
-                                item.addTag(newTag);
-                                await item.saveTx();
-                                */
+                                // item.addTag(newTag);
                             } else {
                                 action = 'No action (Prioritize existing __unopened)';
                                 stats.noAction++;
@@ -67,11 +59,7 @@
                     } else if (newTag !== '__new') {
                         action = `Add ${newTag}`;
                         stats.tagAdded++;
-                        // Commented out save logic
-                        /*
-                        item.addTag(newTag);
-                        await item.saveTx();
-                        */
+                        // item.addTag(newTag);
                     } else {
                         action = 'No action (New status)';
                         stats.noAction++;
@@ -79,23 +67,21 @@
                 } else if (existingTags.length === 0) {
                     action = 'Add __unopened tag';
                     stats.unopenedAdded++;
-                    // Commented out save logic
-                    /*
-                    item.addTag('__unopened');
-                    await item.saveTx();
-                    */
+                    // item.addTag('__unopened');
                 } else {
                     action = 'No action (Existing tag without Read_Status)';
                     stats.noAction++;
                 }
-                
-                batchOutput.push({
-                    title: item.getField('title'),
-                    currentTags: item.getTags().map(tag => tag.tag),
-                    extraContent: extra,
-                    action: action
-                });
-            }
+
+        batchOutput.push({
+            title: item.getField('title'),
+            currentTags: item.getTags().map(tag => tag.tag),
+            extraContent: extra,
+            action: action
+        });
+
+        // Uncomment to apply changes
+        // await item.saveTx();
 
             processedCount++;
             progressIndicator.setProgress(processedCount / Math.min(items.length, MAX_ITEMS_TO_PROCESS) * 100);
