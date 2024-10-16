@@ -10,6 +10,7 @@
 
     const stats = {
         noAction: 0,
+        invalidTag: 0,
         tagAdded: 0,
         tagReplaced: 0,
         unopenedAdded: 0,
@@ -79,7 +80,7 @@
                         // item.addTag('__unopened');
                     } else {
                         action = 'No action (Existing non-valid double underscore tag)';
-                        stats.noAction++;
+                        stats.invalidTag++;
                     }
                 } else {
                     action = 'No action (Existing valid tag without Read_Status)';
@@ -127,7 +128,7 @@
         `Multiple Tags Resolved: ${stats.multipleTagsResolved}`,
         "Check the debug output for details."
     ].join('\n');
-
-    Zotero.debug(resultMessage);
+    resultMessage.split('\n').forEach(line => Zotero.debug(line));
+    //Zotero.debug(resultMessage);
     return resultMessage;
 })();
