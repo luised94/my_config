@@ -122,6 +122,7 @@
         `Processed ${processedCount} out of ${items.length} items in ${batchCount} batches.`,
         "Statistics:",
         `No Action: ${stats.noAction}`,
+        `Invalid Tag: ${stats.invalidTag}`,
         `Tags Added: ${stats.tagAdded}`,
         `Tags Replaced: ${stats.tagReplaced}`,
         `Unopened Tags Added: ${stats.unopenedAdded}`,
