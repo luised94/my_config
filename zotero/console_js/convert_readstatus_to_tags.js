@@ -7,7 +7,20 @@
     const items = await Zotero.Items.getAll(library.id);
     let processedCount = 0;
     let batchCount = 0;
+    // Configuration object
+    const config = {
+        dryRun: true, // Set to false to actually apply changes
+        verbosity: 2  // 0: silent, 1: basic info, 2: detailed info
+    };
 
+    // Logging function
+    const log = (message, level = 1) => {
+        if (config.verbosity >= level) {
+            Zotero.debug(message);
+        }
+    };
+    
+    log(`Starting processing with dry run: ${config.dryRun}`, 1);
     const stats = {
         noAction: 0,
         invalidTag: 0,
@@ -47,12 +60,16 @@
                             if (['__in_progress', '__read', '__not_reading'].includes(newTag)) {
                                 action = `Replace __unopened with ${newTag}`;
                                 stats.tagReplaced++;
-                                // item.removeTag('__unopened');
-                                // item.addTag(newTag);
+                                // if (!config.dryRun) {
+                                //  item.removeTag('__unopened');
+                                //  item.addTag(newTag);
+                                // }
                             } else if (newTag === '__to_read') {
                                 action = `Add ${newTag}`;
                                 stats.tagAdded++;
-                                // item.addTag(newTag);
+                                // if (!config.dryRun) {
+                                //  item.addTag(newTag);
+                                // }
                             } else {
                                 action = 'No action (Prioritize existing __unopened)';
                                 stats.noAction++;
@@ -68,7 +85,9 @@
                     } else if (newTag !== '__new') {
                         action = `Add ${newTag}`;
                         stats.tagAdded++;
-                        // item.addTag(newTag);
+                        // if (!config.dryRun) {
+                        //  item.addTag(newTag);
+                        // }
                     } else {
                         action = 'No action (New status)';
                         stats.noAction++;
@@ -77,7 +96,10 @@
                     if (allTags.length === 0 || !allTags.some(tag => tag.tag.startsWith('__'))) {
                         action = 'Add __unopened tag';
                         stats.unopenedAdded++;
+                        if (!config.dryRun) {
+
                         // item.addTag('__unopened');
+                        }
                     } else {
                         action = 'No action (Existing non-valid double underscore tag)';
                         stats.invalidTag++;
@@ -95,7 +117,9 @@
                 });
 
                 // Uncomment to apply changes
+                // if (!config.dryRun) {
                 // await item.saveTx();
+                // }
             }
 
             processedCount++;
@@ -103,16 +127,17 @@
         }
 
         // Print batch output
+        log(`Batch ${batchCount + 1} output:`, 2);
         batchOutput.forEach(item => {
-            Zotero.debug("Title: " + item.title);
-            Zotero.debug("Current Tags: " + item.currentTags.join(", "));
-            Zotero.debug("Extra Content: " + item.extraContent);
-            Zotero.debug("Proposed Action: " + item.action);
-            Zotero.debug("-----------------------------------");
+            log(`Title: ${item.title}`, 2);
+            log(`Current Tags: ${item.currentTags.join(", ")}`, 2);
+            log(`Extra Content: ${item.extraContent}`, 2);
+            log(`Proposed Action: ${item.action}`, 2);
+            log("-----------------------------------", 2);
         });
 
         batchCount++;
-        Zotero.debug(`Completed batch ${batchCount}. Items processed: ${processedCount}`);
+        log(`Completed batch ${batchCount}. Items processed: ${processedCount}`, 1);
         await Zotero.Promise.delay(10);
     }
 
@@ -129,7 +154,6 @@
         `Multiple Tags Resolved: ${stats.multipleTagsResolved}`,
         "Check the debug output for details."
     ].join('\n');
-    resultMessage.split('\n').forEach(line => Zotero.debug(line));
-    //Zotero.debug(resultMessage);
+    resultMessage.split('\n').forEach(line => log(line, 1));
     return resultMessage;
 })();
