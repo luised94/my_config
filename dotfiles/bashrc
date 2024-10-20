@@ -184,7 +184,10 @@ vim_all() {
         exclude_args+=(-not -name "$file")
     done
 
-    local files=($(find "$search_dir" -type f "${exclude_args[@]}" -print0 | xargs -0))
+    local files=()
+    while IFS= read -r -d $'\0' file; do
+        files+=("$file")
+    done < <(find "$search_dir" -type f "${exclude_args[@]}" -print0)
 
     if [ ${#files[@]} -eq 0 ]; then
         echo "No files found to edit."
@@ -199,5 +202,5 @@ vim_all() {
         fi
     fi
 
-    $editor "${files[@]}"
+    eval "$editor" "${files[@]}"
 }
