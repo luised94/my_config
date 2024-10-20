@@ -16,7 +16,14 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.highlight.on_yank()
   end,
 })
-
+--[[
+local function is_on_cluster()
+  # Run print(vim.fn.hostname()) in linux cluster to set the variable appropriately.,
+  return os.getenv("CLUSTER_ENV") == true or vim.fn.hostname():match("cluster") ~= nil
+end 
+--]]
+-- Uncomment after enabling is_on_cluster
+-- if not is_on_cluster() then
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
     local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -81,3 +88,4 @@ require("lazy").setup({
 -- Plugins are loaded in the lazy-bootstrap file.
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+-- end
