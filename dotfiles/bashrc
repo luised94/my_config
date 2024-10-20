@@ -161,9 +161,19 @@ export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Applicati
 # Purpose: Open files in neovim after excluding common dirs and files.
 # Parameters: Option - Search directory, if none provided current working directory '.' is used as default.
 # Return: Open all files after excluding dirs and files with particulars in neovim.
-nvim_all() {
+vim_all() {
+    local editor
+    if command -v nvim >/dev/null 2>&1; then
+        editor ="nvim"
+    elif command -v vim >/dev/null 2>&1; then
+        editor="vim"
+    else
+        echo "Error: Neither Neovim nor Vim is installed on this system."
+        return 1
+    fi
+
     local exclude_dirs=(".git" "node_modules" "build" "dist" "renv" ".venv")
-    local exclude_files=("*.log" "*.tmp" "*.bak" "*.swp")
+    local exclude_files=("*.log" "*.tmp" "*.bak" "*.swp" ".gitignore" ".Rprofile" )
     local search_dir="${1:-.}"
 
     local exclude_args=()
@@ -189,5 +199,5 @@ nvim_all() {
         fi
     fi
 
-    nvim "${files[@]}"
+    $editor "${files[@]}"
 }
