@@ -118,10 +118,86 @@ fi
 cd ~
 
 # Create alias for switching to windows directory
-windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r')
-dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
-alias cdwin='cd "$dropbox_path"'
-export WINDOWS_USER=$windows_user
+
+# Function: setup_windows_environment
+# Purpose: Determine the username of the windows user. Most important reason is to travel to dropbox location quickly.
+# Parameters: None.
+# Return: Export windows_user and DROPBOX_PATH variables. Create new functions list_dropbox and search_dropbox.
+setup_windows_environment() {
+    local windows_user
+    local dropbox_path
+    local max_retries=3
+    local retry_count=0
+
+    # Function to get Windows username
+    get_windows_username() {
+        windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r\n')
+        if [[ -z "$windows_user" ]]; then
+            echo "Error: Unable to retrieve Windows username." >&2
+            return 1
+        fi
+        echo "$windows_user"
+    }
+
+    # Try to get Windows username with retries
+    while [[ $retry_count -lt $max_retries ]]; do
+        if windows_user=$(get_windows_username); then
+            break
+        fi
+        ((retry_count++))
+        sleep 1
+    done
+
+    if [[ -z "$windows_user" ]]; then
+        echo "Error: Failed to retrieve Windows username after $max_retries attempts." >&2
+        return 1
+    fi
+
+    # Set up Dropbox path
+    dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
+    if [[ ! -d "$dropbox_path" ]]; then
+        echo "Warning: Dropbox directory not found at $dropbox_path" >&2
+        # Attempt to find Dropbox directory
+        local potential_path="/mnt/c/Users/${windows_user}/Dropbox"
+        if [[ -d "$potential_path" ]]; then
+            dropbox_path="$potential_path/"
+            echo "Found Dropbox at $dropbox_path" >&2
+        else
+            echo "Error: Unable to locate Dropbox directory." >&2
+            return 1
+        fi
+    fi
+
+    # Export variables
+    export WINDOWS_USER="$windows_user"
+    export DROPBOX_PATH="$dropbox_path"
+
+    # Create alias for switching to Windows directory
+    alias cdwin='cd "$DROPBOX_PATH"'
+
+    # Optional: Create a function to list contents of Dropbox
+    list_dropbox() {
+        ls -la "$DROPBOX_PATH"
+    }
+
+    # Optional: Create a function to search Dropbox
+    search_dropbox() {
+        if [[ $# -eq 0 ]]; then
+            echo "Usage: search_dropbox <search_term>"
+            return 1
+        fi
+        find "$DROPBOX_PATH" -iname "*$1*"
+    }
+
+    echo "Windows environment setup complete."
+    echo "Use 'cdwin' to navigate to your Dropbox directory."
+    echo "Use 'list_dropbox' to list contents of your Dropbox."
+    echo "Use 'search_dropbox <term>' to search your Dropbox."
+}
+
+# Run the setup function
+setup_windows_environment
+
 # Create alias for with no save by default
 alias R='R --no-save'
 
@@ -148,6 +224,8 @@ export R_LIBS_USER=~/R/library/
 # alias nvim="$HOME/nvim-linux64/bin/nvim"
 
 # For use with Quarto and Neovim
+# wslview "${BROWSER}"
+# Will open brave browser. Pretty cool.
 export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
 #export BROWSER="wslview"
 
@@ -204,3 +282,4 @@ vim_all() {
 
     eval "$editor" "${files[@]}"
 }
+echo "Use vim_all <search_dir> to open all files recursively."
