@@ -164,7 +164,7 @@ export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Applicati
 vim_all() {
     local editor
     if command -v nvim >/dev/null 2>&1; then
-        editor ="nvim"
+        editor="nvim"
     elif command -v vim >/dev/null 2>&1; then
         editor="vim"
     else
