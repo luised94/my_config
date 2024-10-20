@@ -87,10 +87,33 @@ fi
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
-# some more ls aliases
+# ls Aliases
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
+
+# Tmux aliases
+#alias tnew='tmux new -s'
+#alias ta='tmux attach -t'
+#alias tls='tmux list-sessions'
+#alias tkill='tmux kill-session -t'
+#
+## Function to create or attach to a tmux session
+#tmux_session() {
+#    session_name=${1:-default}
+#    tmux new-session -A -s "$session_name"
+#}
+#alias ts='tmux_session'
+## Git shortcuts
+#alias gs='git status'
+#alias ga='git add'
+#alias gc='git commit'
+#alias gp='git push'
+#alias gl='git log --oneline --graph --decorate'
+## Navigation
+#alias ..='cd ..'
+#alias ...='cd ../..'
+#alias ....='cd ../../..'
 
 # Add an "alert" alias for long running commands.  Use like so:
 #   sleep 10; alert
