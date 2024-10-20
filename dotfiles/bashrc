@@ -104,12 +104,13 @@ alias l='ls -CF'
 #    tmux new-session -A -s "$session_name"
 #}
 #alias ts='tmux_session'
-## Git shortcuts
-#alias gs='git status'
-#alias ga='git add'
-#alias gc='git commit'
-#alias gp='git push'
-#alias gl='git log --oneline --graph --decorate'
+# Git shortcuts
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline --graph --decorate'
+
 ## Navigation
 #alias ..='cd ..'
 #alias ...='cd ../..'
