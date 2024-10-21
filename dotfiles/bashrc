@@ -110,6 +110,7 @@ alias ga='git add'
 alias gc='git commit'
 alias gp='git push'
 alias gl='git log --oneline --graph --decorate'
+echo "Git aliases enabled."
 
 ## Navigation
 #alias ..='cd ..'
