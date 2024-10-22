@@ -106,6 +106,7 @@ alias l='ls -CF'
 #alias ts='tmux_session'
 # Git shortcuts
 alias gs='git status'
+alias gd='git diff'
 alias ga='git add'
 alias gc='git commit'
 alias gps='git push'
