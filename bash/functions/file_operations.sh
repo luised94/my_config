@@ -16,7 +16,7 @@ vim_all() {
     fi
 
     local exclude_dirs=(".git" "node_modules" "build" "dist" "renv" ".venv")
-    local exclude_files=("*.log" "*.tmp" "*.bak" "*.swp" ".gitignore" ".Rprofile" )
+    local exclude_files=("*.log" "*.tmp" "*.bak" "*.swp" "*.gitignore" "*renv.lock" "*.Rprofile" )
     local search_dir="${1:-.}"
 
     local exclude_args=()
