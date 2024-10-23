@@ -299,52 +299,7 @@ export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Applicati
 # For neovim clipboard support.
 #export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
 
-# Function: vim_all
-# Purpose: Open files in neovim after excluding common dirs and files.
-# Parameters: Option - Search directory, if none provided current working directory '.' is used as default.
-# Return: Open all files after excluding dirs and files with particulars in neovim.
-vim_all() {
-    local editor
-    if command -v nvim >/dev/null 2>&1; then
-        editor="nvim"
-    elif command -v vim >/dev/null 2>&1; then
-        editor="vim"
-    else
-        echo "Error: Neither Neovim nor Vim is installed on this system."
-        return 1
-    fi
-
-    local exclude_dirs=(".git" "node_modules" "build" "dist" "renv" ".venv")
-    local exclude_files=("*.log" "*.tmp" "*.bak" "*.swp" ".gitignore" ".Rprofile" )
-    local search_dir="${1:-.}"
-
-    local exclude_args=()
-    for dir in "${exclude_dirs[@]}"; do
-        exclude_args+=(-not -path "*/$dir/*")
-    done
-    for file in "${exclude_files[@]}"; do
-        exclude_args+=(-not -name "$file")
-    done
-
-    local files=()
-    while IFS= read -r -d $'\0' file; do
-        files+=("$file")
-    done < <(find "$search_dir" -type f "${exclude_args[@]}" -print0)
-
-    if [ ${#files[@]} -eq 0 ]; then
-        echo "No files found to edit."
-        return 1
-    fi
-
-    if [ ${#files[@]} -gt 100 ]; then
-        read -p "Found ${#files[@]} files. Are you sure you want to open all of them? (y/N) " confirm
-        if [[ $confirm != [yY] ]]; then
-            echo "Operation cancelled."
-            return 0
-        fi
-    fi
-
-    eval "$editor" "${files[@]}"
-}
+source ~/my_config/bash/functions/file_operations.sh
 
 echo "Use vim_all <search_dir> to open all files recursively."
+echo "Use count_string <search_string> find files with search_string, excluding certain dirs and filetypes."
