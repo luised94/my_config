@@ -42,7 +42,7 @@ vim_all() {
     if ! parse_options EDITOR_OPTIONS args "$@"; then
         generate_usage EDITOR_OPTIONS "vim_all"
         return 1
-    }
+    fi
 
     # Show help if requested
     if [[ ${args["help"]} == 1 ]]; then

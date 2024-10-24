@@ -18,7 +18,7 @@ setup_windows_environment() {
             log_error "Error: Unable to retrieve Windows username." >&2
             return 1
         fi
-        log_info "$windows_user"
+        echo "$windows_user"
     }
 
     # Try to get Windows username with retries
