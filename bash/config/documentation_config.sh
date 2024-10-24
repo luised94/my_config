@@ -35,3 +35,24 @@ declare -A SEARCH_CONFIG=(
     ["CONTEXT_LINES"]=0
     ["COLORED_OUTPUT"]=true
 )
+
+# Tree visualization defaults
+DEFAULT_TREE_MAX_DEPTH=""
+DEFAULT_TREE_ENTRY_LIMIT=""
+DEFAULT_TREE_USE_COLOR=1
+DEFAULT_TREE_FULL_PATHS=0
+
+# Default exclude patterns for tree visualization
+DEFAULT_TREE_EXCLUDE_PATTERNS=(
+    "node_modules"
+    "*.pyc"
+    "*.tmp"
+    ".git"
+)
+
+# Visual formatting
+TREE_COMPACT_SYMBOLS=(
+    "ÃÄ"
+    "ÀÄ"
+    "³ "
+)
