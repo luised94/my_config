@@ -24,7 +24,7 @@ validate_tag() {
         log_warning "Tag '$tag' not found in README"
         log_info "Valid tags: $valid_tags"
         return 1
-    }
+    fi
     
     return 0
 }
@@ -61,7 +61,7 @@ search_tags() {
                   xargs -0 grep -Hn "^#$tag" 2>/dev/null); then
         log_warning "No instances of #$tag found"
         return 1
-    }
+    fi
     
     echo "$results"
 }

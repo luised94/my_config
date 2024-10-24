@@ -11,14 +11,14 @@ find_git_root() {
         log_warning "Git not available, using current directory"
         echo "$start_dir"
         return 0
-    }
+    fi
     
     local root_dir
     if ! root_dir=$(git -C "$start_dir" rev-parse --show-toplevel 2>/dev/null); then
         log_warning "Not in a Git repository, using current directory"
         echo "$start_dir"
         return 0
-    }
+    fi
     
     echo "$root_dir"
 }
@@ -33,7 +33,7 @@ find_readme() {
     if [ ! -f "$readme_path" ]; then
         log_error "README not found: $readme_path"
         return 1
-    }
+    fi
     
     echo "$readme_path"
 }

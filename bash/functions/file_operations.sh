@@ -48,7 +48,7 @@ vim_all() {
     if [[ ${args["help"]} == 1 ]]; then
         generate_usage EDITOR_OPTIONS "vim_all"
         return 0
-    }
+    fi
 
     # Detect editor
     local editor
@@ -72,7 +72,7 @@ vim_all() {
     if [ ${#files[@]} -eq 0 ]; then
         log_warning "No files found to edit."
         return 1
-    }
+    fi
 
     # Confirm large file counts
     if [ ${#files[@]} -gt "${args["limit"]}" ] && [ ${args["force"]} -ne 1 ]; then
@@ -82,7 +82,7 @@ vim_all() {
             log_info "Operation cancelled."
             return 0
         fi
-    }
+    fi
 
     log_info "Opening ${#files[@]} files in $editor"
     eval "$editor" "${files[@]}"

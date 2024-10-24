@@ -13,19 +13,19 @@ count_string() {
     if ! parse_options SEARCH_OPTIONS args "$@"; then
         generate_usage SEARCH_OPTIONS "count_string"
         return 1
-    }
+    fi
 
     # Show help if requested
     if [[ ${args["help"]} == 1 ]]; then
         generate_usage SEARCH_OPTIONS "count_string"
         return 0
-    }
+    fi
 
     local search_string="${args["positional"]}"
     if [[ -z "$search_string" ]]; then
         log_error "Search string is required"
         return 1
-    }
+    fi
 
     # Build exclude arguments
     local exclude_args=($(build_exclude_args DEFAULT_SEARCH_EXCLUDE_DIRS DEFAULT_SEARCH_EXCLUDE_FILES))
