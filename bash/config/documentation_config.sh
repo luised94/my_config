@@ -8,9 +8,10 @@ declare -A DOC_CONFIG=(
     ["MAX_DEPTH"]="-1"  # No limit
 )
 
+# For arrays with multiple values, we need to use space-separated strings
 declare -A FILE_PATTERNS=(
-    ["DEFAULT_EXTENSIONS"]=("sh" "R" "py")
-    ["IGNORE_DIRS"]=(".git" "node_modules" "build")
+    ["DEFAULT_EXTENSIONS"]="sh R py"
+    ["IGNORE_DIRS"]="git node_modules build"
 )
 
 declare -A GREP_STYLES=(
@@ -22,18 +23,18 @@ declare -A GREP_STYLES=(
 declare -A REPO_CONFIG=(
     ["README_NAME"]="README.md"
     ["TAG_SECTION"]="## TAGS"
-    ["DEFAULT_DEPTH"]=1
+    ["DEFAULT_DEPTH"]="1"
 )
 
 declare -A FILE_DEFAULTS=(
-    ["EXTENSIONS"]=("sh" "R" "py")
+    ["EXTENSIONS"]="sh R py"
     ["DEFAULT_TAG"]="TODO"
 )
 
 declare -A SEARCH_CONFIG=(
-    ["MAX_RESULTS"]=1000
-    ["CONTEXT_LINES"]=0
-    ["COLORED_OUTPUT"]=true
+    ["MAX_RESULTS"]="1000"
+    ["CONTEXT_LINES"]="0"
+    ["COLORED_OUTPUT"]="true"
 )
 
 # Tree visualization defaults
@@ -43,7 +44,8 @@ DEFAULT_TREE_USE_COLOR=1
 DEFAULT_TREE_FULL_PATHS=0
 
 # Default exclude patterns for tree visualization
-DEFAULT_TREE_EXCLUDE_PATTERNS=(
+# Use a regular array for this
+declare -a DEFAULT_TREE_EXCLUDE_PATTERNS=(
     "node_modules"
     "*.pyc"
     "*.tmp"
@@ -51,7 +53,7 @@ DEFAULT_TREE_EXCLUDE_PATTERNS=(
 )
 
 # Visual formatting
-TREE_COMPACT_SYMBOLS=(
+declare -a TREE_COMPACT_SYMBOLS=(
     "ÃÄ"
     "ÀÄ"
     "³ "
