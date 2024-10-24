@@ -81,25 +81,25 @@ ctree() {
     if ! parse_options TREE_OPTIONS args "$@"; then
         generate_usage TREE_OPTIONS "ctree"
         return 1
-    }
+    fi
 
     # Show help if requested
     if [[ ${args["help"]} == 1 ]]; then
         generate_usage TREE_OPTIONS "ctree"
         return 0
-    }
+    fi
 
     # Validate directory
     if [[ ! -d "${args["directory"]}" ]]; then
         log_error "Directory '${args["directory"]}' does not exist"
         return 1
-    }
+    fi
 
     # Check for tree command
     if ! command -v tree >/dev/null 2>&1; then
         log_error "'tree' command not found"
         return 1
-    }
+    fi
 
     # Build tree command
     local tree_cmd=$(build_tree_command args)

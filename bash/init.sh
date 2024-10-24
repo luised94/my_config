@@ -22,11 +22,14 @@ readonly CONFIG_FILES=(
     "shell_config.sh"
 )
 
+
 # Function files
 readonly FUNCTION_FILES=(
     "logging_utils.sh"
+    "options_parser.sh"  # Must be early in the list
     "editor_utils.sh"
     "file_operations.sh"
+    "tree_utils.sh"
     "prompt_utils.sh"
     "repo_handler.sh"
     "search_utils.sh"
