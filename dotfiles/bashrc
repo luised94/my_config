@@ -1,6 +1,4 @@
-#~/.bashrc: executed by bash(1) for non-login shells.
-# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-# for examples
+# ~/.bashrc: executed by bash(1) for non-login shells.
 
 # If not running interactively, don't do anything
 case $- in
@@ -8,298 +6,72 @@ case $- in
       *) return;;
 esac
 
-# don't put duplicate lines or lines starting with space in the history.
-# See bash(1) for more options
-HISTCONTROL=ignoreboth
+# Initialize bash utilities
+export BASH_UTILS_PATH="$HOME/my_config/bash"
+[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "$BASH_UTILS_PATH/init.sh"
 
-# append to the history file, don't overwrite it
-shopt -s histappend
+# Apply shell options from configuration
+for opt in "${SHELL_OPTIONS[@]}"; do
+    shopt -s "$opt"
+done
 
-# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=1000
-HISTFILESIZE=2000
+# Set up prompt
+setup_prompt
 
-# check the window size after each command and, if necessary,
-# update the values of LINES and COLUMNS.
-shopt -s checkwinsize
+# Set up aliases
+setup_aliases
 
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
-#shopt -s globstar
+# Set up environment variables and paths
+setup_environment
 
-# make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+# Set vi mode
+set -o vi
 
-# set variable identifying the chroot you work in (used in the prompt below)
+# Set up Windows environment if in WSL
+if [[ -n "$WSL_DISTRO_NAME" ]]; then
+    setup_windows_environment
+fi
+
+# Enable programmable completion
+setup_completion
+
+# Change to home directory
+cd ~
+
+# Additional environment-specific settings
+if [ -x /usr/bin/lesspipe ]; then
+    eval "$(SHELL=/bin/sh lesspipe)"
+fi
+
+# Set up chroot
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
-# set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
-    xterm-color|*-256color) color_prompt=yes;;
-esac
-
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_color_prompt=yes
-
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
-    else
-	color_prompt=
-    fi
-fi
-
-if [ "$color_prompt" = yes ]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-fi
-unset color_prompt force_color_prompt
-
-# If this is an xterm set the title to user@host:dir
-case "$TERM" in
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
-esac
-
-# enable color support of ls and also add handy aliases
-if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
-
-    alias grep='grep --color=auto'
-    alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
-fi
-
-# colored GCC warnings and errors
-#export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# ls Aliases
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-
-# Tmux aliases
-#alias tnew='tmux new -s'
-#alias ta='tmux attach -t'
-#alias tls='tmux list-sessions'
-#alias tkill='tmux kill-session -t'
-#
-## Function to create or attach to a tmux session
-#tmux_session() {
-#    session_name=${1:-default}
-#    tmux new-session -A -s "$session_name"
-#}
-#alias ts='tmux_session'
-# Git shortcuts
-alias gs='git status'
-alias gd='git diff'
-alias ga='git add'
-alias gc='git commit'
-alias gps='git push'
-alias gpl='git pull'
-alias gl='git log --oneline --graph --decorate'
-echo "Git aliases enabled."
-
-## Navigation
-#alias ..='cd ..'
-#alias ...='cd ../..'
-#alias ....='cd ../../..'
-
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
+# Alert alias for long running commands
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# ~/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
+# Source additional local configurations if they exist
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
-if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
-  fi
+if [ -f ~/.bash_local ]; then
+    . ~/.bash_local
 fi
-cd ~
 
-# Create alias for switching to windows directory
-
-# Function: setup_windows_environment
-# Purpose: Determine the username of the windows user. Most important reason is to travel to dropbox location quickly.
-# Parameters: None.
-# Return: Export windows_user and DROPBOX_PATH variables. Create new functions list_dropbox and search_dropbox.
-setup_windows_environment() {
-    local windows_user
-    local dropbox_path
-    local max_retries=3
-    local retry_count=0
-
-    # Function to get Windows username
-    get_windows_username() {
-        windows_user=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r\n')
-        if [[ -z "$windows_user" ]]; then
-            echo "Error: Unable to retrieve Windows username." >&2
-            return 1
-        fi
-        echo "$windows_user"
-    }
-
-    # Try to get Windows username with retries
-    while [[ $retry_count -lt $max_retries ]]; do
-        if windows_user=$(get_windows_username); then
-            break
-        fi
-        ((retry_count++))
-        sleep 1
+# Load custom completions
+if [ -d ~/.bash_completion.d ]; then
+    for file in ~/.bash_completion.d/*; do
+        [ -f "$file" ] && . "$file"
     done
+fi
 
-    if [[ -z "$windows_user" ]]; then
-        echo "Error: Failed to retrieve Windows username after $max_retries attempts." >&2
-        return 1
-    fi
+# Display initialization message
+log_info "Shell initialization complete"
+log_info "Use 'vim_all <search_dir>' to open all files recursively"
+log_info "Use 'count_string <search_string>' to find files with search_string"
+log_info "Use 'ctree' for condensed directory tree view"
 
-    # Set up Dropbox path
-    dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
-    if [[ ! -d "$dropbox_path" ]]; then
-        echo "Warning: Dropbox directory not found at $dropbox_path" >&2
-        # Attempt to find Dropbox directory
-        local potential_path="/mnt/c/Users/${windows_user}/Dropbox"
-        if [[ -d "$potential_path" ]]; then
-            dropbox_path="$potential_path/"
-            echo "Found Dropbox at $dropbox_path" >&2
-        else
-            echo "Error: Unable to locate Dropbox directory." >&2
-            return 1
-        fi
-    fi
-
-    # Export variables
-    export WINDOWS_USER="$windows_user"
-    export DROPBOX_PATH="$dropbox_path"
-
-    # Create alias for switching to Windows directory
-    alias cdwin='cd "$DROPBOX_PATH"'
-
-    # Optional: Create a function to list contents of Dropbox
-    list_dropbox() {
-        ls -la "$DROPBOX_PATH"
-    }
-
-    # Optional: Create a function to search Dropbox
-    search_dropbox() {
-        local usage="Usage: search_dropbox [-d depth] [-t filetype] [-c content] [-x exclude] search_term
-        -d: Max depth (default: 1)
-        -t: File type (e.g., pdf, txt)
-        -c: Search file contents
-        -x: Exclude directory (can be used multiple times)
-        -h: Show this help message"
-    
-        local depth=1
-        local filetype=""
-        local content=""
-        local exclude_dirs=()
-        local OPTIND opt
-        while getopts "d:t:c:x:h" opt; do
-            case $opt in
-                d) depth=$OPTARG ;;
-                t) filetype=$OPTARG ;;
-                c) content=$OPTARG ;;
-                x) exclude_dirs+=("-not -path */$OPTARG/*") ;;
-                h) echo "$usage"; return 0 ;;
-                *) echo "Invalid option: -$OPTARG" >&2; echo "$usage" >&2; return 1 ;;
-            esac
-        done
-        shift $((OPTIND-1))
-    
-        if [[ $# -eq 0 ]]; then
-            echo "Error: No search term provided." >&2
-            echo "$usage" >&2
-            return 1
-        fi
-    
-        local search_term=$1
-        local find_args=("$DROPBOX_PATH" -maxdepth "$depth" "${exclude_dirs[@]}")
-    
-        if [[ -n $filetype ]]; then
-            find_args+=(-name "*.$filetype")
-        fi
-    
-        if [[ -n $content ]]; then
-            find "${find_args[@]}" -type f -print0 | xargs -0 grep -l "$content" | grep -i "$search_term"
-        else
-            find "${find_args[@]}" -iname "*$search_term*" -type f
-        fi
-    }
-
-    echo "Windows environment setup complete."
-    echo "Use 'cdwin' to navigate to your Dropbox directory."
-    echo "Use 'list_dropbox' to list contents of your Dropbox."
-    echo "Use 'search_dropbox <term>' to search your Dropbox."
-}
-
-# Run the setup function
-setup_windows_environment
-
-# Create alias for with no save by default
-alias R='R --no-save'
-
-# After installing Java for configuring R
-# export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
-
-# Create alias for rsyncing to and from dropbox 
-#alias rsync2drobpox='rsync -av ~/my_config/ "${dropbox_path}my_config/"'
-#alias rsyncfromdropbox='rsync -av "${dropbox_path}my_config/" ~/my_config'
-
-export GIT_EDITOR="nvim"
-
-set -o vi
-#set show-mode-in-prompt on
-#set vi-ins-mode-string "\1\e[34;1m\2[I]\1\e[0m\2"
-#set vi-cmd-mode-string "\1\e[35;1m\2[N]\1\e[0m\2"
-
-alias explorer="explorer.exe ."
-# Required for nvim-treesitter
-export PATH=$PATH:~/node-v22.5.1-linux-x64/bin
-export R_HOME=/usr/local/bin/R
-export R_LIBS_USER=~/R/library/
-# For working on linux cluster
-# alias nvim="$HOME/nvim-linux64/bin/nvim"
-
-# For use with Quarto and Neovim
-# wslview "${BROWSER}"
-# Will open brave browser. Pretty cool.
-export BROWSER="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
-#export BROWSER="wslview"
-
-# add ls -ltr | grep -v '^d' | tail -n 5 to get the last 5 modified files. Use awk '/^-/ {print $9}' Use with my refresher script
-# add search and edit function grep -rn "$1" "${2:-.}" | xargs -I {} nvim +{} {}
-#
-# For neovim clipboard support.
-#export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
-
-source ~/my_config/bash/functions/file_operations.sh
-
-echo "Use vim_all <search_dir> to open all files recursively."
-echo "Use count_string <search_string> find files with search_string, excluding certain dirs and filetypes."
+# Optional: Set custom prompt string if not using setup_prompt
+# PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
