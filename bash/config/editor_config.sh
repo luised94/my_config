@@ -1,3 +1,6 @@
+# Editor configuration
+# Do not source directly - use init.sh
+
 # Editor preferences
 DEFAULT_EDITORS=(
     "nvim"

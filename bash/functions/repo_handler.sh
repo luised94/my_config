@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source "../config/repository_config.sh"
+[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
-function find_git_root() {
+find_git_root() {
     local start_dir="${1:-.}"
     
     log_info "Finding Git repository root"
@@ -23,7 +23,7 @@ function find_git_root() {
     echo "$root_dir"
 }
 
-function find_readme() {
+find_readme() {
     local repo_root="$1"
     local readme_name="${REPO_CONFIG[README_NAME]}"
     
@@ -38,7 +38,7 @@ function find_readme() {
     echo "$readme_path"
 }
 
-function resolve_path() {
+resolve_path() {
     local path="$1"
     local repo_root="$2"
     

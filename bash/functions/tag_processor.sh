@@ -1,6 +1,8 @@
 #!/bin/bash
 
-function extract_tags() {
+[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+
+extract_tags() {
     local readme_file="$1"
     local tag_section="${REPO_CONFIG[TAG_SECTION]}"
     
@@ -14,7 +16,7 @@ function extract_tags() {
         tr '\n' ' '
 }
 
-function validate_tag() {
+validate_tag() {
     local tag="$1"
     local valid_tags="$2"
     
@@ -27,7 +29,7 @@ function validate_tag() {
     return 0
 }
 
-function build_find_command() {
+build_find_command() {
     local directory="$1"
     local -a extensions=("${@:2}")
     
@@ -47,7 +49,7 @@ function build_find_command() {
     echo "$cmd"
 }
 
-function search_tags() {
+search_tags() {
     local directory="$1"
     local tag="$2"
     local find_cmd="$3"

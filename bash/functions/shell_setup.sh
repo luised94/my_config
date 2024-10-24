@@ -2,11 +2,6 @@
 
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
-setup_prompt() {
-    # Your existing prompt setup logic
-    log_info "Setting up prompt..."
-}
-
 setup_aliases() {
     log_info "Setting up aliases..."
     
@@ -20,10 +15,7 @@ setup_aliases() {
         alias "${alias_def}"
     done
 
-    # Color support
-    if [ -x /usr/bin/dircolors ]; then
-        setup_color_support
-    fi
+    log_info "Aliases configured successfully"
 }
 
 setup_environment() {
@@ -39,6 +31,8 @@ setup_environment() {
     for var in "${ENV_VARS[@]}"; do
         export "$var"
     done
+
+    log_info "Environment configured successfully"
 }
 
 setup_completion() {
@@ -50,4 +44,5 @@ setup_completion() {
             . /etc/bash_completion
         fi
     fi
+    log_info "Completion setup complete"
 }

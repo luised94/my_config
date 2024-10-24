@@ -1,4 +1,5 @@
-#!/bin/bash
+# Search configuration
+# Do not source directly - use init.sh
 
 # Default exclusion patterns
 DEFAULT_SEARCH_EXCLUDE_DIRS=(
@@ -19,7 +20,7 @@ DEFAULT_SEARCH_EXCLUDE_FILES=(
     "*.Rprofile"
 )
 
-# Search options configuration
+# Search options
 SEARCH_OPTIONS=(
     "h|help:Show this help message"
     "e|exclude-dir:Additional directory to exclude (requires value)"
@@ -29,6 +30,20 @@ SEARCH_OPTIONS=(
     "d|max-depth:Maximum directory depth to search (requires value)"
 )
 
-# Default settings
+# Search defaults
 DEFAULT_SEARCH_VERBOSE=0
 DEFAULT_SEARCH_QUIET=0
+
+# Advanced search configuration
+declare -A SEARCH_CONFIG=(
+    ["MAX_RESULTS"]="1000"
+    ["CONTEXT_LINES"]="0"
+    ["COLORED_OUTPUT"]="true"
+)
+
+# Grep styling
+declare -A GREP_STYLES=(
+    ["MATCH_COLOR"]="01;31"  # Bold red
+    ["LINE_COLOR"]="01;90"   # Bold gray
+    ["FILE_COLOR"]="01;36"   # Bold cyan
+)
