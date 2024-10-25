@@ -1,30 +1,159 @@
-set nocompatible
-syntax enable
-set autoindent
-set relativenumber
-" set clipboard=unnamed
-set expandtab
-set smarttab
-set tabstop=4
-"set mouse=a
-set hlsearch
-set shiftwidth=4
-"set cursorline
-colorscheme desert
-set ruler
-set autoread
-set encoding=utf8
-set nobackup
-set nowb
-set noswapfile
-set laststatus=2
-set statusline=%F%m%r%h%w\ (%{&ff}){%Y}\ [%l,%v][%p%%]
-au BufReadPost * if line("'\"") > 1 && line("'\"") <= line("$") | exe "normal! g'\"" | endif
+" Basic Settings
+" Basic Settings
+" -----------------------------
+" set noinsertmode
 
+set nocompatible              " Be iMproved
+syntax enable                 " Enable syntax highlighting
+set encoding=utf8            " Set UTF-8 encoding
+set fileformats=unix,dos,mac " Use Unix as standard file type
+"
+" Fix for WSL/Windows Terminal Replace mode issue
+set t_u7=                  " Disable cursor position request
+set ambw=double           " Set ambiguous character width
+set t_RV=                 " Disable version request
+let &t_SI = "\e[6 q"      " Normal cursor in insert mode
+let &t_SR = "\e[4 q"      " Underline cursor in replace mode
+let &t_EI = "\e[2 q"      " Block cursor in normal mode
+
+
+" UI Configuration
+" -----------------------------
+set relativenumber           " Show relative line numbers
+set ruler                    " Show cursor position
+set laststatus=2            " Always show status line
+set showcmd                 " Show command in bottom bar
+set wildmenu                " Visual autocomplete for command menu
+set showmatch               " Highlight matching brackets
+colorscheme desert          " Set color scheme
+set background=dark         " Dark background
+set visualbell              " No sounds
+set t_vb=                   " No visual bell
+set hidden                  " Allow hidden buffers
+
+" Status Line
+" -----------------------------
+set statusline=%F                           " Full path
+set statusline+=%m                          " Modified flag
+set statusline+=%r                          " Read only flag
+set statusline+=%h                          " Help file flag
+set statusline+=%w                          " Preview window flag
+set statusline+=\ (%{&ff}){%Y}             " File format and type
+set statusline+=\ [%l,%v][%p%%]            " Line, column and percentage
+
+" Indentation
+" -----------------------------
+set autoindent              " Auto indent
+set smartindent             " Smart indent
+set expandtab              " Use spaces instead of tabs
+set smarttab               " Smart tab handling
+set tabstop=4              " 4 spaces for tab
+set shiftwidth=4           " 4 spaces for indent
+set softtabstop=4          " 4 spaces in tab when editing
+set wrap                   " Wrap lines
+
+" Search
+" -----------------------------
+set hlsearch               " Highlight search results
+set incsearch              " Search as characters are entered
+set ignorecase            " Ignore case when searching
+set smartcase             " Unless uppercase is used
+
+" Performance & Security
+" -----------------------------
+set nobackup               " No backup files
+set nowb                   " No write backup
+set noswapfile            " No swap file
+set autoread              " Auto reload changed files
+set ttyfast               " Faster redrawing
+set lazyredraw            " Only redraw when necessary
+
+" File Type Specific
+" -----------------------------
+filetype plugin indent on   " Load filetype-specific indent files
+" Add file type specific settings here
+augroup FileTypeSpecific
+    autocmd!
+    " Example: 2 space indentation for yaml
+    autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab
+    " Add more as needed
+augroup END
+
+" Persistence
+" -----------------------------
+" Remember last position
+augroup LastPosition
+    autocmd!
+    autocmd BufReadPost *
+        \ if line("'\"") > 1 && line("'\"") <= line("$") |
+        \   exe "normal! g`\"" |
+        \ endif
+augroup END
+
+" UI Enhancements
+" -----------------------------
+" Hide end-of-buffer tildes
 if has('patch-8.1.0360')
-    " Vim 8.1.0360 or above supports eob in fillchars
-    set fillchars+=eob:\ 
+    set fillchars+=eob:\
 else
-    " For older versions use highlighting to hide the characters
     highlight NonText ctermfg=black guifg=black
 endif
+
+" Highlight on yank (add to UI Configuration)
+augroup highlight_yank
+    autocmd!
+    if has('nvim') || has('patch-8.0.1394')  " Version check for TextYankPost
+        autocmd TextYankPost * silent! lua vim.highlight.on_yank({timeout = 200})
+    else
+        " Fallback for older vim versions
+        autocmd TextYankPost * silent! let g:highlightedyank_highlight_duration = 200
+    endif
+augroup END
+
+" Optional Features (commented out by default)
+" -----------------------------
+" set clipboard=unnamed     " Use system clipboard
+"set mouse=a              " Enable mouse support
+"set cursorline           " Highlight current line
+
+" Key Mappings
+" -----------------------------
+" Easy escape from insert mode
+inoremap jk <Esc>
+" Clear search highlighting
+nnoremap <silent> <C-l> :nohl<CR><C-l>
+" Save with ctrl-s
+nnoremap <C-s> :w<CR>
+" Quick quit
+nnoremap <leader>q :q<CR>
+
+" Buffer Navigation
+" -----------------------------
+nnoremap <leader>bn :bnext<CR>
+nnoremap <leader>bp :bprevious<CR>
+nnoremap <leader>bd :bdelete<CR>
+
+" Window Navigation
+" -----------------------------
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Auto Commands
+" -----------------------------
+augroup AutoCommands
+    autocmd!
+    " Remove trailing whitespace on save
+    autocmd BufWritePre * :%s/\s\+$//e
+    " Automatically reload vimrc on save
+    autocmd BufWritePost $MYVIMRC source $MYVIMRC
+augroup END
+
+" Backup/Swap/Undo Directories
+" -----------------------------
+if has('persistent_undo')
+    set undofile
+    set undodir=~/.vim/undo//
+endif
+"set verbose=9
