@@ -74,4 +74,130 @@ vim_all() {
     eval "$editor" "${files[@]}"
 }
 
-#export -f vim_all
+#!/usr/bin/env bash
+
+# Function to aggregate repository contents
+function aggregate_repository() {
+    local output_file="repository_aggregate.md"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local verbose=0
+    local quiet=0
+    local max_depth=""
+    
+    # Initialize arrays for exclusions
+    local exclude_dirs=("${DEFAULT_SEARCH_EXCLUDE_DIRS[@]}")
+    local exclude_files=("${DEFAULT_SEARCH_EXCLUDE_FILES[@]}")
+
+    # Parse command line options
+    while getopts "he:f:vqd:" opt; do
+        case ${opt} in
+            h)
+                show_help
+                return 0
+                ;;
+            e)
+                exclude_dirs+=("$OPTARG")
+                ;;
+            f)
+                exclude_files+=("$OPTARG")
+                ;;
+            v)
+                verbose=1
+                ;;
+            q)
+                quiet=1
+                ;;
+            d)
+                max_depth="-maxdepth $OPTARG"
+                ;;
+            \?)
+                echo "Invalid option: -$OPTARG" >&2
+                return 1
+                ;;
+        esac
+    done
+
+    # Construct find command exclusions
+    local dir_excludes=""
+    for dir in "${exclude_dirs[@]}"; do
+        dir_excludes="$dir_excludes -not -path '*/$dir/*'"
+    done
+
+    local file_excludes=""
+    for pattern in "${exclude_files[@]}"; do
+        file_excludes="$file_excludes -not -name '$pattern'"
+    done
+
+    # Create header for aggregate file
+    {
+        echo "# Repository Aggregation"
+        echo "Generated: $timestamp"
+        echo "---"
+        echo
+    } > "$output_file"
+
+    # Find and process files
+    local find_command="find . $max_depth -type f $dir_excludes $file_excludes"
+    local file_count=0
+    local total_lines=0
+
+    while IFS= read -r file; do
+        # Skip the output file itself
+        [[ "$file" == "./$output_file" ]] && continue
+
+        if [[ $verbose -eq 1 ]]; then
+            echo "Processing: $file"
+        fi
+
+        # Add file header
+        {
+            echo "## File: $file"
+            echo "\`\`\`$(get_file_extension "$file")"
+            cat "$file"
+            echo "\`\`\`"
+            echo
+        } >> "$output_file"
+
+        ((file_count++))
+        if [[ $verbose -eq 1 ]]; then
+            local lines=$(wc -l < "$file")
+            ((total_lines+=lines))
+        fi
+    done < <(eval "$find_command" | sort)
+
+    # Print summary unless quiet mode is enabled
+    if [[ $quiet -eq 0 ]]; then
+        echo "Repository aggregation complete:"
+        echo "- Files processed: $file_count"
+        [[ $verbose -eq 1 ]] && echo "- Total lines: $total_lines"
+        echo "- Output: $output_file"
+    fi
+}
+
+# Helper function to get file extension for markdown code blocks
+function get_file_extension() {
+    local file="$1"
+    local ext="${file##*.}"
+    case "$ext" in
+        py) echo "python" ;;
+        js) echo "javascript" ;;
+        sh) echo "bash" ;;
+        R|r) echo "r" ;;
+        md) echo "markdown" ;;
+        *) echo "$ext" ;;
+    esac
+}
+
+# Help message function
+function show_help() {
+    echo "Usage: aggregate_repository [options]"
+    echo
+    echo "Options:"
+    for option in "${SEARCH_OPTIONS[@]}"; do
+        IFS=':' read -r opt desc <<< "$option"
+        printf "  -%s: %s\n" "${opt/|/, -}" "$desc"
+    done
+}
+
+# Example usage:
+# aggregate_repository -v -d 3 -e "tests" -f "*.csv"
