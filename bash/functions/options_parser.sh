@@ -72,6 +72,3 @@ parse_options() {
     done
     return 0
 }
-
-#export -f generate_usage
-#export -f parse_options
