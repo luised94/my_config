@@ -99,16 +99,49 @@ else
     highlight NonText ctermfg=black guifg=black
 endif
 
-" Highlight on yank (add to UI Configuration)
-augroup highlight_yank
-    autocmd!
-    if has('nvim') || has('patch-8.0.1394')  " Version check for TextYankPost
-        autocmd TextYankPost * silent! lua vim.highlight.on_yank({timeout = 200})
+
+
+" Highlight on yank with version check
+" -----------------------------
+if v:version > 800 || has('patch-8.0.1394')  " Check for modern version
+    augroup highlight_yank
+        autocmd!
+        if has('nvim')
+            autocmd TextYankPost * silent! lua vim.highlight.on_yank {timeout=200}
+        else
+            autocmd TextYankPost * silent! call HighlightYank()
+        endif
+    augroup END
+elseif exists('##TextYankPost')  " Fallback for older versions with TextYankPost
+    augroup highlight_yank_fallback
+        autocmd!
+        autocmd TextYankPost * call HighlightYank()
+    augroup END
+endif
+
+" Highlight function definition (will work on older versions)
+function! HighlightYank() abort
+    let [line_start, column_start] = getpos("'[")[1:2]
+    let [line_end, column_end] = getpos("']")[1:2]
+    let lines = getline(line_start, line_end)
+
+    " Adjust last line's columns
+    let lines[-1] = lines[-1][:column_end - (&selection == 'inclusive' ? 1 : 2)]
+    " Adjust first line's columns
+    let lines[0] = lines[0][column_start - 1:]
+
+    " Create highlight
+    highlight HighlightYank cterm=reverse gui=reverse
+    let id = matchadd('HighlightYank', '\V' . join(map(lines, 'escape(v:val, "/\")'), '\n'))
+
+    " Remove highlight after 200ms
+    if exists('*timer_start')
+        call timer_start(200, {-> matchdelete(id)})
     else
-        " Fallback for older vim versions
-        autocmd TextYankPost * silent! let g:highlightedyank_highlight_duration = 200
+        " Fallback for versions without timer
+        call matchdelete(id)
     endif
-augroup END
+endfunction
 
 " Optional Features (commented out by default)
 " -----------------------------
