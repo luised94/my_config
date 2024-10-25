@@ -74,9 +74,7 @@ vim_all() {
     eval "$editor" "${files[@]}"
 }
 
-#!/usr/bin/env bash
 
-# Function to aggregate repository contents
 function aggregate_repository() {
     local output_file="repository_aggregate.md"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
@@ -84,35 +82,41 @@ function aggregate_repository() {
     local quiet=0
     local max_depth=""
     
+    # Show usage if no arguments or help flag
+    if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
+        echo "${AGGREGATE_REPOSITORY_USAGE}"
+        return 0
+    }
+    
     # Initialize arrays for exclusions
     local exclude_dirs=("${DEFAULT_SEARCH_EXCLUDE_DIRS[@]}")
     local exclude_files=("${DEFAULT_SEARCH_EXCLUDE_FILES[@]}")
 
     # Parse command line options
-    while getopts "he:f:vqd:" opt; do
-        case ${opt} in
-            h)
-                show_help
-                return 0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -d|--max-depth)
+                max_depth="-maxdepth $2"
+                shift 2
                 ;;
-            e)
-                exclude_dirs+=("$OPTARG")
+            -e|--exclude-dir)
+                exclude_dirs+=("$2")
+                shift 2
                 ;;
-            f)
-                exclude_files+=("$OPTARG")
+            -f|--exclude-file)
+                exclude_files+=("$2")
+                shift 2
                 ;;
-            v)
+            -v|--verbose)
                 verbose=1
+                shift
                 ;;
-            q)
+            -q|--quiet)
                 quiet=1
+                shift
                 ;;
-            d)
-                max_depth="-maxdepth $OPTARG"
-                ;;
-            \?)
-                echo "Invalid option: -$OPTARG" >&2
-                return 1
+            *)
+                break
                 ;;
         esac
     done
@@ -128,7 +132,7 @@ function aggregate_repository() {
         file_excludes="$file_excludes -not -name '$pattern'"
     done
 
-    # Create header for aggregate file
+    # Create aggregate file with header
     {
         echo "# Repository Aggregation"
         echo "Generated: $timestamp"
@@ -142,62 +146,29 @@ function aggregate_repository() {
     local total_lines=0
 
     while IFS= read -r file; do
-        # Skip the output file itself
         [[ "$file" == "./$output_file" ]] && continue
 
-        if [[ $verbose -eq 1 ]]; then
-            echo "Processing: $file"
-        fi
+        [[ $verbose -eq 1 ]] && echo "Processing: $file"
 
-        # Add file header
         {
             echo "## File: $file"
-            echo "\`\`\`$(get_file_extension "$file")"
+            echo "\`\`\`${file##*.}"
             cat "$file"
             echo "\`\`\`"
             echo
         } >> "$output_file"
 
         ((file_count++))
-        if [[ $verbose -eq 1 ]]; then
-            local lines=$(wc -l < "$file")
-            ((total_lines+=lines))
-        fi
+        [[ $verbose -eq 1 ]] && total_lines+=$(wc -l < "$file")
     done < <(eval "$find_command" | sort)
 
-    # Print summary unless quiet mode is enabled
-    if [[ $quiet -eq 0 ]]; then
+    [[ $quiet -eq 0 ]] && {
         echo "Repository aggregation complete:"
         echo "- Files processed: $file_count"
         [[ $verbose -eq 1 ]] && echo "- Total lines: $total_lines"
         echo "- Output: $output_file"
-    fi
+    }
 }
 
-# Helper function to get file extension for markdown code blocks
-function get_file_extension() {
-    local file="$1"
-    local ext="${file##*.}"
-    case "$ext" in
-        py) echo "python" ;;
-        js) echo "javascript" ;;
-        sh) echo "bash" ;;
-        R|r) echo "r" ;;
-        md) echo "markdown" ;;
-        *) echo "$ext" ;;
-    esac
-}
-
-# Help message function
-function show_help() {
-    echo "Usage: aggregate_repository [options]"
-    echo
-    echo "Options:"
-    for option in "${SEARCH_OPTIONS[@]}"; do
-        IFS=':' read -r opt desc <<< "$option"
-        printf "  -%s: %s\n" "${opt/|/, -}" "$desc"
-    done
-}
-
-# Example usage:
-# aggregate_repository -v -d 3 -e "tests" -f "*.csv"
+# Usage example:
+# aggregate_repository -v -d 3 -e "tests" -f "*.csv" "Initial repository aggregation"
