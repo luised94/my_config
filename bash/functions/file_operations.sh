@@ -74,8 +74,7 @@ vim_all() {
     eval "$editor" "${files[@]}"
 }
 
-
-function aggregate_repository() {
+aggregate_repository() {
     local output_file="repository_aggregate.md"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local verbose=0
@@ -86,7 +85,7 @@ function aggregate_repository() {
     if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
         echo "${AGGREGATE_REPOSITORY_USAGE}"
         return 0
-    }
+    fi
     
     # Initialize arrays for exclusions
     local exclude_dirs=("${DEFAULT_SEARCH_EXCLUDE_DIRS[@]}")
