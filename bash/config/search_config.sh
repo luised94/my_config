@@ -13,6 +13,7 @@ DEFAULT_SEARCH_EXCLUDE_DIRS=(
 
 DEFAULT_SEARCH_EXCLUDE_FILES=(
     "*.log"
+    "*repository_aggregate.md"
     "*.tmp"
     "*.bak"
     "*.swp"
