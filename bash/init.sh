@@ -15,7 +15,6 @@ fi
 # Configuration files
 readonly CONFIG_FILES=(
     "aliases_config.sh"
-    "tree_config.sh"
     "editor_config.sh"
     "path_config.sh"
     "search_config.sh"
@@ -29,7 +28,6 @@ readonly FUNCTION_FILES=(
     "options_parser.sh"  # Must be early in the list
     "editor_utils.sh"
     "file_operations.sh"
-    "tree_utils.sh"
     "prompt_utils.sh"
     "repo_handler.sh"
     "search_utils.sh"
