@@ -15,7 +15,7 @@ fi
 # Configuration files
 readonly CONFIG_FILES=(
     "aliases_config.sh"
-    "documentation_config.sh"
+    "tree_config.sh"
     "editor_config.sh"
     "path_config.sh"
     "search_config.sh"

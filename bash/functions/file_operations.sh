@@ -8,27 +8,14 @@ build_exclude_args() {
     local exclude_args=()
     
     for dir in "${dirs_ref[@]}"; do
-        exclude_args+=(-not -path "*/$dir/*")
+        exclude_args+=(-not -path "*/${dir}/*")
     done
     
     for file in "${files_ref[@]}"; do
-        exclude_args+=(-not -name "$file")
+        exclude_args+=(-not -name "${file}")
     done
     
     echo "${exclude_args[@]}"
-}
-
-collect_files() {
-    local search_dir="$1"
-    shift
-    local -a exclude_args=("$@")
-    local files=()
-    
-    while IFS= read -r -d $'\0' file; do
-        files+=("$file")
-    done < <(find "$search_dir" -type f "${exclude_args[@]}" -print0)
-    
-    echo "${files[@]}"
 }
 
 vim_all() {
@@ -38,15 +25,13 @@ vim_all() {
         ["force"]=0
     )
 
-    # Parse options
     if ! parse_options EDITOR_OPTIONS args "$@"; then
-        generate_usage EDITOR_OPTIONS "vim_all"
+        generate_usage EDITOR_OPTIONS "vim_all" EDITOR_USAGE_EXAMPLES
         return 1
     fi
 
-    # Show help if requested
     if [[ ${args["help"]} == 1 ]]; then
-        generate_usage EDITOR_OPTIONS "vim_all"
+        generate_usage EDITOR_OPTIONS "vim_all" EDITOR_USAGE_EXAMPLES
         return 0
     fi
 
@@ -63,18 +48,19 @@ vim_all() {
     fi
 
     # Build exclude arguments
-    local exclude_args=($(build_exclude_args DEFAULT_EXCLUDE_DIRS DEFAULT_EXCLUDE_FILES))
-    
+    local exclude_args=($(build_exclude_args DEFAULT_SEARCH_EXCLUDE_DIRS DEFAULT_SEARCH_EXCLUDE_FILES))
+
     # Collect files
-    local files=($(collect_files "${args["directory"]}" "${exclude_args[@]}"))
+    local files=()
+    while IFS= read -r -d $'\0' file; do
+        files+=("$file")
+    done < <(find "${args["directory"]}" -type f "${exclude_args[@]}" -print0)
     
-    # Check if files were found
     if [ ${#files[@]} -eq 0 ]; then
         log_warning "No files found to edit."
         return 1
     fi
 
-    # Confirm large file counts
     if [ ${#files[@]} -gt "${args["limit"]}" ] && [ ${args["force"]} -ne 1 ]; then
         log_warning "Found ${#files[@]} files. Are you sure you want to open all of them? (y/N)"
         read -r confirm
@@ -87,3 +73,5 @@ vim_all() {
     log_info "Opening ${#files[@]} files in $editor"
     eval "$editor" "${files[@]}"
 }
+
+#export -f vim_all
