@@ -1,8 +1,8 @@
 #!/bin/bash
 
-source "../config/repository_config.sh"
+[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
-function find_git_root() {
+find_git_root() {
     local start_dir="${1:-.}"
     
     log_info "Finding Git repository root"
@@ -11,19 +11,19 @@ function find_git_root() {
         log_warning "Git not available, using current directory"
         echo "$start_dir"
         return 0
-    }
+    fi
     
     local root_dir
     if ! root_dir=$(git -C "$start_dir" rev-parse --show-toplevel 2>/dev/null); then
         log_warning "Not in a Git repository, using current directory"
         echo "$start_dir"
         return 0
-    }
+    fi
     
     echo "$root_dir"
 }
 
-function find_readme() {
+find_readme() {
     local repo_root="$1"
     local readme_name="${REPO_CONFIG[README_NAME]}"
     
@@ -33,12 +33,12 @@ function find_readme() {
     if [ ! -f "$readme_path" ]; then
         log_error "README not found: $readme_path"
         return 1
-    }
+    fi
     
     echo "$readme_path"
 }
 
-function resolve_path() {
+resolve_path() {
     local path="$1"
     local repo_root="$2"
     

@@ -1,59 +1,51 @@
 #!/bin/bash
 
-set -euo pipefail
+[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
-source "../functions/repo_handler.sh"
-source "../functions/tag_processor.sh"
+# Main tag search function
+find_tags() {
+    local -A args=(
+        ["tag"]="${FILE_DEFAULTS[DEFAULT_TAG]}"
+        ["directory"]="."
+        ["extensions"]="${FILE_DEFAULTS[EXTENSIONS]}"
+    )
 
-function show_usage() {
-    cat << EOF
-Usage: $(basename "$0") [OPTIONS]
-Searches for tagged comments in source files
+    # Parse options
+    if ! parse_options TAG_SEARCH_OPTIONS args "$@"; then
+        generate_usage TAG_SEARCH_OPTIONS "find_tags"
+        return 1
+    }
 
-Options:
-    --tag TAG               Tag to search for (default: ${FILE_DEFAULTS[DEFAULT_TAG]})
-    --directory DIR         Search directory (default: current directory)
-    --file-extensions EXTS  Comma-separated list of extensions
-    -h, --help             Show this help message
+    # Show help if requested
+    if [[ ${args["help"]} == 1 ]]; then
+        generate_usage TAG_SEARCH_OPTIONS "find_tags"
+        return 0
+    }
 
-Example:
-    $(basename "$0") --tag TODO --directory src --file-extensions sh,R,py
-EOF
-}
-
-function main() {
-    local tag="${FILE_DEFAULTS[DEFAULT_TAG]}"
-    local directory="."
-    local extensions=("${FILE_DEFAULTS[EXTENSIONS[@]}")
-    
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            --tag) tag="$2"; shift 2 ;;
-            --directory) directory="$2"; shift 2 ;;
-            --file-extensions) IFS=',' read -r -a extensions <<< "$2"; shift 2 ;;
-            -h|--help) show_usage; exit 0 ;;
-            *) log_error "Unknown option: $1"; show_usage; exit 1 ;;
-        esac
-    done
-    
     # Find repository root and resolve paths
     local repo_root=$(find_git_root)
     local readme_path=$(find_readme "$repo_root") || exit 1
-    directory=$(resolve_path "$directory" "$repo_root")
+    local directory=$(resolve_path "${args["directory"]}" "$repo_root")
     
     # Validate tag against README
     local valid_tags=$(extract_tags "$readme_path")
-    validate_tag "$tag" "$valid_tags" || true  # Continue even if tag not found
+    validate_tag "${args["tag"]}" "$valid_tags" || true  # Continue even if tag not found
+    
+    # Convert extensions string to array
+    local IFS=',' read -r -a extensions <<< "${args["extensions"]}"
     
     # Build and execute search
     local find_cmd=$(build_find_command "$directory" "${extensions[@]}")
-    local results=$(search_tags "$directory" "$tag" "$find_cmd")
+    local results=$(search_tags "$directory" "${args["tag"]}" "$find_cmd")
     
     if [ -n "$results" ]; then
         echo "$results"
         local count=$(echo "$results" | wc -l)
-        log_info "Found $count instance(s) of #$tag"
+        log_info "Found $count instance(s) of #${args["tag"]}"
     fi
 }
 
-main "$@"
+# Run if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    find_tags "$@"
+fi
