@@ -9,12 +9,12 @@ set encoding=utf8            " Set UTF-8 encoding
 set fileformats=unix,dos,mac " Use Unix as standard file type
 "
 " Fix for WSL/Windows Terminal Replace mode issue
-set t_u7=                  " Disable cursor position request
-set ambw=double           " Set ambiguous character width
-set t_RV=                 " Disable version request
-let &t_SI = "\e[6 q"      " Normal cursor in insert mode
-let &t_SR = "\e[4 q"      " Underline cursor in replace mode
-let &t_EI = "\e[2 q"      " Block cursor in normal mode
+"set t_u7=                  " Disable cursor position request
+"set ambw=double           " Set ambiguous character width
+"set t_RV=                 " Disable version request
+"let &t_SI = "\e[6 q"      " Normal cursor in insert mode
+"let &t_SR = "\e[4 q"      " Underline cursor in replace mode
+"let &t_EI = "\e[2 q"      " Block cursor in normal mode
 
 
 " UI Configuration

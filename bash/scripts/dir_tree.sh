@@ -2,7 +2,7 @@
 
 # Default values
 max_depth=3
-output_file="output.txt"
+output_file="dir_tree_output.txt"
 tree_chars=("|-" "|  " "+-")  # Standard ASCII characters
 
 # Function to display usage
@@ -76,7 +76,7 @@ find_cmd="find -L . -maxdepth $max_depth -type d -not -path \"*/.*\""
 
 # Add exclusions to find command
 for pattern in "${exclude_patterns[@]}"; do
-    find_cmd+=" -not -path \"*/$pattern/*\" -not -name \"$pattern\""
+    find_cmd+=" -not -path \"*$pattern*\" -not -name \"$pattern\""
 done
 
 # Execute and format output
@@ -88,18 +88,18 @@ BEGIN {
     split($0, parts, "/");
     depth = length(parts) - 1;
     last = parts[length(parts)];
-    
+
     # Create indentation using standard ASCII
     indent = "";
     for (i = 1; i < depth; i++) {
         indent = indent "|  ";
     }
-    
+
     # Add branch symbol for non-root entries
     if (depth > 0) {
         indent = indent "+- ";
     }
-    
+
     # Print formatted output
     print indent last;
 }' > "$output_file"
