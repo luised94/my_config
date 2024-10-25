@@ -99,49 +99,55 @@ else
     highlight NonText ctermfg=black guifg=black
 endif
 
-
-
-" Highlight on yank with version check
+" Highlight on yank
 " -----------------------------
-if v:version > 800 || has('patch-8.0.1394')  " Check for modern version
+if v:version > 800
+    " Define highlight group
+    highlight HighlightYank cterm=reverse gui=reverse
+
+    function! HighlightYank() abort
+        let line_start = line("'[")
+        let line_end = line("']")
+
+        " Create highlight matches for each line
+        let ids = []
+        for lnum in range(line_start, line_end)
+            if lnum == line_start && lnum == line_end
+                " Single line yank
+                let start_col = col("'[")
+                let end_col = col("']")
+                let pattern = '\%' . lnum . 'l\%>' . (start_col-1) . 'v.*\%<' . (end_col+1) . 'v'
+            elseif lnum == line_start
+                " First line of multi-line yank
+                let start_col = col("'[")
+                let pattern = '\%' . lnum . 'l\%>' . (start_col-1) . 'v.*$'
+            elseif lnum == line_end
+                " Last line of multi-line yank
+                let end_col = col("']")
+                let pattern = '\%' . lnum . 'l^.*\%<' . (end_col+1) . 'v'
+            else
+                " Middle lines of multi-line yank
+                let pattern = '\%' . lnum . 'l.*$'
+            endif
+
+            try
+                let id = matchadd('HighlightYank', pattern)
+                call add(ids, id)
+            catch
+                " Skip if pattern is invalid
+                continue
+            endtry
+        endfor
+
+        " Remove highlights after timeout
+        call timer_start(200, {-> map(ids, 'matchdelete(v:val)')})
+    endfunction
+
     augroup highlight_yank
-        autocmd!
-        if has('nvim')
-            autocmd TextYankPost * silent! lua vim.highlight.on_yank {timeout=200}
-        else
-            autocmd TextYankPost * silent! call HighlightYank()
-        endif
-    augroup END
-elseif exists('##TextYankPost')  " Fallback for older versions with TextYankPost
-    augroup highlight_yank_fallback
         autocmd!
         autocmd TextYankPost * call HighlightYank()
     augroup END
 endif
-
-" Highlight function definition (will work on older versions)
-function! HighlightYank() abort
-    let [line_start, column_start] = getpos("'[")[1:2]
-    let [line_end, column_end] = getpos("']")[1:2]
-    let lines = getline(line_start, line_end)
-
-    " Adjust last line's columns
-    let lines[-1] = lines[-1][:column_end - (&selection == 'inclusive' ? 1 : 2)]
-    " Adjust first line's columns
-    let lines[0] = lines[0][column_start - 1:]
-
-    " Create highlight
-    highlight HighlightYank cterm=reverse gui=reverse
-    let id = matchadd('HighlightYank', '\V' . join(map(lines, 'escape(v:val, "/\")'), '\n'))
-
-    " Remove highlight after 200ms
-    if exists('*timer_start')
-        call timer_start(200, {-> matchdelete(id)})
-    else
-        " Fallback for versions without timer
-        call matchdelete(id)
-    endif
-endfunction
 
 " Optional Features (commented out by default)
 " -----------------------------
