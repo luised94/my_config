@@ -18,6 +18,7 @@ DEFAULT_SEARCH_EXCLUDE_FILES=(
     "*.swp"
     "*.gitignore"
     "*.Rprofile"
+    "*renv.lock"
 )
 
 # Search options
