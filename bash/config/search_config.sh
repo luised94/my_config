@@ -31,6 +31,18 @@ SEARCH_OPTIONS=(
     "d|max-depth:Maximum directory depth to search (requires value)"
 )
 
+
+
+AGGREGATE_REPOSITORY_USAGE="
+Usage: aggregate_repository [options] \"commit message\"
+
+Options:
+  -d|--max-depth N    Maximum directory depth to search
+  -e|--exclude-dir    Additional directory to exclude
+  -f|--exclude-file   Additional file pattern to exclude
+  -v|--verbose        Enable verbose output
+  -q|--quiet         Suppress all output except final counts
+"
 # Search defaults
 DEFAULT_SEARCH_VERBOSE=0
 DEFAULT_SEARCH_QUIET=0
