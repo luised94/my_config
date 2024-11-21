@@ -1,0 +1,94 @@
+---
+title: "LLM Thread Registry"
+author: "Your Name"
+date: last-modified
+format: 
+  html:
+    code-fold: true
+    toc: true
+---
+
+## Thread Registry Format
+
+Each thread entry follows this structure:
+```text
+%%% BEGIN_THREAD
+ID: @241120-[INQ]-{PROMPT.STRUCT}-#A01-<V01>-!H-*IP
+Title: Creating Naming Convention for LLM Threads
+Date: 2024-11-20
+URL: https://www.perplexity.ai/search/241108-dev-prompt-schema-a01-v-gc8MXIhmRU2wkYUWivkjqA
+Tags: prompt-engineering, naming-convention, schema
+Status: *IP
+Priority: !H
+Version: <V01>
+Description: |
+    Initial discussion about creating a robust naming convention
+    for LLM conversation threads. Developed PT-CHN schema.
+Notes: |
+    - Established base schema
+    - Added version control
+    - Implemented status tracking
+    - Created documentation
+Related:
+%%% END_THREAD
+
+---
+title: "Thread Registry 2024"
+author: "Your Name"
+date: "2024-11-20"
+version: "1.0.0"
+---
+
+# Thread Registry Configuration
+format_version: 1.0.0
+registry_type: master
+year: 2024
+owner: your_username
+
+# Registry Statistics
+total_threads: 0
+active_threads: 0
+archived_threads: 0
+last_updated: 2024-11-20
+
+# Quick Reference
+# Status Codes:  *IP (In Progress), *DN (Done), *RV (Review), *BL (Blocked), *AR (Archived), *HL (Hold)
+# Priority:      !C (Critical), !H (High), !M (Medium), !L (Low), !X (None)
+# Categories:    [DEV], [RES], [PRJ], [EXP], [STD], [ANA]
+
+# Example Entry (commented for reference)
+# %%% BEGIN_THREAD
+# ID: @241120-[DEV]-{PROMPT.ARCH}-#A01-<V01>-!H-*IP
+# Title: Thread Management System Architecture
+# Registry: project_threads.qmd
+# Location: dev/thread_management/
+# Keywords: @K:[system-design,architecture,workflow]
+# Related: #A02, #B05
+# Notes: |
+#     - Core system design
+#     - Schema definition
+#     - Integration patterns
+# %%% END_THREAD
+
+# Active Threads
+# ==============
+
+%%% BEGIN_THREAD
+ID: 
+Title: 
+Registry: 
+Location: 
+Keywords: @K:[]
+Related: 
+Notes: |
+    - 
+%%% END_THREAD
+
+# Archived Threads
+# ===============
+
+# Registry Footer
+# ==============
+last_modified: 2024-11-20
+checksum: 
+backup_location: 
