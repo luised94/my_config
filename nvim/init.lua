@@ -16,6 +16,24 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     vim.highlight.on_yank()
   end,
 })
+
+-- Yank entire file and remove
+vim.api.nvim_create_user_command('YankClean', function()
+    -- Go to top of document
+    vim.cmd('normal! gg')
+    -- Yank entire document
+    vim.cmd('normal! ggyG')
+    -- Clean yanked text
+    -- Remove newlines only, space only lines and trailing spaces.
+    local yanked_text = vim.fn.getreg('"')
+    local cleaned_text = yanked_text:gsub('\n%s*\n', '\n')
+                                    :gsub('%s+$', '')
+                                    :gsub('^%s+', '')
+
+    -- Replace register with cleaned text
+    vim.fn.setreg('"', cleaned_text)
+end, {})
+
 --[[
 local function is_on_cluster()
   # Run print(vim.fn.hostname()) in linux cluster to set the variable appropriately.,
