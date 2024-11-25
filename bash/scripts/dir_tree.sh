@@ -5,11 +5,12 @@ max_depth=3
 output_file="dir_tree_output.txt"
 tree_chars=("|-" "|  " "+-")  # Standard ASCII characters
 include_files=false
+default_dir="."
 
 # Function to display usage
 usage() {
     cat << EOF
-Usage: $(basename "$0") [OPTIONS]
+Usage: $(basename "$0") [OPTIONS] [DIRECTORY]
 
 Generate a tree-like directory structure output while excluding specified patterns.
 
@@ -20,8 +21,10 @@ Options:
     -f, --files           Include files in the output
     -h, --help            Show this help message
 
+Default directory is current working directory if not specified.
+
 Example:
-    $(basename "$0") -d 4 -o mydir.txt -e "node_modules" -e "vendor" -f
+    $(basename "$0") -d 4 -o mydir.txt -e "node_modules" -e "vendor" -f /path/to/directory
 EOF
     exit 1
 }
@@ -34,6 +37,7 @@ error() {
 
 # Initialize empty array for exclude patterns
 declare -a exclude_patterns
+target_dir="$default_dir"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -61,10 +65,19 @@ while [[ $# -gt 0 ]]; do
             usage
             ;;
         *)
-            error "Unknown option: $1"
+            # Check if argument looks like a directory
+            if [[ -d "$1" ]]; then
+                target_dir="$1"
+                shift
+            else
+                error "Invalid directory: $1"
+            fi
             ;;
     esac
 done
+
+# Validate target directory
+[[ -d "$target_dir" ]] || error "Directory does not exist: $target_dir"
 
 # Add default exclusions if none specified
 if [ ${#exclude_patterns[@]} -eq 0 ]; then
@@ -78,7 +91,7 @@ if [ ${#exclude_patterns[@]} -eq 0 ]; then
 fi
 
 # Build the find command with exclusions
-find_cmd="find -L . -maxdepth $max_depth"
+find_cmd="find -L \"$target_dir\" -maxdepth $max_depth"
 
 if [ "$include_files" = false ]; then
     find_cmd+=" -type d"
@@ -120,7 +133,7 @@ BEGIN {
 
 # Check if output file was created successfully
 if [ $? -eq 0 ] && [ -f "$output_file" ]; then
-    echo "Directory structure has been saved to $output_file"
+    echo "Directory structure for $target_dir has been saved to $output_file"
 else
     error "Failed to create output file"
 fi
