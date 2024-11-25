@@ -23,10 +23,12 @@ tree -L 2 ~/ | head -n 10
 ls -la ~/.* | grep -E "bashrc|vimrc|config"
 
 # List Neovim plugins
+echo "=== Neovim Plugins ==="
 ls -la "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/plugins"
 nvim --headless -c "lua print(vim.inspect(vim.fn.getcompletion('', 'packadd')))" -c q
 
 # List current automation scripts
+echo -e "\n=== Automation Scripts ==="
 find ~/my_config/ -name "*.sh" -o -name "*.R" -o -name "*.lua" | grep -v "/\."
 
 # Check common tool availability
@@ -36,6 +38,7 @@ for cmd in fzf rg fd bat git; do
 done
 
 # Storage information
+echo -e "\n=== Storage Information ==="
 df -h ~
 echo "Backup devices:"
 lsblk
