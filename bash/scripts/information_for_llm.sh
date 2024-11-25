@@ -24,7 +24,14 @@ ls -la ~/.* | grep -E "bashrc|vimrc|config"
 
 # List Neovim plugins
 echo "=== Neovim Plugins ==="
-ls -la "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/plugins"
+lazy_plugin_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy"
+if [[ -d "$lazy_plugin_dir" ]]; then
+    echo "Lazy.nvim plugin directory: $lazy_plugin_dir"
+    ls -1 "$lazy_plugin_dir"
+else
+    echo "Lazy.nvim plugin directory not found"
+fi
+#ls -la "${XDG_CONFIG_HOME:-$HOME/.config}/nvim/plugins"
 nvim --headless -c "lua print(vim.inspect(vim.fn.getcompletion('', 'packadd')))" -c q
 
 # List current automation scripts
