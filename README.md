@@ -9,6 +9,7 @@ sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
 sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf
+sudo apt install tmux 
 ```
 
 Install treesitter cli binary
@@ -67,37 +68,41 @@ ln -s ~/my_config/dotfiles/vimrc ~/.vimrc
 ```
 
 ## Install quarto  
-
-1. You can check the current version of quarto at the website but you can technically with any version. $export QUARTO_VERSION="1.4.550"
-2. sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
-3. mkdir quarto/
-3. sudo tar -xzvf quarto.tar.gz -C quarto/ (Adjust this line if you want. For example, to have different quarto installations.)
-4. quarto/quarto-"${QUARTO_VERSION}"/bin/quarto check (Reverify this line depending on how it extracted)
+You can check the current version of quarto at the website but you can technically with any version. 
+```{bash}
+export QUARTO_VERSION="1.4.550"
+sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
+mkdir quarto/
+sudo tar -xzvf quarto.tar.gz -C quarto/ # Adjust this line if you want. For example, to have different quarto installations.
+~/quarto/quarto-"${QUARTO_VERSION}"/bin/quarto check # Reverify this line depending on how it extracted
+sudo ln -s ~/quarto/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
+```
 
 
 The rest of the section is alternative distributions that can be used and some requirements for some plugins that need to be configured before they can work appropriately. 
 I have not extensively tested the distributions below but from my quick impressions, the LazyNvim distribution seems to be the best out-of-the-box that balances completeness but also extensibility. 
 
 ## Install other requirements for full utilization of quarto and kickstart plugin
-1. $quarto install tinytex
-2. $sudo apt install python3-pip
-3. $python3 -m pip install jupyter
-4. $sudo apt install r-base
-5. sudo apt-get install kitty (Quick message when I run nvim shows that command cant be found. Dont know much about kitty yet.)
-6. sudo apt install imagemagick (Quick message said convert not found, which is part of imagemagick.)
-7. curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-8. source ~/.bashrc (Check by running $nvm)
-9. nvm install --lts (Check installation with $node --version)
+```{bash}
+quarto install tinytex
+sudo apt install python3-pip
+python3 -m pip install jupyter
+sudo apt install r-base
+sudo apt-get install kitty # Quick message when I run nvim shows that command cant be found. Dont know much about kitty yet.
+sudo apt install imagemagick # Quick message said convert not found, which is part of imagemagick.
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+source ~/.bashrc # Check by running $nvm
+nvm install --lts # Check installation with $node --version
+```
 
 ## Install Pandoc 
-
- Download and uncompress pandoc
+Download and uncompress pandoc
 1. Download using curl and uncompress using tar
 ```{bash}
 mkdir pandoc/
 curl -L -o pandoc.tar.gz https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-linux-amd64.tar.gz
 tar -xvzf pandoc.tar.gz --strip-components=1 -C pandoc/
-
+```
 ### Set up symbolic link 
 2. Use sudo ln to create a symbolic link.
 ```{bash}
@@ -140,10 +145,6 @@ It should sync automatically for dropbox.
 I change citation key to auth.fold + year. 
 Make sure to refresh keys. 
 
-## Other useful command line utilities
-```{bash}
-sudo apt install tmux 
-```
 
 ## TODO
 -[] Ensure all checks for quarto check are fulfilled or use wslview/w3m.
@@ -151,7 +152,7 @@ sudo apt install tmux
 ## Errors I encountered during installation
 
 ### Working with dropbox files
-Ensure that when you are moving a file from dropbox, it is downloaded. If you move a file from dropbox using wsl and the file isnt downloaded, it essentially delete the file.
+Ensure that when you are moving a file from dropbox, it is downloaded. If you move a file from dropbox using wsl and the file isnt downloaded, it essentially deletes the file.
 
 ### Tree-sitter r_language_server lsp
 
