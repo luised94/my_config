@@ -99,7 +99,6 @@ export PATH="$HOME/.local/bin:$PATH"
 
 See 000_install_R_4.2.0.sh to install R 4.2.0 which is the R available in my institution's linux cluster.
 
-
 ## Install Pandoc 
 Download and uncompress pandoc
 1. Download using curl and uncompress using tar
@@ -121,6 +120,8 @@ pandoc --version #Verify that it installed correctly
 sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
 ```
 
+Remove all gz files that were downloaded when install quarto, nvim, R and pandoc.
+
 ## Install zotero
 Since I use windows, I just download and install it from their website (Zotero)[https://www.zotero.org/download/]
 Zotero has limited storage for free members. I used dropbox and links to be able to have essentially unlimited storage. This can be changed to a hard drive or server but I havent tried to set this up.
@@ -134,6 +135,7 @@ Some of these are required for integration with neovim and quarto.
 - [BetterNotes](https://github.com/windingwind/zotero-better-notes#readme)
 - [Zotfile](https://github.com/jlegewie/zotfile)
 
+I have some copies of the xpi files I used previously in my dropbox.
 ## Configure Zotero Settings
 There are few modifications to the Zotero default settings.
 1. General Settings
