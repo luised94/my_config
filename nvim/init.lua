@@ -66,19 +66,18 @@ require("lazy").setup({
     -- Load the plugins directory
     spec = {
         { import = "plugins" },
-    }, {
-        performance = {
-            rtp = {
-                disabled_plugins = {
-                    "gzip",
-                    "matchit",
-                    "matchparen",
-                    "netrwPlugin",
-                    "tarPlugin",
-                    "tohtml",
-                    "tutor",
-                    "zipPlugin",
-                },
+    },
+    performance = {
+        rtp = {
+            disabled_plugins = {
+                "gzip",
+                "matchit",
+                "matchparen",
+                "netrwPlugin",
+                "tarPlugin",
+                "tohtml",
+                "tutor",
+                "zipPlugin",
             },
         },
     },
@@ -95,12 +94,12 @@ require("lazy").setup({
     },
     ui = {
         border = "rounded",
-    },
-    pkg = {
-        sources = {
-            "lua", "git" -- Add rockspecs here as "rockspecs" if you add a plugin that requires it.
-        }
     }
+    --pkg = {
+    --    sources = {
+    --        "lua", "git" -- Add rockspecs here as "rockspecs" if you add a plugin that requires it.
+    --    }
+    --}
 })
 
 -- Plugins are loaded in the lazy-bootstrap file.
