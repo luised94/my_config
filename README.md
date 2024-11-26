@@ -78,7 +78,6 @@ sudo tar -xzvf quarto.tar.gz -C quarto/ # Adjust this line if you want. For exam
 sudo ln -s ~/quarto/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
 ```
 
-
 The rest of the section is alternative distributions that can be used and some requirements for some plugins that need to be configured before they can work appropriately. 
 I have not extensively tested the distributions below but from my quick impressions, the LazyNvim distribution seems to be the best out-of-the-box that balances completeness but also extensibility. 
 
@@ -87,7 +86,7 @@ I have not extensively tested the distributions below but from my quick impressi
 quarto install tinytex
 sudo apt install python3-pip
 python3 -m pip install jupyter
-sudo apt install r-base
+#sudo apt install r-base
 sudo apt-get install kitty # Quick message when I run nvim shows that command cant be found. Dont know much about kitty yet.
 sudo apt install imagemagick # Quick message said convert not found, which is part of imagemagick.
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
@@ -97,6 +96,9 @@ node --version
 # Add to bashrc to make permanent
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+See 000_install_R_4.2.0.sh to install R 4.2.0 which is the R available in my institution's linux cluster.
+
 
 ## Install Pandoc 
 Download and uncompress pandoc
