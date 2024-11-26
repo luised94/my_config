@@ -92,7 +92,10 @@ sudo apt-get install kitty # Quick message when I run nvim shows that command ca
 sudo apt install imagemagick # Quick message said convert not found, which is part of imagemagick.
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
 source ~/.bashrc # Check by running $nvm
-nvm install --lts # Check installation with $node --version
+nvm install --lts
+node --version
+# Add to bashrc to make permanent
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Install Pandoc 
