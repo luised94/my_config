@@ -138,20 +138,82 @@ Some of these are required for integration with neovim and quarto.
 I have some copies of the xpi files I used previously in my dropbox.
 ## Configure Zotero Settings
 There are few modifications to the Zotero default settings.
-1. General Settings
-I disable snapshots from web pages.
+### General Settings
 
-2. Sync
+- Appearance and Language: Set color scheme to dark. Language to automatic and Item Pane header to Title, Creator, Year
+- File Handling:
+Enable all three options in file handling. 
+I usually allow snapshots for websites to grab htmls for blogs. Zotero7 supports html and epub annotation.
+- File Renaming:
+Enable automatic renaming to PDF and Ebook. Havent used zotero for other types of media.
+Click 'Customize Filename Format':
+Set Filename Template:
+{{ authors name="family" join="_" max="1" suffix="_" replaceFrom="\s+" replaceTo="_" regexOpts="g" }}{{ year suffix="_" }}{{ title truncate="50" case="sentence" join="_" replaceFrom="\s+" replaceTo="_" regexOpts="g" }}
+- Reader: Leave defaults.
+- Locate: Leave defaults.
+- Miscellaneous: Leave defaults.
+- Groups: Leave defaults.
+
+### Sync
 I disable automatic syncing and link to my account. 
+- File syncing: Enable and download at sync time.
 
-3. Advanced 
+### Export
+- Quick Copy: Set item format to Chicago Manual of Style 17th edition full note. Set Note Format to Markdown + Rich Text and enable Include Zotero Links.
+
+### Cite
+Leave defaults. Install Microsoft Word add on if required.
+
+### Advanced 
+- Miscellaneous: Enable automatic check and report broken site translators.
+- Files and Folders: 
+Set base directory to 'C:\Users\Luis\Dropbox (MIT)\zotero-storage'
+Set data directory to 'C:\Users\Luis\Zotero'
+
 Choose the zotero storage folder of your choice in dropbox or other cloud storage provider. 
 It should sync automatically for dropbox.
 
-4. BetterBibtex
-I change citation key to auth.fold + year. 
-Make sure to refresh keys. 
+### Actions and Tags
+Import the actions-zotero.yml from the my_config repository.
 
+### Attanger
+- Source path: Set Root directory to C:\Users\Luis\Downloads
+- Attach Type: Set to Link.
+- Destination Path: Set to C:\Users\Luis\Dropbox (MIT)\zotero-storage. Set subfolder to {{ authors name="family" join="_" max="1" }}. Leave parse forward slashes.
+- Other settings: Leave enabled. Set 'Types of Attachments for Renaming/Moving' to 'pdf,doc,docx,txt,rtf,djvu,epub,html,mobi'
+
+This an important plugin to circumvent storage issues.
+
+### BetterBibtex
+- Citation keys: Set Citation key formula to 'auth.fold + year'
+Enable citation key search and force citation key to plain text.
+Enable ignore upper/lowercase when comparing for uniqueness.
+Keep keys unique across all libraries.
+Set postfixed keys.
+Enable BibLatex extended name and extract JSTOR from URL into eprint fields.
+Leave others as default.
+
+Refresh keys if necessary.
+
+### Better Notes
+- Basic: Enable 'take over opening note' and 'take over exporting notes'
+- Note Editor: Enable show note linkes in outline, magic key to show command palette, use enhanced markdown paste.
+- Sync: Leave as default.
+- Template:
+- Note from Annotaiton: Enable.
+
+### Zoplicate
+Set Action Preferences to Always Ask. Set Master Item Preferences to Earliest added and append duplicate counts.
+
+### Zotero OCR
+Set location to C:\Program Files\Tesseract-OCR\tesseract.exe
+Set location to C:\Users\Luis\Desktop\poppler-24.02.0\Library\bin\pdftoppm.exe
+Leave defaults forlanguage, dpi and segmentation mode.
+Enable output to pdf with text layer, import resulting PDF as copy.
+
+Test the configuration by running the plugin. If the resulting pdf has the text layer as is not corrupted, then enable overwrite PDF.
+
+Useful for fixing some text overlays that mess with annotations.
 
 ## TODO
 -[] Ensure all checks for quarto check are fulfilled or use wslview/w3m.
