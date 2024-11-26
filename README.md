@@ -8,7 +8,7 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf
 ```
 
 Install treesitter cli binary
@@ -53,7 +53,7 @@ Create the my_config directory. Move the different files to the my_config direct
 ```{bash}
 mkdir my_config
 mv ~/.config/nvim ~/my_config/nvim
-ln -s ~/my_config/nvim ~/.config/nvim
+ln -s ~/my_config/nvim ~/.config/
 ```
 Use git status to check that the files within the nvim directory are now part of the my_config directory. When first cloned, the nvim directory is treated as a submodule. This could be useful for some.
 
