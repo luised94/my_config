@@ -52,17 +52,15 @@ vim_all() {
 
     # Collect files
     local files=()
-    mapfile -t files < <(
+    if ! mapfile -t files < <(
         find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | \
             sort -rn | \
             cut -d' ' -f2- | \
-            tr -d '\r'
-    )
+            tr -d '\r'); then
+        log_error "vim_all Error: Couldnt collect file."
+        exit 1
+    fi
 
-    #while IFS= read -r -d $'\0' file; do
-    #    files+=("$file")
-    #done < <(find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2- | tr '\n' '\0')
-    
     if [ ${#files[@]} -eq 0 ]; then
         log_warning "No files found to edit."
         return 1
