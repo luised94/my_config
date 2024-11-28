@@ -8,8 +8,7 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade.
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf
-sudo apt install tmux 
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat tmux
 ```
 
 Install treesitter cli binary
