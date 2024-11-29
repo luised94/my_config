@@ -14,6 +14,8 @@ EDITOR_OPTIONS=(
     "d|directory:Specify search directory (requires value)"
     "f|force:Skip confirmation for large file counts"
     "l|limit:Set file count warning threshold (requires value)"
+    "m|mode:Specify sort mode: modified, conflicts, search (requires value)"
+    "p|pattern:Search pattern for search mode (requires value)"
 )
 
 # Default settings
