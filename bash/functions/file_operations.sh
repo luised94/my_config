@@ -23,6 +23,8 @@ vim_all() {
         ["directory"]="."
         ["limit"]="$DEFAULT_FILE_WARNING_THRESHOLD"
         ["force"]=0
+        ["mode"]="time"
+        ["pattern"]=""
     )
 
     if ! parse_options EDITOR_OPTIONS args "$@"; then
