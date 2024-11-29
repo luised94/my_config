@@ -23,6 +23,8 @@ vim_all() {
         ["directory"]="."
         ["limit"]="$DEFAULT_FILE_WARNING_THRESHOLD"
         ["force"]=0
+        ["mode"]="time"
+        ["pattern"]=""
     )
 
     if ! parse_options EDITOR_OPTIONS args "$@"; then
@@ -52,14 +54,42 @@ vim_all() {
 
     # Collect files
     local files=()
-    if ! mapfile -t files < <(
-        find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | \
-            sort -rn | \
-            cut -d' ' -f2- | \
-            tr -d '\r'); then
-        log_error "vim_all Error: Couldnt collect file."
-        exit 1
-    fi
+
+    case "${args["mode"]}" in
+        conflicts)
+            if ! mapfile -t files < <(git diff --name-only --diff-filter=U); then
+                log_error "Failed to collect conflicted files"
+                return 1
+            fi
+            ;;
+        modified)
+            if ! mapfile -t files < <(git status --porcelain | sed 's/^...//'); then
+                log_error "Failed to collect modified files"
+                return 1
+            fi
+            ;;
+        search)
+            if [[ -z "${args["pattern"]}" ]]; then
+                log_error "Search pattern required for search mode"
+                return 1
+            fi
+            if ! mapfile -t files < <(git grep -l "${args["pattern"]}"); then
+                log_error "Failed to search files"
+                return 1
+            fi
+            ;;
+        time|*)
+            if ! mapfile -t files < <(
+                find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | \
+                sort -rn | \
+                cut -d' ' -f2- | \
+                tr -d '\r'
+            ); then
+                log_error "Failed to collect files"
+                return 1
+            fi
+            ;;
+    esac
 
     if [ ${#files[@]} -eq 0 ]; then
         log_warning "No files found to edit."
