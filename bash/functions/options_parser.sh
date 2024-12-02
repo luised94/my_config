@@ -1,6 +1,39 @@
 #!/bin/bash
 
+# Guard against initializing the script again. Must be run through init.sh.
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+
+#=======================================================
+# CLI Option Parser & Usage Generator
+#=======================================================
+# Core Components:
+#   1. Option Definition Format:
+#      <short_opt>|<long_opt>:<description>
+#   
+#   2. Pattern Elements:
+#      - short_opt:    Single-letter flag (e.g., 'h')
+#      - long_opt:     Full word flag (e.g., 'help')
+#      - description:  Help text with optional value marker
+#
+# Special Markers:
+#   - (requires value): Indicates option needs argument
+#=======================================================
+
+#=======================================================
+# Option Parser Implementation Details
+#=======================================================
+# !! Option parsing logic
+# Processing Flow:
+#   1. Split on ':' -> extract pattern and description
+#   2. Split pattern on '|' -> get short and long opts
+#   3. Store components in respective variables
+#
+# Variable Mapping:
+#   opt_pattern  = "h|help"
+#   short_opt    = "h"
+#   long_opt     = "help"
+#   description  = "Show help message"
+#=======================================================
 
 # Constants for option parsing
 readonly REQUIRES_VALUE_MARKER="(requires value)"
@@ -38,6 +71,7 @@ generate_usage() {
     printf "Options:\n"
 
     local opt_def
+    # !! Option parsing logic
     for opt_def in "${opts_ref[@]}"; do
         # Parse option definition
         local opt_pattern="${opt_def%%${OPTION_DELIMITER}*}"
@@ -148,7 +182,23 @@ parse_options() {
     return 0
 }
 
-###############################################################################
+#=======================================================
+# Usage Example Template
+#=======================================================
+# Define Options:
+#   COMMAND_OPTIONS=(
+#     "h|help:Show this help message"
+#     "f|file:Input file path (requires value)"
+#     "v|verbose:Enable verbose output"
+#   )
+#
+# Parse Command:
+#   parse_options COMMAND_OPTIONS args "$@"
+#
+# Result Storage:
+#   args["help"]="1"      # Flag was set
+#   args["file"]="input"  # Value was provided
+#
 # Example Usage:
 #
 # # Define options
