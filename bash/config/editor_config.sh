@@ -18,5 +18,16 @@ EDITOR_OPTIONS=(
     "p|pattern:Search pattern for search mode (requires value)"
 )
 
+EDITOR_USAGE_EXAMPLES=(
+    "vim_all                                  # Open files in current directory sorted by modification time"
+    "vim_all -d ./src                         # Open files from specific directory"
+    "vim_all -e nvim                          # Use specific editor (nvim)"
+    "vim_all -m conflicts                     # Open files with Git conflicts"
+    "vim_all -m modified                      # Open Git modified/staged files"
+    "vim_all -m search -p 'TODO'              # Open files containing 'TODO'"
+    "vim_all -f -m modified                   # Force open modified files (skip confirmation)"
+    "vim_all -l 50                            # Set custom file limit warning threshold"
+)
+
 # Default settings
 DEFAULT_FILE_WARNING_THRESHOLD=100
