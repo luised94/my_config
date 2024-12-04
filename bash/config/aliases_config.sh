@@ -11,6 +11,7 @@ BASIC_ALIASES=(
 GIT_ALIASES=(
     "gs=git status"
     "gd=git diff"
+    "ogd=nvim < <(git diff)"
     "ga=git add"
     "gc=git commit"
     "gps=git push"
