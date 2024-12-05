@@ -6,28 +6,30 @@ build_exclude_args() {
     local -n dirs_ref=$1
     local -n files_ref=$2
     local exclude_args=()
-    exclude_args=(\()
 
+    # Start group with escaped parenthesis
+    exclude_args+=('\(')
+
+    # Add directory exclusions
     local first=true
-    
     for dir in "${dirs_ref[@]}"; do
         if [[ "$first" == true ]]; then
-            exclude_args+=(-path "*/${dir}/*")
+            exclude_args+=("-path" "*/${dir}/*")
             first=false
         else
-            exclude_args+=(-o -path "*/${dir}/*")
+            exclude_args+=("-o" "-path" "*/${dir}/*")
         fi
     done
     
     # Add file exclusions
     for file in "${files_ref[@]}"; do
-        exclude_args+=(-o -name "${file}")
+        exclude_args+=("-o" "-name" "${file}")
     done
     
-    # Close group and add prune-or construct
-    exclude_args+=(\) -prune -o)
+    # Close group with escaped parenthesis and add prune-or construct
+    exclude_args+=('\)' "-prune" "-o")
     
-    echo "${exclude_args[@]}"
+    printf "%s\n" "${exclude_args[@]}"
 }
 
 vim_all() {
