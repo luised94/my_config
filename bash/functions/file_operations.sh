@@ -94,17 +94,10 @@ vim_all() {
             ;;
         time|*)
             if ! mapfile -t files < <(
-                            find "${args["directory"]}" \
-                                "${exclude_args[@]}" \
-                                -type f \
-                                -print \
-                                2>/dev/null | \
-                            xargs -r printf '%s\0' | \
-                            xargs -0 stat -f '%m %N' 2>/dev/null || \
-                            xargs -0 stat --format '%Y %n' 2>/dev/null | \
-                            sort -rn | \
-                            cut -d' ' -f2- | \
-                            tr -d '\r'
+                find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | \
+                sort -rn | \
+                cut -d' ' -f2- | \
+                tr -d '\r'
             ); then
                 log_error "Failed to collect files"
                 return 1
