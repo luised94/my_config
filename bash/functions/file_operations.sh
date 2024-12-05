@@ -6,14 +6,26 @@ build_exclude_args() {
     local -n dirs_ref=$1
     local -n files_ref=$2
     local exclude_args=()
+    exclude_args=(\()
+
+    local first=true
     
     for dir in "${dirs_ref[@]}"; do
-        exclude_args+=(-not -path "*/${dir}/*")
+        if [[ "$first" == true ]]; then
+            exclude_args+=(-path "*/${dir}/*")
+            first=false
+        else
+            exclude_args+=(-o -path "*/${dir}/*")
+        fi
     done
     
+    # Add file exclusions
     for file in "${files_ref[@]}"; do
-        exclude_args+=(-not -name "${file}")
+        exclude_args+=(-o -name "${file}")
     done
+    
+    # Close group and add prune-or construct
+    exclude_args+=(\) -prune -o)
     
     echo "${exclude_args[@]}"
 }
