@@ -2,22 +2,30 @@
 
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
+
 build_exclude_args() {
     local -n dirs_ref=$1
     local -n files_ref=$2
-    local exclude_args=()
+    local expressions=()
     
+    # Add directory exclusions
+    local first=true
     for dir in "${dirs_ref[@]}"; do
-        exclude_args+=(-not -path "*/${dir}/*")
+        if [[ "$first" == true ]]; then
+            expressions+=("-path" "\"*/${dir}/*\"")
+            first=false
+        else
+            expressions+=("-o" "-path" "\"*/${dir}/*\"")
+        fi
     done
     
+    # Add file exclusions
     for file in "${files_ref[@]}"; do
-        exclude_args+=(-not -name "${file}")
+        expressions+=("-o" "-name" "\"${file}\"")
     done
     
-    echo "${exclude_args[@]}"
+    printf '%s\n' "${expressions[@]}"
 }
-
 vim_all() {
     local -A args=(
         ["directory"]="."
@@ -52,6 +60,14 @@ vim_all() {
     # Build exclude arguments
     local exclude_args=($(build_exclude_args DEFAULT_SEARCH_EXCLUDE_DIRS DEFAULT_SEARCH_EXCLUDE_FILES))
 
+    # Debug output
+    #echo "Directory: ${args["directory"]}"
+    #echo "Exclude args: ${exclude_args[@]}"
+    
+    # Construct and echo the full find command
+    #find_cmd="find \"${args["directory"]}\" ${exclude_args[@]} -type f -printf '%T@ %p\n'"
+    #echo "Find command: $find_cmd"
+
     # Collect files
     local files=()
 
@@ -79,15 +95,17 @@ vim_all() {
             fi
             ;;
         time|*)
-            if ! mapfile -t files < <(
-                find "${args["directory"]}" -type f "${exclude_args[@]}" -printf '%T@ %p\n' | \
-                sort -rn | \
-                cut -d' ' -f2- | \
-                tr -d '\r'
-            ); then
-                log_error "Failed to collect files"
-                return 1
-            fi
+    if ! mapfile -t files < <(
+        #set -x
+        eval "find \"${args["directory"]}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
+        sort -rn | \
+        cut -d' ' -f2- | \
+        tr -d '\r'
+        #set +x
+    ); then
+        log_error "Failed to collect files"
+        return 1
+    fi
             ;;
     esac
 
