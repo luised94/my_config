@@ -120,8 +120,14 @@ pandoc --version #Verify that it installed correctly
 sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
 ```
 
+## Setup symbolic links for bashrc.
 Remove all gz files that were downloaded when install quarto, nvim, R and pandoc.
-
+```{bash}
+# Remove any bashrc. Backup if necessary.
+rm ~/.bashrc
+sudo ln -s ~/my_config/dotfiles/bashrc ~/.bashrc
+# I have a second for bashrc for when I work in linux cluster. Perform same action.
+```
 ## Install zotero
 Since I use windows, I just download and install it from their website (Zotero)[https://www.zotero.org/download/]
 Zotero has limited storage for free members. I used dropbox and links to be able to have essentially unlimited storage. This can be changed to a hard drive or server but I havent tried to set this up.
