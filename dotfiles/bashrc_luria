@@ -60,3 +60,54 @@ see_logs() {
     fi
 }
 
+#!/bin/bash
+#===============================================================================
+# TITLE: Open Experiment Documentation
+# DESCRIPTION: View all documentation files for a specific experiment
+#===============================================================================
+
+open_experiment_config() {
+    local expid="$1"
+
+    # Validate input format (YYMMDDBel)
+    if [[ -z "$expid" ]]; then
+        echo "Error: Experiment ID must be provided"
+        echo "Usage: open_experiment_config <YYMMDD>Bel"
+        return 1
+    fi
+
+    if ! [[ "$expid" =~ ^[0-9]{6}Bel$ ]]; then
+        echo "Error: Invalid experiment ID format"
+        echo "Expected format: YYMMDDBel (e.g., 240304Bel)"
+        return 1
+    fi
+
+    # Check if experiment directory exists
+    local exp_dir="${HOME}/data/${expid}"
+    if [[ ! -d "$exp_dir" ]]; then
+        echo "Error: Experiment directory not found: ${exp_dir}"
+        return 1
+    fi
+
+    # Check if documentation directory exists
+    local doc_dir="${exp_dir}/documentation"
+    if [[ ! -d "$doc_dir" ]]; then
+        echo "Error: Documentation directory not found: ${doc_dir}"
+        return 1
+    fi
+
+    # Find and sort all documentation files
+    local doc_files=$(find "$doc_dir" -type f | sort)
+    if [[ -z "$doc_files" ]]; then
+        echo "Error: No documentation files found in ${doc_dir}"
+        return 1
+    fi
+
+    # Display found files
+    echo "Found documentation files for experiment ${expid}:"
+    echo "$doc_files" | sed 's/^/  /'
+
+    # Open files in vim
+    vim $(echo "$doc_files")
+}
+
