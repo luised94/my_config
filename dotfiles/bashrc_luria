@@ -1,0 +1,62 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+export LC_ALL=en_US.utf8
+export LANG=en_US.utf8
+# Uncomment the following line if you don't like systemctl's auto-paging feature:
+# export SYSTEMD_PAGER=
+
+# User specific aliases and functions
+export PATH=$HOME/.local/bin:$PATH
+#alias nvim="$HOME/nvim-linux64/bin/nvim"
+
+#!/bin/bash
+#===============================================================================
+# TITLE: See SLURM Job Logs
+# DESCRIPTION: View all log files for a specific SLURM job ID
+#===============================================================================
+
+see_logs() {
+    local jobid="$1"
+
+    # Validate input
+    if [[ -z "$jobid" ]]; then
+        echo "Error: Job ID must be provided"
+        echo "Usage: see_logs <jobid>"
+        return 1
+    fi
+
+    if ! [[ "$jobid" =~ ^[0-9]+$ ]]; then
+        echo "Error: Job ID must be a number"
+        return 1
+    fi
+
+    # Check if job directory exists
+    local job_dir=$(find ~/logs/*/*/job_${jobid}/ -type d 2>/dev/null)
+    if [[ -z "$job_dir" ]]; then
+        echo "Error: No logs found for job ${jobid}"
+        return 1
+    fi
+
+    # Find and sort all log files
+    local log_files=$(find "$job_dir" -type f | sort)
+    if [[ -z "$log_files" ]]; then
+        echo "Error: No log files found in ${job_dir}"
+        return 1
+    fi
+
+    # Display found files
+    echo "Found log files for job ${jobid}:"
+    echo "$log_files" | sed 's/^/  /'
+
+    # Open files in vim
+    read -p "Open these files in vim? (y/n): " confirm
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        vim $(echo "$log_files")
+    fi
+}
+
