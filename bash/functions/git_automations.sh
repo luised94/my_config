@@ -11,6 +11,7 @@ validate_dir_is_git_repo() {
 }
 
 has_uncommitted_changes() {
+    validate_dir_is_git_repo
     # Check if there are any changes staged or unstaged
     if [[ -n $(git status --porcelain) ]]; then
         return 0 # Has uncommitted changes
@@ -20,6 +21,7 @@ has_uncommitted_changes() {
 }
 
 display_changes() {
+    validate_dir_is_git_repo
     local branch_name="$1"
     local staged=false
     local unstaged=false
