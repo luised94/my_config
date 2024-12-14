@@ -10,6 +10,15 @@ validate_dir_is_git_repo() {
     return 0
 }
 
+has_uncommitted_changes() {
+    # Check if there are any changes staged or unstaged
+    if [[ -n $(git status --porcelain) ]]; then
+        return 0 # Has uncommitted changes
+    else
+        return 1 # No uncommitted changes
+    fi
+}
+
 sync_all_branches() {
     local dry_run=false
     while [[ $# -gt 0 ]]; do
@@ -43,6 +52,12 @@ sync_all_branches() {
                 fi
             else
                 git checkout "$branch_name"
+
+                if has_uncommitted_changes; then
+                    echo "${OUTPUT_SYMBOLS[ERROR]}Local branch '$branch_name' has uncommitted changes. Please commit or stash them before syncing."
+                    continue # Skip to the next branch
+                fi
+
                 if [[ $(git rev-list HEAD...@{upstream} --count) -gt 0 ]]; then
                     if "$dry_run"; then
                         echo "${OUTPUT_SYMBOLS[INFO]}(Dry Run) Would pull changes for '$branch_name' from '$branch'"
