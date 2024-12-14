@@ -9,3 +9,19 @@ validate_dir_is_git_repo() {
     fi
     return 0
 }
+
+sync_all_branches() {
+    validate_dir_is_git_repo
+    echo "${OUTPUT_SYMBOLS[START]}Syncing all remote branches"
+    git fetch --all --prune
+    
+    git branch -r | grep -v '\->' | sed 's/origin\///' | while read branch; do
+        if ! git show-ref --verify --quiet refs/heads/"$branch"; then
+            echo "${OUTPUT_SYMBOLS[PROCESSING]}Creating local branch for $branch"
+            git branch --track "$branch" origin/"$branch"
+        fi
+    done
+    
+    git pull --all
+    echo "${OUTPUT_SYMBOLS[SUCCESS]}All branches synced"
+}
