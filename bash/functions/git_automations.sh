@@ -19,6 +19,33 @@ has_uncommitted_changes() {
     fi
 }
 
+display_changes() {
+    local branch_name="$1"
+    local staged=false
+    local unstaged=false
+
+    if [[ -n $(git diff --cached --name-status) ]]; then # check for staged
+        staged=true
+    fi
+    if [[ -n $(git diff --name-status) ]]; then # check for unstaged
+        unstaged=true
+    fi
+    
+    if "$staged" || "$unstaged"; then
+        echo "${OUTPUT_SYMBOLS[WARNING]}Local branch '$branch_name' has the following changes:"
+        if "$staged"; then
+            echo "Staged changes:"
+            git diff --cached --stat
+        fi
+        if "$unstaged"; then
+            echo "Unstaged changes:"
+            git diff --stat
+        fi
+    else
+        echo "${OUTPUT_SYMBOLS[INFO]}No changes found on branch '$branch_name'."
+    fi
+}
+
 sync_all_branches() {
     local dry_run=false
     while [[ $# -gt 0 ]]; do
@@ -54,6 +81,7 @@ sync_all_branches() {
                 git checkout "$branch_name"
 
                 if has_uncommitted_changes; then
+                    display_changes $branch
                     echo "${OUTPUT_SYMBOLS[ERROR]}Local branch '$branch_name' has uncommitted changes. Please commit or stash them before syncing."
                     continue # Skip to the next branch
                 fi
