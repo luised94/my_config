@@ -16,6 +16,7 @@ fi
 readonly CONFIG_FILES=(
     "aliases_config.sh"
     "editor_config.sh"
+    "output_print_symbols.sh"
     "path_config.sh"
     "search_config.sh"
     "shell_config.sh"
@@ -28,6 +29,7 @@ readonly FUNCTION_FILES=(
     "options_parser.sh"  # Must be early in the list
     "editor_utils.sh"
     "file_operations.sh"
+    "git_automations.sh"
     "prompt_utils.sh"
     "repo_handler.sh"
     "search_utils.sh"
