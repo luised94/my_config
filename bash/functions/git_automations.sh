@@ -263,12 +263,33 @@ push_all_branches() {
     display_message DONE "Push complete"
 }
 
-cleanup_branches() {
+
+list_merged_branches() {
+    validate_dir_is_git_repo || return 1
+    is_remote_reachable || return 1
+
+    display_message START "Finding merged branches"
+
+    local merged_branches=$(git branch --merged main | grep -v "^\*" | grep -v "main")
+
+    if [[ -z "$merged_branches" ]]; then
+        display_message INFO "No merged branches found."
+        return 0
+    fi
+
+    display_message INFO "The following branches are merged into main and could be deleted:"
+    echo "$merged_branches"
+
+    display_message DONE "Finished finding merged branches"
+    echo "$merged_branches" # Output the branches for the next function to use
+}
+
+delete_merged_branches() {
     validate_dir_is_git_repo || return 1
     is_remote_reachable || return 1
 
     local dry_run=false
-    local force=false
+    local really_force=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -276,8 +297,8 @@ cleanup_branches() {
                 dry_run=true
                 shift
                 ;;
-            -f|--force)
-                force=true
+            --really-force)
+                really_force=true
                 shift
                 ;;
             *)
@@ -286,44 +307,58 @@ cleanup_branches() {
         esac
     done
 
-    display_message START "Cleaning up merged branches"
-
-    local merged_branches=$(git branch --merged main | grep -v "^\*" | grep -v "main")
+    local merged_branches="$@" # Get the branches from the previous function
 
     if [[ -z "$merged_branches" ]]; then
-        display_message INFO "No merged branches to clean up"
+        display_message INFO "No branches provided to delete."
         return 0
     fi
 
-    display_message INFO "The following branches will be deleted:"
-    echo "$merged_branches"
-
-    if ! "$force"; then
-        read -p "Continue? (y/N) " -n 1 -r
+    if ! "$really_force"; then
+        display_message WARNING "You are about to delete the following branches:"
+        echo "$merged_branches"
+        read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            display_message INFO "Operation cancelled"
+            display_message INFO "Deletion cancelled."
             return 0
         fi
     fi
+
+    display_message START "Deleting merged branches"
 
     echo "$merged_branches" | while read branch; do
         if [[ -n "$branch" ]]; then
             if "$dry_run"; then
                 display_message INFO "Would delete branch: $branch"
             else
-                git branch -d "$branch"
-                if [[ $? -eq 0 ]]; then
-                    git push origin --delete "$branch"
+                if "$really_force"; then
+                    git branch -D "$branch"
                     if [[ $? -eq 0 ]]; then
-                        display_message SUCCESS "Deleted branch: $branch"
+                        git push origin --delete "$branch"
+                        if [[ $? -eq 0 ]]; then
+                            display_message SUCCESS "Force deleted branch: $branch"
+                        else
+                            display_message WARNING "Failed to delete remote branch: $branch. Local branch force deleted."
+                        fi
                     else
-                        display_message WARNING "Failed to delete remote branch: $branch. Local branch deleted."
+                        display_message WARNING "Failed to force delete local branch: $branch."
                     fi
                 else
-                    display_message WARNING "Failed to delete local branch: $branch."
+                    git branch -d "$branch"
+                    if [[ $? -eq 0 ]]; then
+                        git push origin --delete "$branch"
+                        if [[ $? -eq 0 ]]; then
+                            display_message SUCCESS "Deleted branch: $branch"
+                        else
+                            display_message WARNING "Failed to delete remote branch: $branch. Local branch deleted."
+                        fi
+                    else
+                        display_message WARNING "Failed to delete local branch: $branch."
+                    fi
                 fi
             fi
         fi
     done
+    display_message DONE "Deletion process finished"
 }
