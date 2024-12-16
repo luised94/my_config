@@ -140,7 +140,6 @@ new_branch() {
     fi
 }
 
-
 sync_after_merge() {
     validate_dir_is_git_repo || return 1
     is_remote_reachable || return 1

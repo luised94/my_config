@@ -49,12 +49,14 @@ display_changes() {
 }
 
 is_remote_reachable() {
-    local remote="${1:-origin}" # Default to origin
-    if ! git ls-remote --exit-code "$remote" > /dev/null 2>&1; then
-        echo "Remote '$remote' is not reachable. Check your network connection or remote configuration."
-        return 1 # Remote is not reachable
+    local remote="${1:-origin}"
+    local timeout_seconds="${2:-5}" # Default timeout of 5 seconds
+
+    if ! timeout "$timeout_seconds" git ls-remote --exit-code "$remote" > /dev/null 2>&1; then
+        display_message ERROR "Remote '$remote' is not reachable (timeout after $timeout_seconds seconds). Check your network connection or remote configuration."
+        return 1
     fi
-    return 0 # Remote is reachable
+    return 0
 }
 
 branch_exists() {
