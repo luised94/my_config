@@ -230,3 +230,68 @@ sync_after_merge() {
 
     display_message DONE "Branch synchronization complete"
 }
+
+cleanup_branches() {
+    validate_dir_is_git_repo || return 1
+    is_remote_reachable || return 1
+
+    local dry_run=false
+    local force=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n|--dry-run)
+                dry_run=true
+                shift
+                ;;
+            -f|--force)
+                force=true
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    display_message START "Cleaning up merged branches"
+
+    local merged_branches=$(git branch --merged main | grep -v "^\*" | grep -v "main")
+
+    if [[ -z "$merged_branches" ]]; then
+        display_message INFO "No merged branches to clean up"
+        return 0
+    fi
+
+    display_message INFO "The following branches will be deleted:"
+    echo "$merged_branches"
+
+    if ! "$force"; then
+        read -p "Continue? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            display_message INFO "Operation cancelled"
+            return 0
+        fi
+    fi
+
+    echo "$merged_branches" | while read branch; do
+        if [[ -n "$branch" ]]; then
+            if "$dry_run"; then
+                display_message INFO "Would delete branch: $branch"
+            else
+                git branch -d "$branch"
+                if [[ $? -eq 0 ]]; then
+                    git push origin --delete "$branch"
+                    if [[ $? -eq 0 ]]; then
+                        display_message SUCCESS "Deleted branch: $branch"
+                    else
+                        display_message WARNING "Failed to delete remote branch: $branch. Local branch deleted."
+                    fi
+                else
+                    display_message WARNING "Failed to delete local branch: $branch."
+                fi
+            fi
+        fi
+    done
+}
