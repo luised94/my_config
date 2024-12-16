@@ -29,6 +29,8 @@ readonly FUNCTION_FILES=(
     "options_parser.sh"  # Must be early in the list
     "editor_utils.sh"
     "file_operations.sh"
+    "formatted_display_helpers.sh"
+    "git_automations_helpers.sh"
     "git_automations.sh"
     "prompt_utils.sh"
     "repo_handler.sh"
