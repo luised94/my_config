@@ -47,3 +47,22 @@ display_changes() {
         display_message "INFO" "No changes found on branch '$branch_name'."
     fi
 }
+
+is_remote_reachable() {
+    local remote="${1:-origin}" # Default to origin
+    if ! git ls-remote --exit-code "$remote" > /dev/null 2>&1; then
+        echo "Remote '$remote' is not reachable. Check your network connection or remote configuration."
+        return 1 # Remote is not reachable
+    fi
+    return 0 # Remote is reachable
+}
+
+branch_exists() {
+    local branch_name="$1"
+    local remote="${2:-false}" # Default to local branch check
+    if "$remote"; then
+        git show-ref --verify --quiet "refs/remotes/origin/$branch_name"
+    else
+        git show-ref --verify --quiet "refs/heads/$branch_name"
+    fi
+}
