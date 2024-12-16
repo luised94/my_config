@@ -139,3 +139,94 @@ new_branch() {
         return 1
     fi
 }
+
+sync_after_merge() {
+    validate_dir_is_git_repo || return 1
+    is_remote_reachable || return 1
+
+    local dry_run=false
+    local skip_push=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n|--dry-run)
+                dry_run=true
+                shift
+                ;;
+            --skip-push)
+                skip_push=true
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+    display_message START "Syncing branches after merge"
+
+    if "$dry_run"; then
+        display_message INFO "Would update main branch"
+    else
+        git checkout main || {
+            display_message ERROR "Failed to checkout main"
+            return 1
+        }
+        git pull origin main || {
+            display_message ERROR "Failed to update main"
+            git checkout "$current_branch"
+            return 1
+        }
+    fi
+
+    local branches=$(git for-each-ref --format='%(refname:short)' refs/heads/ | grep -v '^main$')
+
+    for branch in $branches; do
+        git checkout "$branch" || {
+            display_message ERROR "Failed to checkout branch '$branch'"
+            continue
+        }
+
+        if has_uncommitted_changes; then
+            display_changes "$branch"
+            display_message WARNING "Skipping '$branch' due to uncommitted changes"
+            continue
+        fi
+
+        if ! git rev-parse --quiet --verify "HEAD@{upstream}"; then
+            display_message WARNING "Skipping '$branch' because it does not track a remote branch."
+            continue
+        fi
+
+        if "$dry_run"; then
+            display_message INFO "Would rebase '$branch' on main"
+            continue
+        fi
+
+        display_message PROCESSING "Rebasing '$branch'"
+        if git rebase main; then
+            if ! "$skip_push"; then
+                git push --force-with-lease origin "$branch" || {
+                    display_message WARNING "Failed to push '$branch'"
+                    continue
+                }
+            fi
+            display_message SUCCESS "Updated '$branch'"
+        else
+            display_message ERROR "Rebase failed for '$branch'. Aborting rebase."
+            git rebase --abort
+            return 1
+        fi
+    done
+
+    if ! "$dry_run"; then
+        git checkout "$current_branch" || {
+            display_message ERROR "Failed to return to original branch '$current_branch'"
+            return 1
+        }
+    fi
+
+    display_message DONE "Branch synchronization complete"
+}
