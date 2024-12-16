@@ -3,6 +3,9 @@
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
 sync_all_branches() {
+    validate_dir_is_git_repo || return 1
+    is_remote_reachable || return 1
+
     local dry_run=false
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -16,7 +19,6 @@ sync_all_branches() {
         esac
     done
 
-    validate_dir_is_git_repo
 
     display_message "START" "Syncing all remote branches (Dry Run: ${dry_run})"
 
@@ -262,7 +264,6 @@ push_all_branches() {
         }
     display_message DONE "Push complete"
 }
-
 
 list_merged_branches() {
     validate_dir_is_git_repo || return 1
