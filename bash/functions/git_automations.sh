@@ -62,3 +62,80 @@ sync_all_branches() {
 
     display_message "SUCCESS" "Finished updating local branches."
 }
+
+new_branch() {
+    validate_dir_is_git_repo || return 1
+    is_remote_reachable || return 1
+
+    local branch_name="$1"
+    local base_branch="${2:-main}"
+    local dry_run=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -n|--dry-run)
+                dry_run=true
+                shift
+                ;;
+            -b|--base)
+                base_branch="$2"
+                shift 2
+                ;;
+            *)
+                branch_name="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$branch_name" ]]; then
+        display_message ERROR "Usage: new_branch <branch-name> [-b base_branch] [-n|--dry-run]"
+        return 1
+    fi
+
+    if has_uncommitted_changes; then
+        display_changes "current"
+        display_message ERROR "Please commit or stash changes before creating new branch"
+        return 1
+    fi
+
+    if branch_exists "$branch_name"; then
+        display_message ERROR "Branch '$branch_name' already exists locally"
+        return 1
+    fi
+
+    if branch_exists "$branch_name" true; then
+        display_message ERROR "Branch '$branch_name' already exists remotely"
+        return 1
+    fi
+
+    if "$dry_run"; then
+        display_message INFO "Would create new branch '$branch_name' from '$base_branch'"
+        return 0
+    fi
+
+    display_message START "Creating new branch '$branch_name' from '$base_branch'"
+
+    git checkout "$base_branch" || {
+        display_message ERROR "Failed to checkout $base_branch"
+        return 1
+    }
+
+    git pull origin "$base_branch" || {
+        display_message ERROR "Failed to update $base_branch"
+        return 1
+    }
+
+    if git checkout -b "$branch_name"; then
+        if git push -u origin "$branch_name"; then
+            display_message SUCCESS "Branch '$branch_name' created and pushed to origin"
+            return 0
+        else
+            display_message ERROR "Failed to push branch '$branch_name' to origin"
+            return 1
+        fi
+    else
+        display_message ERROR "Failed to create branch '$branch_name'"
+        return 1
+    fi
+}
