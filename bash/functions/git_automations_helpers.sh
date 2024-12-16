@@ -4,7 +4,7 @@
 
 validate_dir_is_git_repo() {
     if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        echo "${OUTPUT_SYMBOLS[ERROR]}This script must be run from a git repository."
+        display_message "ERROR" "This script must be run from a git repository."
         exit 1
     fi
     return 0
@@ -34,7 +34,7 @@ display_changes() {
     fi
     
     if "$staged" || "$unstaged"; then
-        echo "${OUTPUT_SYMBOLS[WARNING]}Local branch '$branch_name' has the following changes:"
+        display_message "WARNING" "Local branch '$branch_name' has the following changes:"
         if "$staged"; then
             echo "Staged changes:"
             git diff --cached --stat
@@ -44,6 +44,6 @@ display_changes() {
             git diff --stat
         fi
     else
-        echo "${OUTPUT_SYMBOLS[INFO]}No changes found on branch '$branch_name'."
+        display_message "INFO" "No changes found on branch '$branch_name'."
     fi
 }
