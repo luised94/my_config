@@ -60,12 +60,10 @@ see_logs() {
     fi
 }
 
-#!/bin/bash
 #===============================================================================
 # TITLE: Open Experiment Documentation
 # DESCRIPTION: View all documentation files for a specific experiment
 #===============================================================================
-
 open_experiment_config() {
     local expid="$1"
 
@@ -111,3 +109,17 @@ open_experiment_config() {
     vim $(echo "$doc_files")
 }
 
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+#__conda_setup="$('/home/luised94/miniforge3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+#if [ $? -eq 0 ]; then
+#    eval "$__conda_setup"
+#else
+#    if [ -f "/home/luised94/miniforge3/etc/profile.d/conda.sh" ]; then
+#        . "/home/luised94/miniforge3/etc/profile.d/conda.sh"
+#    else
+#        export PATH="/home/luised94/miniforge3/bin:$PATH"
+#    fi
+#fi
+#unset __conda_setup
+# <<< conda initialize <<<
