@@ -26,5 +26,6 @@ GIT_ALIASES=(
     "gpl=git pull"
     "gl=git log --oneline --graph --decorate"
     "gfap=git fetch --all --prune"
+    "gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
     "syncall=sync_all_branches"
 )
