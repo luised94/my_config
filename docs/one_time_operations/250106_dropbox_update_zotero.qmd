@@ -6,4 +6,11 @@ C:\Users\Luis\Dropbox (MIT)
 to
 C:\Users\Luis\MIT Dropbox\Luis Martinez
 ## Solution
-Two settings have to be changed to deal with th
+Two settings have to be changed to deal with the update.
+First, go to Edit > Settings > Advanced > Files and Folders > Linked Attachment Base Directory > Base Directory.
+If you have attanger plugin, then after Settings go to Attanger plugin, change Destination Path Root Directory.
+
+When you update the Linked Attachment Base Directory, it can take a while to detect all of the files under the folder. Be patient.
+
+Everything should be good after these changes.
+If you want, the old directory should still be available and have some of the downloaded files. This can be backed up before any changes.
