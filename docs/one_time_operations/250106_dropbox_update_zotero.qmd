@@ -1,0 +1,9 @@
+# Dealing with Dropbox Update
+## Introduction
+On January 06, 2025, Dropbox performed an update to its folder structure. This update changed the folder location of my dropbox files, in particular, scripts that analyze my saved data and how zotero knows where to move files and how to find them.
+The folder locations went from:
+C:\Users\Luis\Dropbox (MIT)
+to
+C:\Users\Luis\MIT Dropbox\Luis Martinez
+## Solution
+Two settings have to be changed to deal with th
