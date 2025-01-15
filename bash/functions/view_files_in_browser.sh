@@ -1,5 +1,4 @@
 view_files() {
-    local target="${1:-$(pwd)}"
     local width=$(tput cols)
     local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
     local usage="Usage: view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] [-s sort_order] [-v] [-h] directory
@@ -88,6 +87,7 @@ view_files() {
         esac
     done
     shift $((OPTIND-1))
+    local target="${1:-$(pwd)}"
 
     # Find files using properly constructed command
     local find_args
