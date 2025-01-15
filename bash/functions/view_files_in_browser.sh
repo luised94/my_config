@@ -40,6 +40,31 @@ view_files() {
     local depth=1
     local sort_order="alpha"
     local verbose=0
+
+    # Build find command arguments
+    build_find_command() {
+        local depth=$1
+        local type=$2
+        local filter=$3
+        local exclude=$4
+        
+        local cmd=("-maxdepth" "$depth" "-type" "f")
+        
+        # Add type filter
+        [[ -n "$type" ]] && cmd+=("-name" "*.$type")
+        
+        # Add include filter if specified
+        if [[ -n "$filter" ]]; then
+            cmd+=("-a" "-name" "*${filter}*")
+        fi
+        
+        # Add exclude filter if specified
+        if [[ -n "$exclude" ]]; then
+            cmd+=("!" "-name" "*${exclude}*")
+        fi
+        
+        echo "${cmd[@]}"
+    }
     
     # Argument parsing using getopts
     while getopts ":t:f:x:b:d:s:vh" opt; do
@@ -64,6 +89,10 @@ view_files() {
     done
     shift $((OPTIND-1))
 
+    # Find files using properly constructed command
+    local find_args
+    find_args=($(build_find_command "$depth" "$type" "$filter" "$exclude"))
+
     # Ensure target directory is valid
     if [[ ! -d "$target" ]]; then
         echo -e "${RED}[ERROR] Invalid directory: $target${NC}"
@@ -86,25 +115,12 @@ view_files() {
     echo -e "${BOLD}${separator}${NC}"
     
     # Find files matching criteria, sort them by default alphabetically
-    local files
-    local find_cmd=()
-    find_cmd+=("find" "$target" "-maxdepth" "$depth" "-type" "f" "-name" "*.$type")
-    
-    if [ -n "$filter" ]; then
-        find_cmd+=("\(" "-name" "\"$filter*\"" "\)")
-    fi
-    
-    if [ -n "$exclude" ]; then
-        find_cmd+=("! -name" "\"$exclude*\"")
-    fi
-    
-    # Sort the output
-    find_cmd+=("| sort")
 
-    if [ "$sort_order" = "alpha" ]; then
-        IFS=$'\n' read -d '' -r -a files < <("${find_cmd[@]}")
-    elif [ "$sort_order" = "rev" ]; then
-        IFS=$'\n' read -d '' -r -a files < <("${find_cmd[@]}")
+    local files
+    if [[ "$sort_order" = "alpha" ]]; then
+        IFS=$'\n' read -d '' -r -a files < <(find "$target" "${find_args[@]}" 2>/dev/null | sort)
+    elif [[ "$sort_order" = "rev" ]]; then
+        IFS=$'\n' read -d '' -r -a files < <(find "$target" "${find_args[@]}" 2>/dev/null | sort -r)
     else
         echo -e "${RED}[ERROR] Invalid sort order${NC}"
         return 1
@@ -167,4 +183,130 @@ view_files() {
     echo -e "       Files processed: $file_count"
     echo -e "       Batches completed: $((batch-1))"
     echo -e "${BOLD}${separator}${NC}\n"
+}
+
+debug_view_files() {
+    local width=$(tput cols)
+    local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
+    local sub_separator=$(printf '%*s' "$width" '' | tr ' ' '-')
+    
+    # Color definitions
+    local RED='\033[0;31m'
+    local GREEN='\033[0;32m'
+    local BLUE='\033[0;34m'
+    local YELLOW='\033[1;33m'
+    local NC='\033[0m'
+    local BOLD='\033[1m'
+
+    # Stage 1: Argument Processing
+    echo -e "\n${BOLD}${separator}"
+    printf "${BOLD}DEBUG STAGE 1: Argument Processing${NC}\n"
+    echo -e "${separator}\n"
+    
+    printf "Raw arguments received:\n${sub_separator}\n"
+    printf "   Count: %d\n" $#
+    printf "   Values: %s\n" "$@"
+
+    # Initialize variables
+    local type="html"
+    local filter=""
+    local exclude=""
+    local batch_size=5
+    local depth=1
+    local sort_order="alpha"
+    local verbose=0
+    local target=""
+
+    # Stage 2: Option Parsing
+    echo -e "\n${BOLD}${separator}"
+    printf "${BOLD}DEBUG STAGE 2: Option Parsing${NC}\n"
+    echo -e "${separator}\n"
+
+    local OPTIND opt
+    while getopts ":t:f:x:b:d:s:vh" opt; do
+        case $opt in
+            t) 
+                type=$OPTARG
+                printf "   Option -t: type set to '%s'\n" "$type"
+                ;;
+            f) 
+                filter=$OPTARG
+                printf "   Option -f: filter set to '%s'\n" "$filter"
+                ;;
+            x) 
+                exclude=$OPTARG
+                printf "   Option -x: exclude set to '%s'\n" "$exclude"
+                ;;
+            b) 
+                batch_size=$OPTARG
+                printf "   Option -b: batch_size set to '%s'\n" "$batch_size"
+                ;;
+            d) 
+                depth=$OPTARG
+                printf "   Option -d: depth set to '%s'\n" "$depth"
+                ;;
+            s) 
+                sort_order=$OPTARG
+                printf "   Option -s: sort_order set to '%s'\n" "$sort_order"
+                ;;
+            v) 
+                verbose=1
+                printf "   Option -v: verbose mode enabled\n"
+                ;;
+            h) 
+                printf "   Option -h: help requested\n"
+                return 0
+                ;;
+            \?) 
+                printf "   ${RED}Invalid option: -%s${NC}\n" "$OPTARG"
+                return 1
+                ;;
+        esac
+    done
+
+    # Stage 3: Target Directory Processing
+    echo -e "\n${BOLD}${separator}"
+    printf "${BOLD}DEBUG STAGE 3: Target Directory Processing${NC}\n"
+    echo -e "${separator}\n"
+
+    shift $((OPTIND-1))
+    target="${1:-$(pwd)}"
+    
+    printf "After option processing:\n${sub_separator}\n"
+    printf "   OPTIND: %d\n" "$OPTIND"
+    printf "   Remaining args: %s\n" "$@"
+    printf "   Target directory: %s\n" "$target"
+    printf "   Directory exists: %s\n" "$([ -d "$target" ] && echo 'yes' || echo 'no')"
+
+    # Stage 4: Find Command Construction
+    echo -e "\n${BOLD}${separator}"
+    printf "${BOLD}DEBUG STAGE 4: Find Command Construction${NC}\n"
+    echo -e "${separator}\n"
+
+    local find_cmd="find \"$target\" -maxdepth $depth -type f -name \"*.$type\""
+    [[ -n "$filter" ]] && find_cmd+=" -a -name \"*${filter}*\""
+    [[ -n "$exclude" ]] && find_cmd+=" ! -name \"*${exclude}*\""
+
+    printf "Constructed find command:\n${sub_separator}\n"
+    printf "   %s\n" "$find_cmd"
+
+    # Stage 5: File Finding Execution
+    echo -e "\n${BOLD}${separator}"
+    printf "${BOLD}DEBUG STAGE 5: File Finding Execution${NC}\n"
+    echo -e "${separator}\n"
+
+    printf "Executing find command...\n${sub_separator}\n"
+    local files
+    IFS=$'\n' read -d '' -r -a files < <(eval "$find_cmd" 2>/dev/null | sort)
+    
+    printf "Results:\n"
+    printf "   Found %d files\n" "${#files[@]}"
+    if [ ${#files[@]} -gt 0 ]; then
+        printf "\nFirst 5 files found (if any):\n"
+        for ((i=0; i<5 && i<${#files[@]}; i++)); do
+            printf "   %s\n" "${files[$i]}"
+        done
+    fi
+
+    echo -e "\n${BOLD}${separator}${NC}\n"
 }
