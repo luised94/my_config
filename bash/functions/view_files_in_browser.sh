@@ -63,6 +63,14 @@ Options:
         esac
     done
     shift $((OPTIND-1))
+
+    # Check if there are any remaining non-option arguments before the directory
+    if [ $# -gt 1 ]; then
+        echo -e "${RED}[ERROR] Invalid argument order. Directory must be the last argument.${NC}\n"
+        echo -e "${usage}\n"
+        return 1
+    fi
+
     # Handle directory argument
     local target="${1:-$(pwd)}"
     if [[ ! -d "$target" ]]; then
