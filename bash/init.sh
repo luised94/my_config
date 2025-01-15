@@ -30,6 +30,7 @@ readonly FUNCTION_FILES=(
     "editor_utils.sh"
     "file_operations.sh"
     "formatted_display_helpers.sh"
+    "view_files_in_browser.sh"
     "git_automations_helpers.sh"
     "git_automations.sh"
     "prompt_utils.sh"

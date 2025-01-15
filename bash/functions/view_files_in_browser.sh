@@ -1,3 +1,38 @@
+#!/bin/bash
+# ============================================================================
+# view_files.sh
+# ----------------------------------------------------------------------------
+# Purpose:
+#   Browse HTML/SVG files in batches using system browsers from WSL/Linux
+#
+# Usage:
+#   view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] directory
+#
+# Options:
+#   -t  File type (html, svg) [default: html]
+#   -d  Search depth [default: 3]
+#   ...
+#
+# Returns:
+#   0 on success, 1 on error
+#
+# Examples:
+#   view_files -t html -d 5 ~/logs
+#   view_files -t svg -b 10 ~/plots
+#
+# Dependencies:
+#   - wslpath (WSL environments)
+#   - find
+#   - A compatible web browser
+#
+# Notes:
+#   - WSL-specific functionality for browser detection
+#   - Falls back to xdg-open on Linux
+#
+# Author: [Your Name]
+# Date: [Creation Date]
+# Version: 1.0.0
+# ============================================================================
 view_files() {
     local width=$(tput cols)
     local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
