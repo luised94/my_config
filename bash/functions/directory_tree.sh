@@ -1,3 +1,47 @@
+
+# Function to build find command
+#build_find_command() {
+#    local target=$1
+#    local max_depth=$2
+#    local include_files=$3
+#    local cmd=("-L" "$target" "-maxdepth" "$max_depth" "-not" "-path" "*/.*")
+#    [[ "$include_files" = false ]] && cmd+=("-type" "d")
+#    for pattern in "${exclude_patterns[@]}"; do
+#        cmd+=("-not" "-path" "*$pattern*" "-not" "-name" "$pattern")
+#    done
+#    echo "${cmd[@]}"
+#}
+build_find_command() {
+    local target=$1
+    local max_depth=$2
+    local include_files=$3
+    local -a cmd=()
+    
+    # Start with base command
+    cmd+=("$target")
+    cmd+=("-mindepth" "1" "-maxdepth" "$max_depth")
+    
+    # Add type restriction if files are not included
+    [[ "$include_files" = false ]] && cmd+=("-type" "d")
+    
+    # Start exclusion group
+    cmd+=("(")
+    
+    # Add standard hidden files/directories exclusion
+    cmd+=("!" "-path" "*/.*")
+    
+    # Add user-specified exclusions
+    local first=true
+    for pattern in "${exclude_patterns[@]}"; do
+        cmd+=("-a" "!" "-path" "*/$pattern/*" "-a" "!" "-name" "$pattern")
+    done
+    
+    # Close exclusion group
+    cmd+=(")")
+    
+    echo "${cmd[@]}"
+}
+
 dirtree() {
     local width=$(tput cols)
     local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
@@ -25,22 +69,6 @@ Options:
     local target
     declare -a exclude_patterns
 
-    # Function to build find command
-    build_find_command() {
-        local target=$1
-        local max_depth=$2
-        local include_files=$3
-        
-        local cmd=("-L" "$target" "-maxdepth" "$max_depth" "-not" "-path" "*/.*")
-        
-        [[ "$include_files" = false ]] && cmd+=("-type" "d")
-        
-        for pattern in "${exclude_patterns[@]}"; do
-            cmd+=("-not" "-path" "*$pattern*" "-not" "-name" "$pattern")
-        done
-        
-        echo "${cmd[@]}"
-    }
 
     # Parse arguments using getopts
     local OPTIND opt
@@ -79,6 +107,7 @@ Options:
             "node_modules"
             "vendor"
             "library"
+            ".git"
         )
     fi
 
@@ -100,37 +129,60 @@ Options:
     echo -e "\n${BOLD}[*] Processing...${NC}"
 
     # Execute and format output with progress tracking
+    # Build and execute find command
     {
         echo -e "Directory Tree for: $target"
         echo -e "Generated on: $(date '+%Y-%m-%d %H:%M:%S')"
         echo -e "Configuration: depth=$max_depth, files=$include_files"
         echo -e "${separator}\n"
         
-        find "${find_args[@]}" 2>/dev/null | awk '
-        BEGIN {
-            prefix[""] = "";
+        # First, get the base path depth for relative path calculation
+        local base_depth=$(echo "$target" | tr -cd '/' | wc -c)
+        
+        find "${find_args[@]}" 2>/dev/null | \
+        awk -v base="$target" -v base_depth="$base_depth" '
+        function repeat(str, n) {
+            result = ""
+            for (i = 0; i < n; i++)
+                result = result str
+            return result
         }
+        
+        BEGIN {
+            print "."  # Print root directory
+            FS = "/"
+        }
+        
         {
-            split($0, parts, "/");
-            depth = length(parts) - 1;
-            last = parts[length(parts)];
+            # Skip the base directory itself
+            if ($0 == base) next
             
-            indent = "";
+            # Calculate relative path and depth
+            rel_path = substr($0, length(base) + 2)
+            split(rel_path, parts, "/")
+            depth = length(parts)
+            
+            # Prepare the line indentation
+            indent = ""
             for (i = 1; i < depth; i++) {
-                indent = indent "³  ";
+                indent = indent "|  "
             }
             
+            # Add the branch symbol
             if (depth > 0) {
-                indent = indent "ÃÄ ";
+                indent = indent "+- "
             }
             
-            print indent last;
-        }'
+            # Print the entry
+            print indent parts[length(parts)]
+        }' | sed 's/|  \+- /+- /g'
+        
     } > "$output_file"
 
     # Get statistics
     local total_entries=$(wc -l < "$output_file")
-    local dir_count=$(find "${find_args[@]}" -type d 2>/dev/null | wc -l)
+    local dir_count=0
+    #local dir_count=$(find "${find_args[@]}" -type d 2>/dev/null | wc -l)
     local file_count=0
     [[ "$include_files" = true ]] && file_count=$((total_entries - dir_count))
 
