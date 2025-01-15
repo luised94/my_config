@@ -87,10 +87,24 @@ view_files() {
     
     # Find files matching criteria, sort them by default alphabetically
     local files
+    local find_cmd=()
+    find_cmd+=("find" "$target" "-maxdepth" "$depth" "-type" "f" "-name" "*.$type")
+    
+    if [ -n "$filter" ]; then
+        find_cmd+=("\(" "-name" "\"$filter*\"" "\)")
+    fi
+    
+    if [ -n "$exclude" ]; then
+        find_cmd+=("! -name" "\"$exclude*\"")
+    fi
+    
+    # Sort the output
+    find_cmd+=("| sort")
+
     if [ "$sort_order" = "alpha" ]; then
-        IFS=$'\n' read -d '' -r -a files < <(find "$target" -maxdepth "$depth" -type f -name "*.$type" \( -name "$filter"* \) ! -name "$exclude"* | sort)
+        IFS=$'\n' read -d '' -r -a files < <("${find_cmd[@]}")
     elif [ "$sort_order" = "rev" ]; then
-        IFS=$'\n' read -d '' -r -a files < <(find "$target" -maxdepth "$depth" -type f -name "*.$type" \( -name "$filter"* \) ! -name "$exclude"* | sort -r)
+        IFS=$'\n' read -d '' -r -a files < <("${find_cmd[@]}")
     else
         echo -e "${RED}[ERROR] Invalid sort order${NC}"
         return 1
