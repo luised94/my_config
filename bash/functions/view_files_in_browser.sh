@@ -1,18 +1,18 @@
 view_files() {
     local width=$(tput cols)
     local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
-    local usage="Usage: view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] [-s sort_order] [-v] [-h] directory
-    Options:
-        -t, --type     File type (e.g., html, svg, pdf)
-        -f, --filter   Include pattern
-        -x, --exclude  Exclude pattern
-        -b, --batch    Batch size (default: 5)
-        -d, --depth    Search depth (default: 1)
-        -s, --sort     Sort order (default: alpha, reverse: rev)
-        -v, --verbose  Verbose output
-        -h, --help     Show this help message
-    "
     
+    local usage="Usage: view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] [-s sort_order] [-v] [-h] directory
+Options:
+    -t, --type     File type (e.g., html, svg, pdf) [default: html]
+    -f, --filter   Include pattern
+    -x, --exclude  Exclude pattern
+    -b, --batch    Batch size [default: 5]
+    -d, --depth    Search depth [default: 3]
+    -s, --sort     Sort order (alpha, rev) [default: alpha]
+    -v, --verbose  Verbose output
+    -h, --help     Show this help message"
+
     # Color definitions
     local RED='\033[0;31m'
     local GREEN='\033[0;32m'
@@ -29,16 +29,48 @@ view_files() {
     # )
     # Use the first browser for now
     local browser="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
-    
-    # Option parsing
-    local OPTIND opt
+
+    # Initialize variables with new defaults
     local type="html"
     local filter=""
     local exclude=""
     local batch_size=5
-    local depth=1
+    local depth=3  # Changed default depth
     local sort_order="alpha"
     local verbose=0
+
+    local OPTIND opt
+    
+    # Argument parsing using getopts
+    while getopts ":t:f:x:b:d:s:vh" opt; do
+        case $opt in
+            t) type=$OPTARG ;;
+            f) filter=$OPTARG ;;
+            x) exclude=$OPTARG ;;
+            b) batch_size=$OPTARG ;;
+            d) depth=$OPTARG ;;
+            s) sort_order=$OPTARG ;;
+            v) verbose=1 ;;
+            h)
+                echo -e "\n${usage}\n"
+                return 0
+                ;;
+            \?)
+                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}\n"
+                echo -e "${usage}\n"
+                return 1
+                ;;
+        esac
+    done
+    shift $((OPTIND-1))
+    # Handle directory argument
+    local target="${1:-$(pwd)}"
+    if [[ ! -d "$target" ]]; then
+        echo -e "${RED}[ERROR] Invalid directory: $target${NC}"
+        echo -e "${YELLOW}Hint: Make sure the directory is the last argument${NC}"
+        echo -e "Example: view_files -t html -d 5 ~/your/directory"
+        return 1
+    fi
 
     # Build find command arguments
     build_find_command() {
@@ -64,40 +96,16 @@ view_files() {
         
         echo "${cmd[@]}"
     }
-    
-    # Argument parsing using getopts
-    while getopts ":t:f:x:b:d:s:vh" opt; do
-        case $opt in
-            t) type=$OPTARG ;;
-            f) filter=$OPTARG ;;
-            x) exclude=$OPTARG ;;
-            b) batch_size=$OPTARG ;;
-            d) depth=$OPTARG ;;
-            s) sort_order=$OPTARG ;;
-            v) verbose=1 ;;
-            h)
-                echo -e "\n${usage}\n"
-                return 0
-                ;;
-            \?)
-                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}\n"
-                echo -e "${usage}\n"
-                return 1
-                ;;
-        esac
-    done
-    shift $((OPTIND-1))
-    local target="${1:-$(pwd)}"
+    # Build find command with diagnostic output
+    #local find_args=("-maxdepth" "$depth" "-type" "f")
+    #[[ -n "$type" ]] && find_args+=("-name" "*.$type")
+    #[[ -n "$filter" ]] && find_args+=("-a" "-name" "*${filter}*")
+    #[[ -n "$exclude" ]] && find_args+=("!" "-name" "*${exclude}*")
 
     # Find files using properly constructed command
     local find_args
     find_args=($(build_find_command "$depth" "$type" "$filter" "$exclude"))
 
-    # Ensure target directory is valid
-    if [[ ! -d "$target" ]]; then
-        echo -e "${RED}[ERROR] Invalid directory: $target${NC}"
-        return 1
-    fi
 
     # Required command checks
     command -v wslpath >/dev/null 2>&1 || {
@@ -128,8 +136,23 @@ view_files() {
 
     local file_count=${#files[@]}
     
+    # No files found - provide helpful diagnostics
     if [ $file_count -eq 0 ]; then
         echo -e "\n${YELLOW}[!] No matching files found${NC}"
+        echo -e "\nTroubleshooting suggestions:"
+        echo -e "1. Current depth is set to ${BOLD}$depth${NC}. Try increasing with: -d option"
+        echo -e "2. Looking for ${BOLD}*.$type${NC} files. Check if this is correct"
+        echo -e "3. Run with -v flag for verbose output"
+        echo -e "${YELLOW}4. Make sure the directory is the last argument${NC}"
+        
+        # Quick directory analysis for suggestions
+        local deeper_files
+        IFS=$'\n' read -d '' -r -a deeper_files < <(find "$target" -type f -name "*.$type" 2>/dev/null | head -n 1)
+        if [ ${#deeper_files[@]} -gt 0 ]; then
+            local suggested_depth=$(echo "${deeper_files[0]}" | awk -F"/" "{print NF-split(\"$target\", a, \"/\")+1}")
+            echo -e "\n${GREEN}[TIP] Found files at depth ${suggested_depth}. Try:${NC}"
+            echo -e "view_files -t $type -d $suggested_depth \"$target\"\n"
+        fi
         return 0
     fi
     
