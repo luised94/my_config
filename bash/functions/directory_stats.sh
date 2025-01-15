@@ -1,4 +1,3 @@
-
 directorystats() {
     local target="${1:-$(pwd)}"
     local width=$(tput cols)
