@@ -1,4 +1,73 @@
 #!/bin/bash
+
+parse_date_string() {
+    local date_str=$1
+    local -n parsed_timestamp_ref=$2
+    
+    # Standardized formats
+    case $date_str in
+        [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) # YYYYMMDD
+            parsed_timestamp_ref=$(date -d "${date_str:0:4}-${date_str:4:2}-${date_str:6:2}" +%s 2>/dev/null)
+            ;;
+        [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]) # YYYYMMDD_HHMMSS
+            parsed_timestamp_ref=$(date -d "${date_str:0:4}-${date_str:4:2}-${date_str:6:2} ${date_str:9:2}:${date_str:11:2}:${date_str:13:2}" +%s 2>/dev/null)
+            ;;
+        today|yesterday)
+            parsed_timestamp_ref=$(date -d "$date_str 00:00:00" +%s)
+            ;;
+        last_week)
+            parsed_timestamp_ref=$(date -d "1 week ago 00:00:00" +%s)
+            ;;
+        last_month)
+            parsed_timestamp_ref=$(date -d "1 month ago 00:00:00" +%s)
+            ;;
+        [0-9]*d)
+            local num=${date_str%d}
+            parsed_timestamp_ref=$(date -d "$num days ago 00:00:00" +%s)
+            ;;
+        [0-9]*w)
+            local num=${date_str%w}
+            parsed_timestamp_ref=$(date -d "$num weeks ago 00:00:00" +%s)
+            ;;
+        [0-9]*m)
+            local num=${date_str%m}
+            parsed_timestamp_ref=$(date -d "$num months ago 00:00:00" +%s)
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+    
+    [[ -n "$parsed_timestamp_ref" ]] && return 0 || return 1
+}
+
+filter_files_by_time() {
+    local -n files_ref=$1
+    local time_filter=$2
+    local comparison=${3:-after}  # 'after' or 'before'
+    
+    local target_timestamp
+    if ! parse_date_string "$time_filter" target_timestamp; then
+        echo "Invalid time format: $time_filter" >&2
+        return 1
+    fi
+    
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
+    
+    local -a filtered_files=()
+    local file_timestamp
+    for file in "${files_ref[@]}"; do
+        file_timestamp=$(stat -c %Y "$file")
+        if [[ "$comparison" == "after" && $file_timestamp -ge $target_timestamp ]] || \
+           [[ "$comparison" == "before" && $file_timestamp -le $target_timestamp ]]; then
+            filtered_files+=("$file")
+        fi
+    done
+    
+    files_ref=("${filtered_files[@]}")
+}
 # ============================================================================
 # view_files.sh
 # ----------------------------------------------------------------------------
