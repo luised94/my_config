@@ -30,17 +30,26 @@ local function save_user_location()
     }
 end
 
-local function restore_user_location(location)
-    if location and location.buffer and location.cursor then
-        vim.api.nvim_set_current_buf(location.buffer)
-        vim.api.nvim_win_set_cursor(0, location.cursor)
-    end
-end
 local function search_buffers(search_string)
     reset_quickfix_list()
     vim.cmd(string.format([[
         silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
     ]], vim.fn.escape(search_string, '/')))
+end
+
+local function restore_user_location(location)
+    if not location or not location.buffer or not location.cursor then return end
+
+    -- Check if buffer is valid
+    if not vim.api.nvim_buf_is_valid(location.buffer) then return end
+    -- Check if cursor position is within bounds
+    local line_count = vim.api.nvim_buf_line_count(location.buffer)
+    local cursor_line = math.min(location.cursor[1], line_count)
+    local cursor_col = math.min(location.cursor[2], #vim.api.nvim_buf_get_lines(location.buffer, cursor_line - 1, cursor_line, false)[1] or 0)
+
+    -- Restore buffer and cursor position
+    vim.api.nvim_set_current_buf(location.buffer)
+    vim.api.nvim_win_set_cursor(0, {cursor_line, cursor_col})
 end
 
 
@@ -103,6 +112,9 @@ function M.search_and_show(search_string, floating)
         else
             vim.cmd('copen')
         end
+
+        -- Restore user location after opening quickfix list
+        restore_user_location(user_location)
     end)
 
     if not ok then
