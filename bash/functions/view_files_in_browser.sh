@@ -4,6 +4,26 @@ is_positive_integer() {
     local input=$1
     [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -gt 0 ]
 }
+
+is_valid_filetype() {
+    local type=$1
+    local -a valid_types=("html" "svg" "pdf")
+    for valid_type in "${valid_types[@]}"; do
+        [[ "$type" == "$valid_type" ]] && return 0
+    done
+    return 1
+}
+
+is_valid_sort_order() {
+    local order=$1
+    [[ "$order" == "alpha" ]] || [[ "$order" == "rev" ]]
+}
+
+is_safe_pattern() {
+    local pattern=$1
+    # Exclude potentially problematic characters
+    ! [[ "$pattern" =~ [\'\"\\|\;\&\$\(\)] ]]
+}
 parse_date_string() {
     local date_str=$1
     local -n parsed_timestamp_ref=$2
@@ -155,6 +175,89 @@ Options:
     local OPTIND opt
     
     # Argument parsing using getopts
+    while getopts ":t:f:x:b:d:s:a:B:vh" opt; do
+        case $opt in
+            t)  
+                if is_valid_filetype "$OPTARG"; then
+                    type=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid file type '$OPTARG'. Using default: html${NC}"
+                    echo -e "${YELLOW}Note: Currently supported types are: html, svg, pdf${NC}"
+                    echo -e "${YELLOW}For other file types, please test manually first${NC}"
+                    type="html"
+                fi
+                ;;
+            f)  
+                if is_safe_pattern "$OPTARG"; then
+                    filter=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid filter pattern '$OPTARG'. Pattern contains unsafe characters${NC}"
+                    filter=""
+                fi
+                ;;
+            x)  
+                if is_safe_pattern "$OPTARG"; then
+                    exclude=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid exclude pattern '$OPTARG'. Pattern contains unsafe characters${NC}"
+                    exclude=""
+                fi
+                ;;
+            b)  
+                if is_positive_integer "$OPTARG"; then
+                    batch_size=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid batch size '$OPTARG'. Using default: 5${NC}"
+                    batch_size=5
+                fi
+                ;;
+            d)  
+                if is_positive_integer "$OPTARG"; then
+                    depth=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid depth '$OPTARG'. Using default: 3${NC}"
+                    depth=3
+                fi
+                ;;
+            s)  
+                if is_valid_sort_order "$OPTARG"; then
+                    sort_order=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid sort order '$OPTARG'. Using default: alpha${NC}"
+                    echo -e "${YELLOW}Valid options are: alpha, rev${NC}"
+                    sort_order="alpha"
+                fi
+                ;;
+            a)  
+                local timestamp
+                if parse_date_string "$OPTARG" timestamp; then
+                    time_after=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid after-time format '$OPTARG'. Ignoring time filter${NC}"
+                    time_after=""
+                fi
+                ;;
+            B)  
+                local timestamp
+                if parse_date_string "$OPTARG" timestamp; then
+                    time_before=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid before-time format '$OPTARG'. Ignoring time filter${NC}"
+                    time_before=""
+                fi
+                ;;
+            v) verbose=1 ;;
+            h) 
+                echo -e "\n${usage}\n"
+                return 0
+                ;;
+            \?)
+                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}\n"
+                echo -e "${usage}\n"
+                return 1
+                ;;
+        esac
+    done
     while getopts ":t:f:x:b:d:s:a:B:vh" opt; do
         case $opt in
             t) type=$OPTARG ;;
