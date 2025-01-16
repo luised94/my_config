@@ -1,5 +1,4 @@
 #!/bin/bash
-
 is_positive_integer() {
     local input=$1
     [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -gt 0 ]
@@ -258,35 +257,6 @@ Options:
                 ;;
         esac
     done
-    while getopts ":t:f:x:b:d:s:a:B:vh" opt; do
-        case $opt in
-            t) type=$OPTARG ;;
-            f) filter=$OPTARG ;;
-            x) exclude=$OPTARG ;;
-            b)  
-                if is_positive_integer "$OPTARG"; then
-                    batch_size=$OPTARG
-                else
-                    echo -e "${YELLOW}[WARNING] Invalid batch size '$OPTARG'. Using default: 5${NC}"
-                    batch_size=5
-                fi
-                ;;
-            d) depth=$OPTARG ;;
-            a) time_after=$OPTARG ;;
-            B) time_before=$OPTARG ;;
-            s) sort_order=$OPTARG ;;
-            v) verbose=1 ;;
-            h)
-                echo -e "\n${usage}\n"
-                return 0
-                ;;
-            \?)
-                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}\n"
-                echo -e "${usage}\n"
-                return 1
-                ;;
-        esac
-    done
     shift $((OPTIND-1))
 
     # Check if there are any remaining non-option arguments before the directory
@@ -450,7 +420,7 @@ Options:
         ((batch++))
     done
     
-    echo -e "\n${GREEN}[û] Processing complete!${NC}"
+    echo -e "\n${GREEN}[Yay] Processing complete!${NC}"
     echo -e "${BOLD}${separator}${NC}"
     echo -e "       Files processed: $file_count"
     echo -e "       Batches completed: $((batch-1))"
