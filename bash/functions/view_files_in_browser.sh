@@ -251,128 +251,193 @@ Options:
     echo -e "${BOLD}${separator}${NC}\n"
 }
 
-debug_view_files() {
-    local width=$(tput cols)
-    local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
-    local sub_separator=$(printf '%*s' "$width" '' | tr ' ' '-')
+#debug_view_files() {
+#    local width=$(tput cols)
+#    local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
+#    local sub_separator=$(printf '%*s' "$width" '' | tr ' ' '-')
+#    
+#    # Color definitions
+#    local RED='\033[0;31m'
+#    local GREEN='\033[0;32m'
+#    local BLUE='\033[0;34m'
+#    local YELLOW='\033[1;33m'
+#    local NC='\033[0m'
+#    local BOLD='\033[1m'
+#
+#    # Stage 1: Argument Processing
+#    echo -e "\n${BOLD}${separator}"
+#    printf "${BOLD}DEBUG STAGE 1: Argument Processing${NC}\n"
+#    echo -e "${separator}\n"
+#    
+#    printf "Raw arguments received:\n${sub_separator}\n"
+#    printf "   Count: %d\n" $#
+#    printf "   Values: %s\n" "$@"
+#
+#    # Initialize variables
+#    local type="html"
+#    local filter=""
+#    local exclude=""
+#    local batch_size=5
+#    local depth=1
+#    local sort_order="alpha"
+#    local verbose=0
+#    local target=""
+#
+#    # Stage 2: Option Parsing
+#    echo -e "\n${BOLD}${separator}"
+#    printf "${BOLD}DEBUG STAGE 2: Option Parsing${NC}\n"
+#    echo -e "${separator}\n"
+#
+#    local OPTIND opt
+#    while getopts ":t:f:x:b:d:s:vh" opt; do
+#        case $opt in
+#            t) 
+#                type=$OPTARG
+#                printf "   Option -t: type set to '%s'\n" "$type"
+#                ;;
+#            f) 
+#                filter=$OPTARG
+#                printf "   Option -f: filter set to '%s'\n" "$filter"
+#                ;;
+#            x) 
+#                exclude=$OPTARG
+#                printf "   Option -x: exclude set to '%s'\n" "$exclude"
+#                ;;
+#            b) 
+#                batch_size=$OPTARG
+#                printf "   Option -b: batch_size set to '%s'\n" "$batch_size"
+#                ;;
+#            d) 
+#                depth=$OPTARG
+#                printf "   Option -d: depth set to '%s'\n" "$depth"
+#                ;;
+#            s) 
+#                sort_order=$OPTARG
+#                printf "   Option -s: sort_order set to '%s'\n" "$sort_order"
+#                ;;
+#            v) 
+#                verbose=1
+#                printf "   Option -v: verbose mode enabled\n"
+#                ;;
+#            h) 
+#                printf "   Option -h: help requested\n"
+#                return 0
+#                ;;
+#            \?) 
+#                printf "   ${RED}Invalid option: -%s${NC}\n" "$OPTARG"
+#                return 1
+#                ;;
+#        esac
+#    done
+#
+#    # Stage 3: Target Directory Processing
+#    echo -e "\n${BOLD}${separator}"
+#    printf "${BOLD}DEBUG STAGE 3: Target Directory Processing${NC}\n"
+#    echo -e "${separator}\n"
+#
+#    shift $((OPTIND-1))
+#    target="${1:-$(pwd)}"
+#    
+#    printf "After option processing:\n${sub_separator}\n"
+#    printf "   OPTIND: %d\n" "$OPTIND"
+#    printf "   Remaining args: %s\n" "$@"
+#    printf "   Target directory: %s\n" "$target"
+#    printf "   Directory exists: %s\n" "$([ -d "$target" ] && echo 'yes' || echo 'no')"
+#
+#    # Stage 4: Find Command Construction
+#    echo -e "\n${BOLD}${separator}"
+#    printf "${BOLD}DEBUG STAGE 4: Find Command Construction${NC}\n"
+#    echo -e "${separator}\n"
+#
+#    local find_cmd="find \"$target\" -maxdepth $depth -type f -name \"*.$type\""
+#    [[ -n "$filter" ]] && find_cmd+=" -a -name \"*${filter}*\""
+#    [[ -n "$exclude" ]] && find_cmd+=" ! -name \"*${exclude}*\""
+#
+#    printf "Constructed find command:\n${sub_separator}\n"
+#    printf "   %s\n" "$find_cmd"
+#
+#    # Stage 5: File Finding Execution
+#    echo -e "\n${BOLD}${separator}"
+#    printf "${BOLD}DEBUG STAGE 5: File Finding Execution${NC}\n"
+#    echo -e "${separator}\n"
+#
+#    printf "Executing find command...\n${sub_separator}\n"
+#    local files
+#    IFS=$'\n' read -d '' -r -a files < <(eval "$find_cmd" 2>/dev/null | sort)
+#    
+#    printf "Results:\n"
+#    printf "   Found %d files\n" "${#files[@]}"
+#    if [ ${#files[@]} -gt 0 ]; then
+#        printf "\nFirst 5 files found (if any):\n"
+#        for ((i=0; i<5 && i<${#files[@]}; i++)); do
+#            printf "   %s\n" "${files[$i]}"
+#        done
+#    fi
+#
+#    echo -e "\n${BOLD}${separator}${NC}\n"
+#}
+
+detect_browsers() {
+    local -A browsers
+    local default_browser=""
     
-    # Color definitions
-    local RED='\033[0;31m'
-    local GREEN='\033[0;32m'
-    local BLUE='\033[0;34m'
-    local YELLOW='\033[1;33m'
-    local NC='\033[0m'
-    local BOLD='\033[1m'
-
-    # Stage 1: Argument Processing
-    echo -e "\n${BOLD}${separator}"
-    printf "${BOLD}DEBUG STAGE 1: Argument Processing${NC}\n"
-    echo -e "${separator}\n"
-    
-    printf "Raw arguments received:\n${sub_separator}\n"
-    printf "   Count: %d\n" $#
-    printf "   Values: %s\n" "$@"
-
-    # Initialize variables
-    local type="html"
-    local filter=""
-    local exclude=""
-    local batch_size=5
-    local depth=1
-    local sort_order="alpha"
-    local verbose=0
-    local target=""
-
-    # Stage 2: Option Parsing
-    echo -e "\n${BOLD}${separator}"
-    printf "${BOLD}DEBUG STAGE 2: Option Parsing${NC}\n"
-    echo -e "${separator}\n"
-
-    local OPTIND opt
-    while getopts ":t:f:x:b:d:s:vh" opt; do
-        case $opt in
-            t) 
-                type=$OPTARG
-                printf "   Option -t: type set to '%s'\n" "$type"
-                ;;
-            f) 
-                filter=$OPTARG
-                printf "   Option -f: filter set to '%s'\n" "$filter"
-                ;;
-            x) 
-                exclude=$OPTARG
-                printf "   Option -x: exclude set to '%s'\n" "$exclude"
-                ;;
-            b) 
-                batch_size=$OPTARG
-                printf "   Option -b: batch_size set to '%s'\n" "$batch_size"
-                ;;
-            d) 
-                depth=$OPTARG
-                printf "   Option -d: depth set to '%s'\n" "$depth"
-                ;;
-            s) 
-                sort_order=$OPTARG
-                printf "   Option -s: sort_order set to '%s'\n" "$sort_order"
-                ;;
-            v) 
-                verbose=1
-                printf "   Option -v: verbose mode enabled\n"
-                ;;
-            h) 
-                printf "   Option -h: help requested\n"
-                return 0
-                ;;
-            \?) 
-                printf "   ${RED}Invalid option: -%s${NC}\n" "$OPTARG"
-                return 1
-                ;;
-        esac
-    done
-
-    # Stage 3: Target Directory Processing
-    echo -e "\n${BOLD}${separator}"
-    printf "${BOLD}DEBUG STAGE 3: Target Directory Processing${NC}\n"
-    echo -e "${separator}\n"
-
-    shift $((OPTIND-1))
-    target="${1:-$(pwd)}"
-    
-    printf "After option processing:\n${sub_separator}\n"
-    printf "   OPTIND: %d\n" "$OPTIND"
-    printf "   Remaining args: %s\n" "$@"
-    printf "   Target directory: %s\n" "$target"
-    printf "   Directory exists: %s\n" "$([ -d "$target" ] && echo 'yes' || echo 'no')"
-
-    # Stage 4: Find Command Construction
-    echo -e "\n${BOLD}${separator}"
-    printf "${BOLD}DEBUG STAGE 4: Find Command Construction${NC}\n"
-    echo -e "${separator}\n"
-
-    local find_cmd="find \"$target\" -maxdepth $depth -type f -name \"*.$type\""
-    [[ -n "$filter" ]] && find_cmd+=" -a -name \"*${filter}*\""
-    [[ -n "$exclude" ]] && find_cmd+=" ! -name \"*${exclude}*\""
-
-    printf "Constructed find command:\n${sub_separator}\n"
-    printf "   %s\n" "$find_cmd"
-
-    # Stage 5: File Finding Execution
-    echo -e "\n${BOLD}${separator}"
-    printf "${BOLD}DEBUG STAGE 5: File Finding Execution${NC}\n"
-    echo -e "${separator}\n"
-
-    printf "Executing find command...\n${sub_separator}\n"
-    local files
-    IFS=$'\n' read -d '' -r -a files < <(eval "$find_cmd" 2>/dev/null | sort)
-    
-    printf "Results:\n"
-    printf "   Found %d files\n" "${#files[@]}"
-    if [ ${#files[@]} -gt 0 ]; then
-        printf "\nFirst 5 files found (if any):\n"
-        for ((i=0; i<5 && i<${#files[@]}; i++)); do
-            printf "   %s\n" "${files[$i]}"
+    # WSL-specific detection
+    if grep -qi microsoft /proc/version; then
+        echo "WSL environment detected, checking Windows browsers..."
+        
+        # Common Windows browser paths
+        local win_paths=(
+            "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+            "/mnt/c/Program Files/Mozilla Firefox/firefox.exe"
+            "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
+            "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+        )
+        
+        for path in "${win_paths[@]}"; do
+            if [ -f "$path" ]; then
+                local browser_name=$(basename "$path" .exe)
+                browsers[$browser_name]=$path
+                # Set first found browser as default
+                [[ -z "$default_browser" ]] && default_browser=$browser_name
+            fi
         done
+    else
+        echo "Linux environment detected, checking system browsers..."
+        
+        # Linux browser detection
+        local linux_browsers=("firefox" "chromium" "google-chrome" "brave-browser")
+        
+        for browser in "${linux_browsers[@]}"; do
+            if command -v "$browser" >/dev/null 2>&1; then
+                browsers[$browser]=$(command -v "$browser")
+                [[ -z "$default_browser" ]] && default_browser=$browser
+            fi
+        done
+        
+        # Check for xdg-open as fallback
+        if command -v xdg-open >/dev/null 2>&1; then
+            browsers["system"]="xdg-open"
+            [[ -z "$default_browser" ]] && default_browser="system"
+        fi
     fi
-
-    echo -e "\n${BOLD}${separator}${NC}\n"
+    
+    # Return results
+    if [ ${#browsers[@]} -eq 0 ]; then
+        echo "No browsers found"
+        return 1
+    fi
+    
+    echo "Available browsers:"
+    for browser in "${!browsers[@]}"; do
+        echo "  - $browser: ${browsers[$browser]}"
+    done
+    echo "Default browser: $default_browser"
+    
+    # Export results for use in main function
+    declare -g AVAILABLE_BROWSERS=("${!browsers[@]}")
+    declare -g DEFAULT_BROWSER=$default_browser
+    declare -gA BROWSER_PATHS=()
+    for k in "${!browsers[@]}"; do
+        BROWSER_PATHS[$k]=${browsers[$k]}
+    done
 }
