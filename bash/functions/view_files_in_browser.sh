@@ -106,7 +106,7 @@ view_files() {
     local width=$(tput cols)
     local separator=$(printf '%*s' "$width" '' | tr ' ' '=')
     
-    local usage="Usage: view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] [-s sort_order] [-v] [-h] directory
+    local usage="Usage: view_files [-t type] [-f filter] [-x exclude] [-b batch_size] [-d depth] [-s sort_order] [-a after_time] [-B before_time] [-v] [-h] directory
 Options:
     -t, --type     File type (e.g., html, svg, pdf) [default: html]
     -f, --filter   Include pattern
@@ -114,6 +114,8 @@ Options:
     -b, --batch    Batch size [default: 5]
     -d, --depth    Search depth [default: 3]
     -s, --sort     Sort order (alpha, rev) [default: alpha]
+    -a, --after    Show files after time (YYYYMMDD, YYYYMMDD_HHMMSS, Nd/w/m ago, today, yesterday)
+    -B, --before   Show files before time (same format as -a)
     -v, --verbose  Verbose output
     -h, --help     Show this help message"
 
@@ -133,6 +135,9 @@ Options:
     # )
     # Use the first browser for now
     local browser="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    # Add time filter variables
+    local time_after=""
+    local time_before=""
 
     # Initialize variables with new defaults
     local type="html"
@@ -146,13 +151,15 @@ Options:
     local OPTIND opt
     
     # Argument parsing using getopts
-    while getopts ":t:f:x:b:d:s:vh" opt; do
+    while getopts ":t:f:x:b:d:s:a:B:vh" opt; do
         case $opt in
             t) type=$OPTARG ;;
             f) filter=$OPTARG ;;
             x) exclude=$OPTARG ;;
             b) batch_size=$OPTARG ;;
             d) depth=$OPTARG ;;
+            a) time_after=$OPTARG ;;
+            B) time_before=$OPTARG ;;
             s) sort_order=$OPTARG ;;
             v) verbose=1 ;;
             h)
@@ -246,6 +253,20 @@ Options:
         return 1
     fi
 
+    if [[ -n "$time_after" ]]; then
+        if ! filter_files_by_time files "$time_after" "after"; then
+            echo -e "${RED}[ERROR] Failed to apply 'after' time filter${NC}"
+            return 1
+        fi
+    fi
+    
+    if [[ -n "$time_before" ]]; then
+        if ! filter_files_by_time files "$time_before" "before"; then
+            echo -e "${RED}[ERROR] Failed to apply 'before' time filter${NC}"
+            return 1
+        fi
+    fi
+
     local file_count=${#files[@]}
     
     # No files found - provide helpful diagnostics
@@ -254,8 +275,10 @@ Options:
         echo -e "\nTroubleshooting suggestions:"
         echo -e "1. Current depth is set to ${BOLD}$depth${NC}. Try increasing with: -d option"
         echo -e "2. Looking for ${BOLD}*.$type${NC} files. Check if this is correct"
-        echo -e "3. Run with -v flag for verbose output"
-        echo -e "${YELLOW}4. Make sure the directory is the last argument${NC}"
+        [[ -n "$time_after" ]]  && echo -e "3. After time filter: ${BOLD}$time_after${NC}"
+        [[ -n "$time_before" ]] && echo -e "4. Before time filter: ${BOLD}$time_before${NC}"
+        echo -e "5. Run with -v flag for verbose output"
+        echo -e "${YELLOW}6. Make sure the directory is the last argument${NC}"
         
         # Quick directory analysis for suggestions
         local deeper_files
