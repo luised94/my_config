@@ -25,16 +25,10 @@ end
 -- Save and restore user location
 local function save_user_location()
     return {
+        winnr = vim.api.nvim_get_current_win(),
         buffer = vim.api.nvim_get_current_buf(),
         cursor = vim.api.nvim_win_get_cursor(0),
     }
-end
-
-local function search_buffers(search_string)
-    reset_quickfix_list()
-    vim.cmd(string.format([[
-        silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
-    ]], vim.fn.escape(search_string, '/')))
 end
 
 local function restore_user_location(location)
@@ -42,6 +36,12 @@ local function restore_user_location(location)
 
     -- Check if buffer is valid
     if not vim.api.nvim_buf_is_valid(location.buffer) then return end
+
+    -- Check if window is valid
+    if vim.api.nvim_win_is_valid(location.winnr) then
+        vim.api.nvim_set_current_win(location.winnr)
+    end
+
     -- Check if cursor position is within bounds
     local line_count = vim.api.nvim_buf_line_count(location.buffer)
     local cursor_line = math.min(location.cursor[1], line_count)
@@ -51,6 +51,14 @@ local function restore_user_location(location)
     vim.api.nvim_set_current_buf(location.buffer)
     vim.api.nvim_win_set_cursor(0, {cursor_line, cursor_col})
 end
+
+local function search_buffers(search_string)
+    reset_quickfix_list()
+    vim.cmd(string.format([[
+        silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
+    ]], vim.fn.escape(search_string, '/')))
+end
+
 
 
 -- Floating window functionality (commented out for now)
@@ -91,11 +99,11 @@ function M.search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
     -- Save user location before running the search
     local user_location = save_user_location()
-    
+
     local ok, result = pcall(function()
         vim.cmd('silent! cclose')
         search_buffers(search_string)
-        
+
         if vim.fn.getqflist({size = 0}).size == 0 then
             -- Restore user location if no matches are found
             restore_user_location(user_location)
@@ -109,12 +117,13 @@ function M.search_and_show(search_string, floating)
              --vim.cmd('copen')
              --vim.cmd('wincmd P')
             vim.notify("Floating window is currently disabled", vim.log.levels.INFO)
+            restore_user_location(user_location)
         else
-            vim.cmd('copen')
+            -- Open quickfix window at the bottom
+            vim.cmd('botright copen')
+            -- Return to the original window
+            restore_user_location(user_location)
         end
-
-        -- Restore user location after opening quickfix list
-        restore_user_location(user_location)
     end)
 
     if not ok then
