@@ -21,6 +21,21 @@ end
 local function reset_quickfix_list()
     vim.cmd("silent! call setqflist([])")
 end
+
+-- Save and restore user location
+local function save_user_location()
+    return {
+        buffer = vim.api.nvim_get_current_buf(),
+        cursor = vim.api.nvim_win_get_cursor(0),
+    }
+end
+
+local function restore_user_location(location)
+    if location and location.buffer and location.cursor then
+        vim.api.nvim_set_current_buf(location.buffer)
+        vim.api.nvim_win_set_cursor(0, location.cursor)
+    end
+end
 local function search_buffers(search_string)
     reset_quickfix_list()
     vim.cmd(string.format([[
@@ -30,6 +45,7 @@ end
 
 
 -- Floating window functionality (commented out for now)
+--[[
 local function create_floating_window()
     local opts = {
         relative = 'editor',
@@ -60,24 +76,29 @@ local function create_floating_window()
 
     return buf, win
 end
+]]
 
 function M.search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
+    -- Save user location before running the search
+    local user_location = save_user_location()
     
     local ok, result = pcall(function()
         vim.cmd('silent! cclose')
         search_buffers(search_string)
         
         if vim.fn.getqflist({size = 0}).size == 0 then
+            -- Restore user location if no matches are found
+            restore_user_location(user_location)
             vim.notify("No matches found for: " .. search_string, vim.log.levels.WARN)
             return
         end
 
         if floating then
             -- Uncomment below to enable floating window functionality later
-             local buf, win = create_floating_window()
-             vim.cmd('copen')
-             vim.cmd('wincmd P')
+             --local buf, win = create_floating_window()
+             --vim.cmd('copen')
+             --vim.cmd('wincmd P')
             vim.notify("Floating window is currently disabled", vim.log.levels.INFO)
         else
             vim.cmd('copen')
@@ -85,6 +106,7 @@ function M.search_and_show(search_string, floating)
     end)
 
     if not ok then
+        restore_user_location(user_location) -- Ensure user location is restored on error too
         vim.notify("Search failed: " .. tostring(result), vim.log.levels.ERROR)
     end
 end
