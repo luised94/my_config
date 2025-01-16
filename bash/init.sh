@@ -24,12 +24,15 @@ readonly CONFIG_FILES=(
 
 
 # Function files
+# Missing file (typo or deletion) should output [ERROR] Required function file not found:
 readonly FUNCTION_FILES=(
     "logging_utils.sh"
     "options_parser.sh"  # Must be early in the list
+    "option_validation.sh"  # Must be early in the list
     "editor_utils.sh"
     "file_operations.sh"
     "formatted_display_helpers.sh"
+    "view_files_in_browser.sh"
     "git_automations_helpers.sh"
     "git_automations.sh"
     "prompt_utils.sh"
@@ -39,6 +42,7 @@ readonly FUNCTION_FILES=(
     "tag_processor.sh"
     "windows_utils.sh"
 )
+
 
 # Initialize logging first
 source "${BASH_UTILS_ROOT}/functions/logging_utils.sh"

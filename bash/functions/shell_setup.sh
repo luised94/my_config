@@ -15,6 +15,11 @@ setup_aliases() {
         alias "${alias_def}"
     done
 
+    # Lab utils repo aliases
+    for alias_def in "${LABUTILS_ALIASES[@]}"; do
+        alias "${alias_def}"
+    done
+
     log_info "Aliases configured successfully"
 }
 

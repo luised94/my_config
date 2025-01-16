@@ -29,3 +29,7 @@ GIT_ALIASES=(
     "gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
     "syncall=sync_all_branches"
 )
+
+LABUTILS_ALIASES=(
+    "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_bmc_config.R"
+)
