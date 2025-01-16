@@ -1,3 +1,55 @@
+#build_find_command() {
+#    local target=$1
+#    local max_depth=$2
+#    local include_files=$3
+#    local -a cmd=()
+#    
+#    # Start with base command
+#    cmd+=("$target")
+#    cmd+=("-mindepth" "1" "-maxdepth" "$max_depth")
+#    
+#    # Add type restriction if files are not included
+#    [[ "$include_files" = false ]] && cmd+=("-type" "d")
+#    
+#    # Start exclusion group
+#    cmd+=("(")
+#    
+#    for pattern in "${exclude_patterns[@]}"; do
+#        # Exclude matching paths and names
+#        cmd+=("! -path \"*/$pattern/*\" ! -name \"$pattern\"")
+#    done
+#    
+#    # Close exclusion group
+#    cmd+=(")")
+#    
+#    echo "${cmd[@]}"
+#}
+#build_find_command() {
+#    local target=$1
+#    local max_depth=$2
+#    local include_files=$3
+#    local -a cmd=()
+#    
+#    # Start with base command
+#    cmd+=("$target")
+#    cmd+=("-mindepth" "1" "-maxdepth" "$max_depth")
+#    
+#    # Add type restriction if files are not included
+#    [[ "$include_files" = false ]] && cmd+=("-type" "d")
+#    
+#    # Start exclusion group
+#    cmd+=("\(")
+#    
+#    for pattern in "${exclude_patterns[@]}"; do
+#        # Exclude matching paths and names
+#        cmd+=("! -path \"*/$pattern/*\" ! -name \"$pattern\"")
+#    done
+#    
+#    # Close exclusion group
+#    cmd+=("\)")
+#    
+#    echo "${cmd[@]}"
+#}
 build_find_command() {
     local target=$1
     local max_depth=$2
@@ -11,16 +63,18 @@ build_find_command() {
     # Add type restriction if files are not included
     [[ "$include_files" = false ]] && cmd+=("-type" "d")
     
-    # Start exclusion group
-    cmd+=("(")
-    
-    for pattern in "${exclude_patterns[@]}"; do
-        # Exclude matching paths and names
-        cmd+=("! -path \"*/$pattern/*\" ! -name \"$pattern\"")
-    done
-    
-    # Close exclusion group
-    cmd+=(")")
+    if [ ${#exclude_patterns[@]} -gt 0 ]; then
+        # Start exclusion group
+        cmd+=("\(")
+        
+        for pattern in "${exclude_patterns[@]}"; do
+            # Exclude matching paths and names
+            cmd+=("! -path \"*/$pattern/*\" ! -name \"$pattern\"")
+        done
+        
+        # Close exclusion group
+        cmd+=("\)")
+    fi
     
     echo "${cmd[@]}"
 }
