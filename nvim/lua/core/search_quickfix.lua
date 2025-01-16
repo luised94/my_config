@@ -95,6 +95,17 @@ local function create_floating_window()
 end
 ]]
 
+local function is_quickfix_open()
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+        local buf = vim.api.nvim_win_get_buf(win)
+        local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+        if buf_type == 'quickfix' then
+            return true, win
+        end
+    end
+    return false, nil
+end
+
 function M.search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
     -- Save user location before running the search
@@ -119,8 +130,18 @@ function M.search_and_show(search_string, floating)
             vim.notify("Floating window is currently disabled", vim.log.levels.INFO)
             restore_user_location(user_location)
         else
-            -- Open quickfix window at the bottom
-            vim.cmd('botright copen')
+            -- Check if quickfix is already open
+            local qf_open, qf_win = is_quickfix_open()
+            if qf_open then
+                -- If quickfix is open, just refresh it
+                local current_win = vim.api.nvim_get_current_win()
+                vim.api.nvim_set_current_win(qf_win)
+                vim.cmd('cbottom') -- Move to bottom of quickfix list
+                vim.api.nvim_set_current_win(current_win)
+            else
+                -- Open new quickfix window
+                vim.cmd('botright copen')
+            end
             -- Return to the original window
             restore_user_location(user_location)
         end
