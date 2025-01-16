@@ -1,40 +1,21 @@
-build_find_command() {
-    local target=$1
-    local max_depth=$2
-    local include_files=$3
-    local -a cmd=()
-    
-    # Start with base command
-    cmd+=("$target")
-    cmd+=("-mindepth" "1" "-maxdepth" "$max_depth")
-    
-    # Add type restriction if files are not included
-    [[ "$include_files" = false ]] && cmd+=("-type" "d")
-    
-    if [ ${#exclude_patterns[@]} -gt 0 ]; then
-        # Start exclusion group
-        cmd+=("\(")
-        
-        for pattern in "${exclude_patterns[@]}"; do
-            # Exclude matching paths and names
-            cmd+=("! -path \"*/$pattern/*\" ! -name \"$pattern\"")
-        done
-        
-        # Close exclusion group
-        cmd+=("\)")
-    fi
-    
-    echo "${cmd[@]}"
-}
-
 dirtree() {
+    local usage="Usage: dirtree [-d depth] [-o output] [-e exclude] [-f] [-h] directory
+Options:
+    -d, --depth NUM    Maximum depth to traverse [default: 3]
+    -o, --output FILE  Output file [default: dir_tree_output.txt]
+    -e, --exclude PAT  Exclude pattern (can be used multiple times)
+    -f, --files       Include files in output
+    -h, --help        Show this help message"
+
     # Initialize variables
     local max_depth=3
     local output_file="dir_tree_output.txt"
     local include_files=false
     local target
     declare -a exclude_patterns
-    
+
+    local OPTIND opt
+
     # Parse arguments
     while getopts ":d:o:e:fh" opt; do
         case $opt in
@@ -43,19 +24,18 @@ dirtree() {
             e) exclude_patterns+=("$OPTARG") ;;
             f) include_files=true ;;
             h)
-                echo -e "\nUsage: dirtree [-d depth] [-o output] [-e exclude] [-f] [-h] directory
-Options:
-    -d, --depth NUM    Maximum depth to traverse [default: 3]
-    -o, --output FILE  Output file [default: dir_tree_output.txt]
-    -e, --exclude PAT  Exclude pattern (can be used multiple times)
-    -f, --files       Include files in output
-    -h, --help        Show this help message\n"
+                echo -e "\n$usage\n"
                 return 0
+                ;;
+            \?)
+                echo -e "\nInvalid option: -$OPTARG\n"
+                echo -e "$usage\n"
+                return 1
                 ;;
         esac
     done
     shift $((OPTIND-1))
-    
+
     # Target directory validation
     target="${1:-$(pwd)}"
     target="${target%/}"  # Remove trailing slash
@@ -63,7 +43,7 @@ Options:
         echo -e "Invalid directory: $target"
         return 1
     fi
-    
+
     # Default exclusions
     if [ ${#exclude_patterns[@]} -eq 0 ]; then
         exclude_patterns=(
@@ -73,31 +53,34 @@ Options:
             "vendor"
             "library"
             ".git"
+            "renv"
         )
     fi
-    
-    # Build find command arguments
-    local find_args=("$target" "-mindepth" "1" "-maxdepth" "$max_depth")
-    if [ ${#exclude_patterns[@]} -gt 0 ]; then
-        find_args+=("\(")
-        for pattern in "${exclude_patterns[@]}"; do
-            find_args+=("-path" "*/$pattern" "-prune" "-o")
-        done
-        find_args+=("\)" "-false" "-o")
-    fi
-    if [[ "$include_files" = false ]]; then
-        find_args+=("-type" "d")
-    fi
-    
+
+    # Build exclude arguments
+    local exclude_args=()
+    local first=true
+    for pattern in "${exclude_patterns[@]}"; do
+        if [[ "$first" == true ]]; then
+            exclude_args+=("-path" "*/$pattern" "-o" "-path" "*/$pattern/*")
+            first=false
+        else
+            exclude_args+=("-o" "-path" "*/$pattern" "-o" "-path" "*/$pattern/*")
+        fi
+    done
+
     # Process output
     {
         printf "Directory Tree for: %s\n" "$target"
         printf "Generated on: %s\n" "$(date '+%Y-%m-%d %H:%M:%S')"
         printf "Configuration: depth=%s, files=%s\n" "$max_depth" "$include_files"
-        printf "Find Command: %s\n" "${find_args[*]}"
         printf "%s\n\n" "========================================================================================================="
-        
-        find "${find_args[@]}" | \
+
+        # Execute find command
+        find "$target" -mindepth 1 -maxdepth "$max_depth" \
+            \( "${exclude_args[@]}" \) -prune -o \
+            $(if [[ "$include_files" = false ]]; then echo "-type d"; fi) \
+            -print | \
         awk -v base="$target" '
             BEGIN { skip_base = 0 }
             {
@@ -124,7 +107,8 @@ Options:
                 print indent parts[length(parts)]
             }'
     } > "$output_file"
-    
+
+    # Display results
     echo -e "\n[û] Tree generated successfully"
     echo -e "========================================================================================================="
     echo -e "Output saved to: $output_file"
@@ -137,6 +121,129 @@ Options:
         less "$output_file"
     fi
 }
+#dirtree() {
+#    # Initialize variables
+#    local max_depth=3
+#    local output_file="dir_tree_output.txt"
+#    local include_files=false
+#    local target
+#    declare -a exclude_patterns
+#    
+#    # Parse arguments
+#    while getopts ":d:o:e:fh" opt; do
+#        case $opt in
+#            d) max_depth=$OPTARG ;;
+#            o) output_file=$OPTARG ;;
+#            e) exclude_patterns+=("$OPTARG") ;;
+#            f) include_files=true ;;
+#            h)
+#                echo -e "\nUsage: dirtree [-d depth] [-o output] [-e exclude] [-f] [-h] directory
+#Options:
+#    -d, --depth NUM    Maximum depth to traverse [default: 3]
+#    -o, --output FILE  Output file [default: dir_tree_output.txt]
+#    -e, --exclude PAT  Exclude pattern (can be used multiple times)
+#    -f, --files       Include files in output
+#    -h, --help        Show this help message\n"
+#                return 0
+#                ;;
+#        esac
+#    done
+#    shift $((OPTIND-1))
+#    
+#    # Target directory validation
+#    target="${1:-$(pwd)}"
+#    target="${target%/}"  # Remove trailing slash
+#    if [[ ! -d "$target" ]]; then
+#        echo -e "Invalid directory: $target"
+#        return 1
+#    fi
+#    
+#    # Default exclusions
+#    if [ ${#exclude_patterns[@]} -eq 0 ]; then
+#        exclude_patterns=(
+#            "nvim-linux64"
+#            "backup"
+#            "node_modules"
+#            "vendor"
+#            "library"
+#            ".git"
+#            "renv"
+#        )
+#    fi
+#
+#    # Build find command arguments
+#    #local find_args=("$target" "-mindepth" "1" "-maxdepth" "$max_depth")
+#    #if [ ${#exclude_patterns[@]} -gt 0 ]; then
+#    #    find_args+=("\(")
+#    #    for pattern in "${exclude_patterns[@]}"; do
+#    #        find_args+=("-path" "*/$pattern" "-prune" "-o")
+#    #    done
+#    #    find_args+=("\)" "-false" "-o")
+#    #fi
+#    #if [[ "$include_files" = false ]]; then
+#    #    find_args+=("-type" "d")
+#    #fi
+#local exclude_args=()
+#local first=true
+#for pattern in "${exclude_patterns[@]}"; do
+#    if [[ "$first" == true ]]; then
+#        # Match the directory itself and its contents
+#        exclude_args+=("-path" "\"*/$pattern\"" "-o" "-path" "\"*/$pattern/*\"")
+#        first=false
+#    else
+#        exclude_args+=("-o" "-path" "\"*/$pattern\"" "-o" "-path" "\"*/$pattern/*\"")
+#    fi
+#done
+#    
+#    # Process output
+#    {
+#        printf "Directory Tree for: %s\n" "$target"
+#        printf "Generated on: %s\n" "$(date '+%Y-%m-%d %H:%M:%S')"
+#        printf "Configuration: depth=%s, files=%s\n" "$max_depth" "$include_files"
+#        printf "Find Command: %s\n" "${find_args[*]}"
+#        printf "%s\n\n" "========================================================================================================="
+#        
+#
+#        eval "find \"${target}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null | \
+#        awk -v base="$target" '
+#            BEGIN { skip_base = 0 }
+#            {
+#                if ($0 == ".") { 
+#                    print $0
+#                    next 
+#                }
+#                
+#                if ($0 == base) next
+#                
+#                rel_path = substr($0, length(base) + 2)
+#                split(rel_path, parts, "/")
+#                depth = length(parts)
+#                
+#                indent = ""
+#                for (i = 1; i < depth; i++) {
+#                    indent = indent "|  "
+#                }
+#                
+#                if (depth > 0) {
+#                    indent = indent "+- "
+#                }
+#                
+#                print indent parts[length(parts)]
+#            }'
+#    } > "$output_file"
+#    
+#    echo -e "\n[û] Tree generated successfully"
+#    echo -e "========================================================================================================="
+#    echo -e "Output saved to: $output_file"
+#    echo -e "=========================================================================================================\n"
+#
+#    # Offer to display the result
+#    echo -e "[?] Would you like to view the output? (y/n)"
+#    read -r response
+#    if [[ $response =~ ^[Yy]$ ]]; then
+#        less "$output_file"
+#    fi
+#}
 #dirtree() {
 #    # Initialize variables
 #    local max_depth=3
