@@ -35,6 +35,7 @@ readonly FUNCTION_FILES=(
     "view_files_in_browser.sh"
     "git_automations_helpers.sh"
     "git_automations.sh"
+    "directory_tree.sh"
     "prompt_utils.sh"
     "repo_handler.sh"
     "search_utils.sh"

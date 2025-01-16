@@ -26,7 +26,6 @@ Options:
     declare -a exclude_patterns
 
     local OPTIND opt
-
     # Parse arguments
     while getopts ":d:o:e:fhv" opt; do
         case $opt in
