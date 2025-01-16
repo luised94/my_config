@@ -98,7 +98,7 @@ end
 local function is_quickfix_open()
     for _, win in ipairs(vim.api.nvim_list_wins()) do
         local buf = vim.api.nvim_win_get_buf(win)
-        local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+        local buf_type = vim.bo[buf].buftype
         if buf_type == 'quickfix' then
             return true, win
         end
@@ -106,38 +106,40 @@ local function is_quickfix_open()
     return false, nil
 end
 
+
 function M.search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
+
     -- Save user location before running the search
     local user_location = save_user_location()
 
     local ok, result = pcall(function()
-        vim.cmd('silent! cclose')
         search_buffers(search_string)
 
         if vim.fn.getqflist({size = 0}).size == 0 then
-            -- Restore user location if no matches are found
             restore_user_location(user_location)
             vim.notify("No matches found for: " .. search_string, vim.log.levels.WARN)
             return
         end
 
         if floating then
-            -- Uncomment below to enable floating window functionality later
-             --local buf, win = create_floating_window()
-             --vim.cmd('copen')
-             --vim.cmd('wincmd P')
             vim.notify("Floating window is currently disabled", vim.log.levels.INFO)
             restore_user_location(user_location)
         else
             -- Check if quickfix is already open
             local qf_open, qf_win = is_quickfix_open()
-            if qf_open then
+            if qf_open and qf_win then -- Add nil check for qf_win
                 -- If quickfix is open, just refresh it
                 local current_win = vim.api.nvim_get_current_win()
-                vim.api.nvim_set_current_win(qf_win)
-                vim.cmd('cbottom') -- Move to bottom of quickfix list
-                vim.api.nvim_set_current_win(current_win)
+                -- Only set window if it's valid
+                if vim.api.nvim_win_is_valid(qf_win) then
+                    vim.api.nvim_set_current_win(qf_win)
+                    vim.cmd('cbottom') -- Move to bottom of quickfix list
+                    vim.api.nvim_set_current_win(current_win)
+                else
+                    -- Fallback if window became invalid
+                    vim.cmd('botright copen')
+                end
             else
                 -- Open new quickfix window
                 vim.cmd('botright copen')
@@ -148,7 +150,7 @@ function M.search_and_show(search_string, floating)
     end)
 
     if not ok then
-        restore_user_location(user_location) -- Ensure user location is restored on error too
+        restore_user_location(user_location)
         vim.notify("Search failed: " .. tostring(result), vim.log.levels.ERROR)
     end
 end
