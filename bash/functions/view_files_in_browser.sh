@@ -1,5 +1,9 @@
 #!/bin/bash
 
+is_positive_integer() {
+    local input=$1
+    [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -gt 0 ]
+}
 parse_date_string() {
     local date_str=$1
     local -n parsed_timestamp_ref=$2
@@ -156,7 +160,14 @@ Options:
             t) type=$OPTARG ;;
             f) filter=$OPTARG ;;
             x) exclude=$OPTARG ;;
-            b) batch_size=$OPTARG ;;
+            b)  
+                if is_positive_integer "$OPTARG"; then
+                    batch_size=$OPTARG
+                else
+                    echo -e "${YELLOW}[WARNING] Invalid batch size '$OPTARG'. Using default: 5${NC}"
+                    batch_size=5
+                fi
+                ;;
             d) depth=$OPTARG ;;
             a) time_after=$OPTARG ;;
             B) time_before=$OPTARG ;;
