@@ -1,4 +1,3 @@
-
 -- core/search_quickfix.lua
 local M = {}
 
@@ -19,12 +18,18 @@ local function validate_search(search_string)
     return true
 end
 
+local function reset_quickfix_list()
+    vim.cmd("silent! call setqflist([])")
+end
 local function search_buffers(search_string)
+    reset_quickfix_list()
     vim.cmd(string.format([[
         silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
     ]], vim.fn.escape(search_string, '/')))
 end
 
+
+-- Floating window functionality (commented out for now)
 local function create_floating_window()
     local opts = {
         relative = 'editor',
@@ -37,9 +42,23 @@ local function create_floating_window()
     }
     local buf = vim.api.nvim_create_buf(false, true)
     local win = vim.api.nvim_open_win(buf, true, opts)
-    -- Use the new API call for window blend
+
+    -- Populate the buffer with quickfix list content
+    local qflist = vim.fn.getqflist()
+    if #qflist > 0 then
+        local lines = {}
+        for _, item in ipairs(qflist) do
+            table.insert(lines, item.text or "")
+        end
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    else
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, {"No matches found"})
+    end
+
+    -- Set options for the floating window
     vim.wo[win].winbl = M.config.window.blend
-    return buf
+
+    return buf, win
 end
 
 function M.search_and_show(search_string, floating)
@@ -55,9 +74,11 @@ function M.search_and_show(search_string, floating)
         end
 
         if floating then
-            local buf = create_floating_window()
-            vim.cmd('copen')
-            vim.cmd('wincmd P')
+            -- Uncomment below to enable floating window functionality later
+             local buf, win = create_floating_window()
+             vim.cmd('copen')
+             vim.cmd('wincmd P')
+            vim.notify("Floating window is currently disabled", vim.log.levels.INFO)
         else
             vim.cmd('copen')
         end
