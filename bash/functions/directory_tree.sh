@@ -120,40 +120,40 @@ Options:
         printf "%s\n\n" "========================================================================================================="
         
         # Execute find command directly with proper quoting
-        find "$target" -mindepth 1 -maxdepth "$max_depth" \
-            $(if [[ "$include_files" = false ]]; then echo "-type d"; fi) \
-            $(if [ ${#exclude_patterns[@]} -gt 0 ]; then
-                printf '( '
-                for pattern in "${exclude_patterns[@]}"; do
-                    printf '! -path "*/%s/*" ! -name "%s" ' "$pattern" "$pattern"
-                done
-                printf ')'
-            fi) | \
-        awk -v base="$target" '
-            BEGIN { skip_base = 0 }
-            {
-                if ($0 == ".") { 
-                    print $0
-                    next 
-                }
-                
-                if ($0 == base) next
-                
-                rel_path = substr($0, length(base) + 2)
-                split(rel_path, parts, "/")
-                depth = length(parts)
-                
-                indent = ""
-                for (i = 1; i < depth; i++) {
-                    indent = indent "|  "
-                }
-                
-                if (depth > 0) {
-                    indent = indent "+- "
-                }
-                
-                print indent parts[length(parts)]
-            }'
+find "$target" -mindepth 1 -maxdepth "$max_depth" \
+    $(if [[ "$include_files" = false ]]; then echo "-type d"; fi) \
+    $(if [ ${#exclude_patterns[@]} -gt 0 ]; then
+        printf '( '
+        for pattern in "${exclude_patterns[@]}"; do
+            printf '! -path "*/%s" ! -name "%s" ! -path "*/%s/*" ' "$pattern" "$pattern" "$pattern"
+        done
+        printf ')'
+    fi) | \
+awk -v base="$target" '
+    BEGIN { skip_base = 0 }
+    {
+        if ($0 == ".") { 
+            print $0
+            next 
+        }
+        
+        if ($0 == base) next
+        
+        rel_path = substr($0, length(base) + 2)
+        split(rel_path, parts, "/")
+        depth = length(parts)
+        
+        indent = ""
+        for (i = 1; i < depth; i++) {
+            indent = indent "|  "
+        }
+        
+        if (depth > 0) {
+            indent = indent "+- "
+        }
+        
+        print indent parts[length(parts)]
+    }'
     } > "$output_file"
     
     # Display results
