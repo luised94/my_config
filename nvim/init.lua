@@ -5,7 +5,7 @@ vim.o.termguicolors = true
 require('core.options')
 require('core.keymaps')
 require('core.clipboard')
--- require('core.search_quickfix')
+require('core.search_quickfix')
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode

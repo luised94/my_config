@@ -106,6 +106,27 @@ local function is_quickfix_open()
     return false, nil
 end
 
+local function close_quickfix_if_empty()
+    local qf_list = vim.fn.getqflist({ size = 0 })
+    if qf_list.size == 0 then
+        local qf_open, qf_win = is_quickfix_open()
+        if qf_open and qf_win then
+            -- Check if quickfix is the only window
+            if #vim.api.nvim_tabpage_list_wins(0) == 1 then
+                -- Move to the first valid buffer before closing
+                for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+                    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == '' then
+                        vim.api.nvim_set_current_buf(buf)
+                        break
+                    end
+                end
+            end
+            -- Close the quickfix window
+            vim.cmd('cclose')
+        end
+    end
+end
+
 
 function M.search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
@@ -119,6 +140,7 @@ function M.search_and_show(search_string, floating)
         if vim.fn.getqflist({size = 0}).size == 0 then
             restore_user_location(user_location)
             vim.notify("No matches found for: " .. search_string, vim.log.levels.WARN)
+            close_quickfix_if_empty()
             return
         end
 
@@ -128,25 +150,23 @@ function M.search_and_show(search_string, floating)
         else
             -- Check if quickfix is already open
             local qf_open, qf_win = is_quickfix_open()
-            if qf_open and qf_win then -- Add nil check for qf_win
-                -- If quickfix is open, just refresh it
+            if qf_open and qf_win and vim.api.nvim_win_is_valid(qf_win) then
+                -- If quickfix is open and valid, just refresh it
                 local current_win = vim.api.nvim_get_current_win()
-                -- Only set window if it's valid
-                if vim.api.nvim_win_is_valid(qf_win) then
-                    vim.api.nvim_set_current_win(qf_win)
-                    vim.cmd('cbottom') -- Move to bottom of quickfix list
-                    vim.api.nvim_set_current_win(current_win)
-                else
-                    -- Fallback if window became invalid
-                    vim.cmd('botright copen')
-                end
+                vim.api.nvim_set_current_win(qf_win)
+                vim.cmd('cbottom') -- Move to bottom of quickfix list
+                vim.api.nvim_set_current_win(current_win)
             else
                 -- Open new quickfix window
                 vim.cmd('botright copen')
             end
-            -- Return to the original window
+
+            -- Return to the original window after opening/refreshing quickfix list
             restore_user_location(user_location)
         end
+
+        -- Close quickfix if empty (e.g., after filtering results manually)
+        close_quickfix_if_empty()
     end)
 
     if not ok then
