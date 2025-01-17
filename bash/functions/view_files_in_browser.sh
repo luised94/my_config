@@ -1,4 +1,4 @@
-#!/bin/bash
+#!bin/bash
 parse_date_string() {
     local date_str=$1
     local -n parsed_timestamp_ref=$2
@@ -223,12 +223,16 @@ Options:
                 ;;
             v) verbose=1 ;;
             h) 
-                echo -e "\n${usage}\n"
+                echo -e "\n${BOLD}${separator}"
+                echo -e "${usage}\n"
+                echo -e "${separator}${NC}\n"
                 return 0
                 ;;
             \?)
-                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}\n"
-                echo -e "${usage}\n"
+                echo -e "\n${BOLD}${separator}"
+                echo -e "${RED}[ERROR] Invalid option: -$OPTARG${NC}"
+                echo -e "${usage}"
+                echo -e "${separator}${NC}\n"
                 return 1
                 ;;
         esac
