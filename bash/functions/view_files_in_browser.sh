@@ -332,12 +332,13 @@ Options:
     fi
 
     local file_count=${#files[@]}
-    # Add this right after the files array is populated (after the sort and time filters)
     if (( verbose )); then
-        echo -e "\n${BOLD}${YELLOW}[DEBUG] Expanded Find Command:${NC}"
-        echo "find '$target' ${find_args[*]}"
-        echo -e "\n${BOLD}${YELLOW}[DEBUG] First 3 Files:${NC}"
-        printf '  %s\n' "${files[@]:0:3}"
+        echo -e "\n${BOLD}${YELLOW}[DEBUG] Verbose Output:${NC}"
+        echo -e "  Target path: ${GREEN}$target${NC}"
+        echo -e "  Find command: find \"$target\" ${find_args[*]}"
+        echo -e "  File count: ${GREEN}${#files[@]}${NC}"
+        echo -e "  First 3 files:"
+        [ $file_count -gt 0 ] && printf '    %s\n' "${files[@]:0:3}"
         echo -e "${BOLD}${YELLOW}---------------------${NC}\n"
     fi
     
@@ -380,6 +381,7 @@ Options:
     local index=0
     local batch=1
     
+    local browser_delay=0.5  # Seconds between browser launches
     while (( index < file_count )); do
         echo -e "\n${BOLD}${separator}${NC}"
         echo -e "${BOLD}Batch $batch - Files $((index+1)) to $((index+5 > file_count ? file_count : index+5)) of $file_count${NC}"
@@ -392,6 +394,7 @@ Options:
             
             echo -e "\n${BLUE}[>] Opening file $((index+1))/${file_count}: ${NC}$(basename "$html_file")"
             "$browser" "$windows_path" &
+            sleep "$browser_delay"
         done
         
         wait # Wait for browser processes
