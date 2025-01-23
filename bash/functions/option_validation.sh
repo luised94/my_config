@@ -5,7 +5,7 @@ is_positive_integer() {
 
 is_valid_filetype() {
     local type=$1
-    local -a valid_types=("html" "svg" "pdf")
+    local -a valid_types=("html" "svg" "pdf" "png")
     for valid_type in "${valid_types[@]}"; do
         [[ "$type" == "$valid_type" ]] && return 0
     done

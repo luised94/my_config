@@ -247,7 +247,7 @@ Options:
     fi
 
     # Handle directory argument
-    local target="${1:-$(pwd)}"
+    local target=$(realpath -s "${1:-$(pwd)}")
     if [[ ! -d "$target" ]]; then
         echo -e "${RED}[ERROR] Invalid directory: $target${NC}"
         echo -e "${YELLOW}Hint: Make sure the directory is the last argument${NC}"
@@ -262,22 +262,21 @@ Options:
         local filter=$3
         local exclude=$4
         
-        local cmd=("-maxdepth" "$depth" "-type" "f")
+        local cmd=(-maxdepth "$depth" -type f)
         
-        # Add type filter
-        [[ -n "$type" ]] && cmd+=("-name" "*.$type")
+        # Use explicit quoting for patterns (safe for special characters)
+        [[ -n "$type" ]] && cmd+=(-name "*.${type}")
         
-        # Add include filter if specified
         if [[ -n "$filter" ]]; then
-            cmd+=("-a" "-name" "*${filter}*")
+            cmd+=(-a -name "*${filter}*")
         fi
         
-        # Add exclude filter if specified
         if [[ -n "$exclude" ]]; then
-            cmd+=("!" "-name" "*${exclude}*")
+            cmd+=(! -name "*${exclude}*")
         fi
         
-        echo "${cmd[@]}"
+        # Print each argument on separate line for safe parsing
+        printf '%s\n' "${cmd[@]}"
     }
     # Build find command with diagnostic output
     #local find_args=("-maxdepth" "$depth" "-type" "f")
@@ -287,7 +286,8 @@ Options:
 
     # Find files using properly constructed command
     local find_args
-    find_args=($(build_find_command "$depth" "$type" "$filter" "$exclude"))
+    mapfile -t find_args < <(build_find_command "$depth" "$type" "$filter" "$exclude")
+    #find_args=($(build_find_command "$depth" "$type" "$filter" "$exclude"))
 
 
     # Required command checks
@@ -332,6 +332,14 @@ Options:
     fi
 
     local file_count=${#files[@]}
+    # Add this right after the files array is populated (after the sort and time filters)
+    if (( verbose )); then
+        echo -e "\n${BOLD}${YELLOW}[DEBUG] Expanded Find Command:${NC}"
+        echo "find '$target' ${find_args[*]}"
+        echo -e "\n${BOLD}${YELLOW}[DEBUG] First 3 Files:${NC}"
+        printf '  %s\n' "${files[@]:0:3}"
+        echo -e "${BOLD}${YELLOW}---------------------${NC}\n"
+    fi
     
     # No files found - provide helpful diagnostics
     if [ $file_count -eq 0 ]; then
