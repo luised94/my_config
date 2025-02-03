@@ -5,6 +5,11 @@ if [ -f /etc/bashrc ]; then
     . /etc/bashrc
 fi
 
+# Fix for PS1 unbound variable in non-interactive shells
+if [[ -z "$PS1" ]]; then
+    PS1="\\$ "
+fi
+
 export LC_ALL=en_US.utf8
 export LANG=en_US.utf8
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
