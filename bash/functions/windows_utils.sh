@@ -36,7 +36,8 @@ setup_windows_environment() {
     fi
 
     # Set up Dropbox path
-    dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
+    #dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
+    dropbox_path="/mnt/c/Users/${windows_user}/MIT Dropbox/Luis Martinez"
     if [[ ! -d "$dropbox_path" ]]; then
         log_warning "Warning: Dropbox directory not found at $dropbox_path" >&2
         # Attempt to find Dropbox directory
