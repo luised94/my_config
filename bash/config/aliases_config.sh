@@ -31,5 +31,5 @@ GIT_ALIASES=(
 )
 
 LABUTILS_ALIASES=(
-    "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_bmc_config.R"
+    "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_bmc_config.R ~/lab_utils/core_scripts/bmc_config.R"
 )
