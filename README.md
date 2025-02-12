@@ -173,7 +173,7 @@ Leave defaults. Install Microsoft Word add on if required.
 ### Advanced 
 - Miscellaneous: Enable automatic check and report broken site translators.
 - Files and Folders: 
-Set base directory to 'C:\Users\Luis\Dropbox (MIT)\zotero-storage'
+Set base directory to 'C:\Users\Luis\MIT Dropbox\zotero-storage'
 Set data directory to 'C:\Users\Luis\Zotero'
 
 Choose the zotero storage folder of your choice in dropbox or other cloud storage provider. 
@@ -185,7 +185,7 @@ Import the actions-zotero.yml from the my_config repository.
 ### Attanger
 - Source path: Set Root directory to C:\Users\Luis\Downloads
 - Attach Type: Set to Link.
-- Destination Path: Set to C:\Users\Luis\Dropbox (MIT)\zotero-storage. Set subfolder to {{ authors name="family" join="_" max="1" }}. Leave parse forward slashes.
+- Destination Path: Set to C:\Users\Luis\MIT Dropbox\zotero-storage. Set subfolder to {{ authors name="family" join="_" max="1" }}. Leave parse forward slashes.
 - Other settings: Leave enabled. Set 'Types of Attachments for Renaming/Moving' to 'pdf,doc,docx,txt,rtf,djvu,epub,html,mobi'
 
 This an important plugin to circumvent storage issues.
