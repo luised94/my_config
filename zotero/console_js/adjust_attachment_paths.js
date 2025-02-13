@@ -31,6 +31,12 @@
 
 async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
   try {
+    // Check Zotero API availability
+    if (!Zotero || !Zotero.Items) {
+      Zotero.debug("Zotero API not available");
+      return;
+    }
+
     Zotero.debug("Starting attachment path adjustment...");
     Zotero.debug(`Dry-run mode: ${dryRun ? "ON" : "OFF"}`);
     Zotero.debug(`Adjustment limit: ${adjustmentLimit ? adjustmentLimit : "No limit"}`);
@@ -42,11 +48,6 @@ async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
     const newBasePath = "C:\\Users\\Luised94\\MIT Dropbox\\Luis Martinez";
     //const newBasePath = "C:\\Users\\liusm\\MIT Dropbox\\Luis Martinez\\";
 
-    // Check Zotero API availability
-    if (!Zotero || !Zotero.Items) {
-      Zotero.debug("Zotero API not available");
-      return;
-    }
 
     // Initial delay to ensure Zotero is ready
     await Zotero.Promise.delay(1000);
