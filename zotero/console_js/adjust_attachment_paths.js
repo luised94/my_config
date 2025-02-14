@@ -121,7 +121,6 @@ async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
             if (!dryRun) {
               try {
                 attachment.attachmentPath = newPath;
-                await attachment.saveTx();
                 adjustedCount++;
                 Zotero.debug("  Attachment path updated successfully.");
               } catch (error) {
@@ -139,6 +138,10 @@ async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
         if (processedItems % 1000 === 0) {
           Zotero.debug(`Processed ${processedItems} items (adjusted ${adjustedCount} paths)...`);
         }
+      }
+
+      if (!dryRun){
+        await attachment.saveTx();
       }
 
       // Yield after each batch
