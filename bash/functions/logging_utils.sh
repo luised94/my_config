@@ -81,6 +81,15 @@ log_git_info() {
   fi
 }
 
+# Purpose: Use for debugging during initialization.
+log_debug() {
+    if [[ "${DEBUG:-0}" -ne 0 ]]; then
+        local timestamp
+        timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[${timestamp}] [DEBUG] $*"
+    fi
+}
+
 # Function: log_message
 # Purpose: Log a message with timestamp and level
 # Parameters:
