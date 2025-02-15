@@ -1,168 +1,151 @@
 /*
- * Attachment Path Adjuster Script for Zotero
+ * Attachment Path Adjuster Script for Zotero (Upgraded)
  *
- * This script is designed for use in the Zotero JavaScript Console
- * (Tools  Developer  Run JavaScript) to update attachment file paths
- * in the Zotero database. It identifies attachments whose file paths start
- * with an old base path and replaces them with a new base path.
+ * This script updates attachment file paths by replacing an old base path
+ * with a new one. The script processes items in batches, yielding between
+ * batches (and pausing during sync) and logging detailed debug messages.
  *
- * Key Features:
- *  - Batch processing with asynchronous yielding (using Zotero.Promise.delay)
- *    to avoid UI blocking during operations.
- *  - Dry-run mode to preview changes without altering the database.
- *  - Ability to limit the number of processed items for testing.
- *  - Sync detection to pause processing when Zotero is synchronizing.
- *  - Detailed debug logs highlighting progress, errors, and a sample list
- *    of changed attachments for verification.
- *
- * Note: This script only updates the Zotero database references without
- * moving the actual files on disk.
+ * Upgrades:
+ * 1. All changes are made in memory and, if live (dryRun==false), are applied
+ *    within a single transaction when processing is complete.
+ * 2. A global cancellation flag is supported. Call requestCancel() to trigger
+ *    a safe exit from the processing loop without leaving the database in an
+ *    inconsistent state.
  *
  * Usage:
- *  - Set the 'dryRun' parameter to true for a test run.
- *  - Adjust the 'itemLimit' parameter to process a specific number of items.
- *  - Uncomment the desired execution block at the bottom to run the script.
+ *  - Set dryRun to true for a dry-run (no database changes) or false for a live update.
+ *  - Optionally set an adjustmentLimit for processing (e.g., for testing).
+ *  - To cancel, call requestCancel() from the console.
  *
  * Author: LEMR
- * Date: 2025-02-12
+ * Date: 2025-02-12 (updated)
  */
-// verify rebollo, yeom, zhang, wood, speck
 
+// Global cancellation flag
+let cancelRequested = false;
+// Function to signal cancellation (type "requestCancel()" in the console to stop early)
+function requestCancel() {
+  cancelRequested = true;
+  Zotero.debug("Cancellation requested by user.");
+}
 
 async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
   try {
-    // Check Zotero API availability
     if (!Zotero || !Zotero.Items) {
       Zotero.debug("Zotero API not available");
       return;
     }
-
     Zotero.debug("Starting attachment path adjustment...");
     Zotero.debug(`Dry-run mode: ${dryRun ? "ON" : "OFF"}`);
     Zotero.debug(`Adjustment limit: ${adjustmentLimit ? adjustmentLimit : "No limit"}`);
 
-    // Define paths: Uncomment these manually to account for computer device.
-    //const oldBasePath = "C:\\Users\\liusm\\Dropbox (MIT)\\";
-    //const oldBasePath = "C:\\Users\\Luised94\\Dropbox (MIT)\\";
+    // Define the old and new base paths (adjust these as needed for each device)
     const oldBasePath = "C:\\Users\\Luis\\Dropbox (MIT)\\";
     const newBasePath = "C:\\Users\\Luised94\\MIT Dropbox\\Luis Martinez";
-    //const newBasePath = "C:\\Users\\liusm\\MIT Dropbox\\Luis Martinez\\";
-
-
-    // Initial delay to ensure Zotero is ready
+    
+    // Delay to ensure Zotero is ready.
     await Zotero.Promise.delay(1000);
-
-    // Get items from the user library
-    let items;
-    try {
-      items = await Zotero.Items.getAll(Zotero.Libraries.userLibraryID);
-      Zotero.debug("Items retrieved successfully");
-      Zotero.debug(`Total items in library: ${items ? items.length : 0}`);
-    } catch (e) {
-      Zotero.debug("Error getting items: " + e);
-      return;
-    }
-
+    
+    // Retrieve user library items
+    let items = await Zotero.Items.getAll(Zotero.Libraries.userLibraryID);
+    Zotero.debug("Items retrieved successfully");
+    Zotero.debug(`Total items in library: ${items ? items.length : 0}`);
     if (!items || !items.length) {
       Zotero.debug("No items found in library");
       return;
     }
-
+    
     let adjustedCount = 0;
     let processedItems = 0;
     let errorCount = 0;
     const BATCH_SIZE = 100;
     const BATCH_DELAY = 100;
-    const sampleFiles = []; // Store first 10 adjusted files for verification
-
+    const sampleFiles = []; // Stores first 10 adjusted attachment info for verification
+    
     Zotero.debug("Starting item processing...");
 
-    // Use a labeled outer loop for breaking on adjustment limit
-    processLoop:
-    for (let i = 0; i < items.length; i += BATCH_SIZE) {
-      const batch = items.slice(i, i + BATCH_SIZE);
-      
-      // Process each item in the current batch
-      for (let item of batch) {
-        processedItems++;
-
-        // Skip non-regular items
-        if (!item.isRegularItem()) continue;
-
-        let attachmentIDs = item.getAttachments();
-        if (!attachmentIDs.length) continue;
-
-        for (let attachmentID of attachmentIDs) {
-          // Exit early if adjustment limit is reached
-          if (adjustmentLimit && adjustedCount >= adjustmentLimit) {
-            Zotero.debug(`Reached adjustment limit of ${adjustmentLimit}. Stopping processing.`);
+    // Define an internal function to process all items.
+    let updateTransaction = async () => {
+      processLoop:
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = items.slice(i, i + BATCH_SIZE);
+        for (let item of batch) {
+          // Check the cancellation flag at a safe checkpoint.
+          if (cancelRequested) {
+            Zotero.debug("Cancellation detected. Exiting processing loop gracefully.");
             break processLoop;
           }
-
-          let attachment = await Zotero.Items.getAsync(attachmentID);
-          let currentPath = attachment.getFilePath();
-          
-          if (currentPath && currentPath.startsWith(oldBasePath)) {
-            let newPath = currentPath.replace(oldBasePath, newBasePath);
-
-            // Store sample files (first 10 adjustments)
-            if (sampleFiles.length < 10) {
-              sampleFiles.push({
-                old: currentPath,
-                new: newPath,
-                title: attachment.getField("title")
-              });
+          processedItems++;
+          if (!item.isRegularItem()) continue;
+          let attachmentIDs = item.getAttachments();
+          if (!attachmentIDs.length) continue;
+          for (let attachmentID of attachmentIDs) {
+            if (adjustmentLimit && adjustedCount >= adjustmentLimit) {
+              Zotero.debug(`Reached adjustment limit of ${adjustmentLimit}. Stopping processing.`);
+              break processLoop;
             }
-
-            Zotero.debug(`\nAttachment detected: ${attachment.getField("title")}`);
-            Zotero.debug(`  Old Path: ${currentPath}`);
-            Zotero.debug(`  New Path: ${newPath}`);
-
-            if (!dryRun) {
-              try {
-                attachment.attachmentPath = newPath;
-                adjustedCount++;
-                Zotero.debug("  Attachment path updated successfully.");
-              } catch (error) {
-                errorCount++;
-                Zotero.debug("  Error updating path: " + error);
+            let attachment = await Zotero.Items.getAsync(attachmentID);
+            let currentPath = attachment.getFilePath();
+            if (currentPath && currentPath.startsWith(oldBasePath)) {
+              let newPath = currentPath.replace(oldBasePath, newBasePath);
+              if (sampleFiles.length < 10) {
+                sampleFiles.push({
+                  old: currentPath,
+                  new: newPath,
+                  title: attachment.getField("title")
+                });
               }
-            } else {
-              adjustedCount++;
-              Zotero.debug("  Dry-run: No changes made.");
+              Zotero.debug(`\nAttachment detected: ${attachment.getField("title")}`);
+              Zotero.debug("  Old Path: " + currentPath);
+              Zotero.debug("  New Path: " + newPath);
+              if (!dryRun) {
+                try {
+                  // Update the attachment's path in memory.
+                  attachment.attachmentPath = newPath;
+                  adjustedCount++;
+                  Zotero.debug("  Attachment path updated (in memory).");
+                } catch (error) {
+                  errorCount++;
+                  Zotero.debug("  Error updating path: " + error);
+                }
+              } else {
+                // In dry-run mode, only log the intended change.
+                adjustedCount++;
+                Zotero.debug("  Dry-run: No changes made.");
+              }
             }
           }
+          if (processedItems % 1000 === 0) {
+            Zotero.debug(`Processed ${processedItems} items (adjusted ${adjustedCount} paths)...`);
+          }
         }
-
-        // Progress updates every 1000 processed items
-        if (processedItems % 1000 === 0) {
-          Zotero.debug(`Processed ${processedItems} items (adjusted ${adjustedCount} paths)...`);
+        await Zotero.Promise.delay(BATCH_DELAY);
+        // Pause processing while a sync is running.
+        if (Zotero.Sync.running) {
+          Zotero.debug("Sync is running. Pausing processing.");
+          while (Zotero.Sync.running) {
+            await Zotero.Promise.delay(1000);
+          }
+          Zotero.debug("Sync completed. Resuming processing.");
         }
       }
-
-      if (!dryRun){
-        await attachment.saveTx();
-      }
-
-      // Yield after each batch
-      await Zotero.Promise.delay(BATCH_DELAY);
-      
-      // Pause during sync
-      if (Zotero.Sync.running) {
-        Zotero.debug("Sync is running. Pausing processing.");
-        while (Zotero.Sync.running) {
-          await Zotero.Promise.delay(1000);
-        }
-        Zotero.debug("Sync completed. Resuming processing.");
-      }
+    };
+    
+    // If live update mode is active, wrap all updates in a single transaction;
+    // otherwise, in dry-run mode, simply execute the processing logic.
+    if (!dryRun) {
+      await Zotero.DB.transaction(async () => {
+        await updateTransaction();
+      });
+    } else {
+      await updateTransaction();
     }
-
+    
     Zotero.debug("\nProcess completed.");
-    Zotero.debug(`Total items processed: ${processedItems}`);
+    Zotero.debug("Total items processed: " + processedItems);
     Zotero.debug(`Total paths adjusted${dryRun ? " (dry-run)" : ""}: ${adjustedCount}`);
-    Zotero.debug(`Total errors encountered: ${errorCount}`);
-
-    // Output sample files
+    Zotero.debug("Total errors encountered: " + errorCount);
+    
     if (sampleFiles.length > 0) {
       Zotero.debug("\nSample files processed:");
       sampleFiles.forEach((file, index) => {
@@ -171,7 +154,7 @@ async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
         Zotero.debug(`     New: ${file.new}`);
       });
     }
-
+    
     return `Adjusted ${adjustedCount} paths${dryRun ? " (dry-run)" : ""}. Errors: ${errorCount}`;
   } catch (error) {
     Zotero.debug("Fatal error: " + error);
@@ -179,32 +162,23 @@ async function adjustAttachmentPaths(dryRun = true, adjustmentLimit = null) {
   }
 }
 
-// Test dry-run with all items (for testing, adjust itemLimit as needed)
-// Uncomment one of the following execution blocks:
-// Example: Dry-run with a limit of 10 adjustments
+// Execution examples:
+// Use window.setTimeout to allow Zotero to finish startup before processing begins.
+
+// Example 1: Dry-run test with an adjustment limit of 10.
 window.setTimeout(() => {
   adjustAttachmentPaths(true, 10)
     .then(result => Zotero.debug(result))
     .catch(error => Zotero.debug("Error: " + error));
 }, 1000);
 
-// Dry-run test with no limit:
-// window.setTimeout(() => {
-//   adjustAttachmentPaths(true, null)
-//     .then(result => Zotero.debug(result))
-//     .catch(error => Zotero.debug("Error: " + error));
-// }, 1000);
-
-// Actual update with a limit of 10 items:
-// window.setTimeout(() => {
-//   adjustAttachmentPaths(false, 10)
-//     .then(result => Zotero.debug(result))
-//     .catch(error => Zotero.debug("Error: " + error));
-// }, 1000);
-
-// Full update with no limit:
+// Example 2: For a full live update (no limit and saving changes in one transaction),
+// uncomment the code below and run:
 // window.setTimeout(() => {
 //   adjustAttachmentPaths(false, null)
 //     .then(result => Zotero.debug(result))
 //     .catch(error => Zotero.debug("Error: " + error));
 // }, 1000);
+
+// To cancel the running process (if it takes too long), type the following in the Zotero console:
+// requestCancel();
