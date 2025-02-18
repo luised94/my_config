@@ -28,4 +28,5 @@ ENV_VARS=(
 # Additional paths
 ADDITIONAL_PATHS=(
     "~/node-v22.5.1-linux-x64/bin"
+    "/opt/zig"
 )

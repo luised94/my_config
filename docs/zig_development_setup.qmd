@@ -1,0 +1,20 @@
+# Zig Development Setup on WSL
+
+This repository documents my Zig installation and development environment on WSL.
+
+## Installation Steps
+
+1. **Install Zig**:
+```bash
+wget https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84.tar.xz
+tar -xf zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84.tar.xz
+sudo mv zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84 /opt/zig
+echo 'export PATH="/opt/zig:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+# Verify command
+zig version
+# Should display zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84
+# To configure with the my_config repository, add /opt/zig to ADDITIONAL_PATHS variable.
+```
+
+2. **Set up for Neovim**:
