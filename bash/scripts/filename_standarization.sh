@@ -2,165 +2,135 @@
 set -eo pipefail
 shopt -s nullglob nocasematch
 
-# Configuration
-DEBUG="${DEBUG:-false}"
-DRY_RUN=false
-declare -a targets=()
-
-show_help() {
-    cat <<EOF
-Filename standardization script
-
-Usage: ${0##*/} [OPTIONS] [DIRECTORIES...]
-
-Options:
-  -d, --debug       Enable debug output
-  -n, --dry-run     Show changes without modifying files
-  -h, --help        Display this help message
-
-Features:
-  - Converts camelCase to snake_case
-  - Handles date prefixes (YYYYMMDD_)
-  - Preserves file extensions
-  - Collision-resistant renaming
-  - Space normalization in filenames
-
-Default search directories: current directory
-EOF
-}
-
+# Helper functions (kept for core utilities)
 log() {
     printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*" >&2
 }
 
 debug() {
-    if [[ "$DEBUG" == true ]]; then
-        log "DEBUG: $*"
-    fi
+    [[ "$DEBUG" == true ]] && log "DEBUG: $*"
 }
 
-find_target_files() {
-    local dir="${1:-.}"
+show_help() {
+    cat <<EOF
+Filename Standardization Script
+
+Usage: ${0##*/} [OPTIONS] [DIRECTORIES...]
+
+Options:
+  --apply          Execute changes (disable dry-run)
+  -d, --debug      Show detailed processing info
+  -h, --help       Display this message
+
+Default behavior: dry-run mode showing proposed changes
+EOF
+}
+
+# Argument parsing logic moved inline
+DEBUG="${DEBUG:-true}"
+DRY_RUN=true
+declare -a TARGET_DIRS=()
+
+while (($# > 0)); do
+    case "$1" in
+        --apply) DRY_RUN=false ;;
+        -d|--no-debug) DEBUG=false ;;
+        -h|--help) show_help; exit 0 ;;
+        --) shift; TARGET_DIRS+=("$@"); break ;;
+        *) TARGET_DIRS+=("$1") ;;
+    esac
+    shift
+done
+[[ ${#TARGET_DIRS[@]} -eq 0 ]] && TARGET_DIRS=(".")
+
+debug "Target directories: ${TARGET_DIRS[*]}"
+debug "Dry run mode: $DRY_RUN"
+
+# Main processing flow
+found_files=()
+for dir in "${TARGET_DIRS[@]}"; do
     debug "Scanning directory: $dir"
-    
-    find "$dir" -type f \( \
-        -regex '.*[A-Z].*' \
-        -o -name '*[[:space:]]*' \
-    \) ! -name '.*'
-}
+    while IFS= read -r -d $'\0' file; do
+        found_files+=("$file")
+    done < <(find "$dir" -type f \( \
+        -regex '.*[A-Z].*' -o \
+        -name '*[[:space:]]*' \
+    \) ! -name '.*' -print0)
+done
 
-convert_to_snake() {
-    local input="$1"
-    # Multi-stage conversion for complex cases
-    sed -E -e 's/([a-z0-9])([A-Z])/\1_\2/g' \
-        -e 's/([A-Z]+)([A-Z][a-z])/\1_\2/g' \
-        -e 's/[[:space:]]+/_/g' \
-        -e 's/\._/_/g' \
-        -e 's/_+/_/g' \
-        -e 's/(^_|_$)//g' <<<"$input" | tr '[:upper:]' '[:lower:]'
-}
+debug "Found ${#found_files[@]} candidate files"
+[[ ${#found_files[@]} -eq 0 ]] && { log "No target files found"; exit 0; }
 
-process_filename() {
-    local original="$1"
-    local dir="$(dirname "$original")"
-    local filename="$(basename -- "$original")"
-    local extension="${filename##*.}"
+# Process files and collect changes
+changes=()
+for orig_path in "${found_files[@]}"; do
+    debug "Processing file: '$orig_path'"
     
-    # Preserve existing date prefix
-    if [[ "$filename" =~ ^([0-9]{8}_)(.*) ]]; then
-        local date_part="${BASH_REMATCH[1]}"
-        local base_name="${BASH_REMATCH[2]}"
-    else
-        local date_part=""
-        local base_name="$filename"
+    dir_name=$(dirname "$orig_path")
+    file_name=$(basename -- "$orig_path")
+    extension="${file_name##*.}"
+    [[ "$file_name" == "$extension" ]] && extension=""
+    date_part=""
+
+    # Date prefix handling
+    if [[ "$file_name" =~ ^([0-9]{8}_) ]]; then
+        date_part="${BASH_REMATCH[1]}"
+        file_name="${file_name:9}"
     fi
 
-    # Split name and extension
-    [[ "$base_name" == *.* ]] && extension="${base_name##*.}" || extension=""
-    local main_name="${base_name%.*}"
+    debug "Date part: '$date_part' | Base name: '$file_name' | Ext: '$extension'"
 
-    debug "Processing: $original"
-    debug "Components: [date:$date_part] [name:$main_name] [ext:$extension]"
+    # Name conversion logic (inline snake_case)
+    main_name="${file_name%.*}"
+    converted_name=$(sed -E '
+        s/([a-z0-9])([A-Z])/\1_\2/g;
+        s/([A-Z]+)([A-Z][a-z])/\1_\2/g;
+        s/[[:space:]]+/_/g;
+        s/[_\.]+/_/g;
+        s/^_//;
+        s/_$//' <<<"$main_name" | tr '[:upper:]' '[:lower:]')
+    new_main="$converted_name"
+    new_ext=$(sed -E '
+        s/([a-z0-9])([A-Z])/\1_\2/g;
+        s/([A-Z]+)([A-Z][a-z])/\1_\2/g;
+        s/[[:space:]]+/_/g;
+        s/[_\.]+/_/g;
+        s/^_//;
+        s/_$//' <<<"$extension" | tr '[:upper:]' '[:lower:]')
 
-    # Convert main name and extension
-    local new_main=$(convert_to_snake "$main_name")
-    local new_ext=$(convert_to_snake "$extension")
-    
-    # Reconstruct filename
-    local new_name="${date_part}${new_main}${extension:+.$new_ext}"
-    debug "Initial conversion: $new_name"
+    # Construct new filename
+    new_name="${date_part}${new_main}"
+    [[ -n "$new_ext" ]] && new_name+=".$new_ext"
 
-    # Handle duplicates
-    local counter=1
-    while [[ -e "$dir/$new_name" && "$dir/$new_name" != "$original" ]]; do
-        new_name="${date_part}${new_main}_$counter${extension:+.$new_ext}"
-        debug "Duplicate detected, trying: $new_name"
-        ((counter++))
+    # Duplicate handling
+    counter=1
+    while [[ -e "$dir_name/$new_name" && "$dir_name/$new_name" != "$orig_path" ]]; do
+        debug "Collision detected, trying: $new_name"
+        new_name="${date_part}${new_main}_$((counter++))"
+        [[ -n "$new_ext" ]] && new_name+=".$new_ext"
     done
 
-    printf "%s|%s\n" "$original" "$new_name"
-}
+    changes+=("$orig_path|$dir_name/$new_name")
+done
 
-display_changes() {
+# Change display/execution logic
+if [[ "$DRY_RUN" == true ]]; then
     printf "\n%-60s  %s\n" "Original Path" "Proposed New Path"
     printf "%s\n" "--------------------------------------------------------------------------------"
-    while IFS='|' read -r orig new; do
-        [[ "$orig" == "$new" ]] && continue  # Skip unchanged files
+    for change in "${changes[@]}"; do
+        IFS='|' read -r orig new <<<"$change"
+        [[ "$orig" == "$new" ]] && continue
         printf "%-60s  %s\n" "$orig" "$new"
     done
-}
-
-main() {
-    # Parse arguments
-    while (($# > 0)); do
-        case "$1" in
-            -n|--dry-run) DRY_RUN=true; shift ;;
-            -d|--debug) DEBUG=true; shift ;;
-            -h|--help) show_help; exit 0 ;;
-            --) shift; targets+=("$@"); break ;;
-            *) targets+=("$1"); shift ;;
-        esac
+    log "Dry run complete. To apply changes, use: $0 --apply"
+else
+    count=0
+    for change in "${changes[@]}"; do
+        IFS='|' read -r orig new <<<"$change"
+        [[ "$orig" == "$new" ]] && continue
+        debug "Renaming: '$orig'  '$new'"
+        mv --no-clobber -- "$orig" "$new"
+        ((count++))
     done
-
-    [[ ${#targets[@]} -eq 0 ]] && targets=(.)
-
-    # Find target files
-    local found_files=()
-    for dir in "${targets[@]}"; do
-        while IFS= read -r -d $'\0' file; do
-            found_files+=("$file")
-        done < <(find_target_files "$dir" -print0)
-    done
-
-    ((${#found_files[@]} == 0)) && {
-        log "No target files found"
-        exit 0
-    }
-
-    # Process files
-    declare -a changes=()
-    for file in "${found_files[@]}"; do
-        changes+=("$(process_filename "$file")")
-    done
-
-    # Display or execute changes
-    if "$DRY_RUN"; then
-        printf "%s\n" "${changes[@]}" | display_changes
-        log "Dry run complete - ${#changes[@]} files would be processed"
-    else
-        local count=0
-        for change in "${changes[@]}"; do
-            IFS='|' read -r orig new <<<"$change"
-            [[ "$orig" == "$new" ]] && continue
-            mv --no-clobber -- "$orig" "$new"
-            ((count++))
-            debug "Renamed: $orig  $new"
-        done
-        log "Operation complete - $count files processed"
-    fi
-}
-
-# --- Execution Trap for Clean Debugging ---
-trap 'if [[ "$?" -ne 0 ]]; then log "Error occurred in $LINENO"; fi' ERR
-
-main "$@"
+    log "Renamed $count files"
+fi
