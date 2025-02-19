@@ -7,7 +7,7 @@ Zig and zls are binaries since it is simple. I ran into errors when trying to in
 
 1. **Install Zig**:
 ```bash
-wget https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.3187+d4c85079c.tar.xz
+wget https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
 tar -xf zig-linux-x86_64-*.tar.xz
 sudo mv zig-linux-x86_64-*/ /opt/zig
 echo 'export PATH="/opt/zig:$PATH"' >> ~/.bashrc
@@ -22,10 +22,11 @@ zig version
 First, we install the prebuild binary for the lsp for zig. Then we configure neovim.
 ```{bash}
 # Download the prebuilt binary:
-wget https://builds.zigtools.org/zls-linux-x86_64-0.14.0-dev.390+188a4c0.tar.xz
+
+wget https://builds.zigtools.org/zls-linux-x86_64-0.13.0.tar.xz
 
 # Extract the archive:
-tar -xf zls-linux-x86_64-0.14.0-dev.390+188a4c0.tar.xz
+tar -xf zls-linux-x86_64-0.13.0.tar.xz
 
 # Move the binary to a system-wide location:
 sudo mv zls /usr/local/bin/
@@ -59,3 +60,16 @@ vim.list_extend(ensure_installed, {
   'zls',    -- Add ZLS here
 })
 ```
+
+## Errors and issues
+I accidentally installed the development branches. These did not work for me. I got the errors:
+
+```{bash}
+~/hello-world$ zig init
+error: unable to read template file 'build.zig': Unexpected
+
+~/zls$ zig build -Doptimize=ReleaseSafe
+error: unable to load package manifest '/home/lius/zls/build.zig.zon': Unexpected
+```
+
+Could be a wsl error but switching to stable resolved the issues.
