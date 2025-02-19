@@ -1,20 +1,61 @@
 # Zig Development Setup on WSL
 
 This repository documents my Zig installation and development environment on WSL.
+Zig and zls are binaries since it is simple. I ran into errors when trying to install zls from source.
 
 ## Installation Steps
 
 1. **Install Zig**:
 ```bash
-wget https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84.tar.xz
-tar -xf zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84.tar.xz
-sudo mv zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84 /opt/zig
+wget https://ziglang.org/builds/zig-linux-x86_64-0.14.0-dev.3187+d4c85079c.tar.xz
+tar -xf zig-linux-x86_64-*.tar.xz
+sudo mv zig-linux-x86_64-*/ /opt/zig
 echo 'export PATH="/opt/zig:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 # Verify command
 zig version
-# Should display zig-linux-x86_64-0.14.0-dev.3258+d2e70ef84
+# Should display zig-linux-x86_64-0.14.0-dev.3187+d4c85079c
 # To configure with the my_config repository, add /opt/zig to ADDITIONAL_PATHS variable.
 ```
 
-2. **Set up for Neovim**:
+2. **Install LSP for Neovim**:
+First, we install the prebuild binary for the lsp for zig. Then we configure neovim.
+```{bash}
+# Download the prebuilt binary:
+wget https://builds.zigtools.org/zls-linux-x86_64-0.14.0-dev.390+188a4c0.tar.xz
+
+# Extract the archive:
+tar -xf zls-linux-x86_64-0.14.0-dev.390+188a4c0.tar.xz
+
+# Move the binary to a system-wide location:
+sudo mv zls /usr/local/bin/
+
+# Verify installation:
+zls --version
+```
+
+My neovim configuration is derived from kickstart. As such, the configuration will be set with that setup.
+```{lua}
+-- In your servers table (where you define other LSPs like lua_ls, bashls, etc.), add the following configuration for ZLS:
+local servers = {
+  -- Other LSPs...
+  zls = {
+    capabilities = capabilities,
+    flags = lsp_flags,
+    filetypes = { 'zig' }, -- Associate ZLS with .zig files
+    settings = {
+      zls = {
+        enable_snippets = true, -- Enable code snippets
+        enable_autofix = true,  -- Enable automatic fixes
+      },
+    },
+  },
+}
+-- Add zls to the ensure_installed list in your mason-tool-installer setup
+local ensure_installed = vim.tbl_keys(servers or {})
+vim.list_extend(ensure_installed, {
+  'stylua', -- Used to format Lua code
+  'shfmt',  -- Used to format bash code
+  'zls',    -- Add ZLS here
+})
+```
