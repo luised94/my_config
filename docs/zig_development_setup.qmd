@@ -6,7 +6,7 @@ Zig and zls are binaries since it is simple. I ran into errors when trying to in
 ## Installation Steps
 
 1. **Install Zig**:
-```bash
+```{bash}
 wget https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
 tar -xf zig-linux-x86_64-*.tar.xz
 sudo mv zig-linux-x86_64-*/ /opt/zig
@@ -14,7 +14,6 @@ echo 'export PATH="/opt/zig:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 # Verify command
 zig version
-# Should display zig-linux-x86_64-0.14.0-dev.3187+d4c85079c
 # To configure with the my_config repository, add /opt/zig to ADDITIONAL_PATHS variable.
 ```
 
