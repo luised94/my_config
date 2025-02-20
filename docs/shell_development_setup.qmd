@@ -1,0 +1,20 @@
+---
+title: Setting up shell configuration
+---
+
+This document contains general steps for configuring the bash shell. I use wsl on windows and have not explored other modern alternatives to bash.
+I have mostly used bash 5.1.16 and bash 4.2.0 (while working on my institution's linux cluster).
+Has not been tested thoroughly. No guarantees.
+Other tools that I use are neovim, zotero (on windows), R and quarto.
+
+I am considering starship, just, jq, procs, and hyperfine.
+## General setup
+I initially installed an outdated version of neovim distro (not compatible with plugins).
+```{bash}
+sudo apt remove neovim
+sudo apt autoclean && sudo apt autoremove
+apt-get update and upgrade
+sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat
+sudo apt install tmux
+```
+
