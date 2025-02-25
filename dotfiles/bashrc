@@ -94,3 +94,5 @@ export NVM_DIR="$HOME/.nvm"
 #unset __conda_setup
 # <<< conda initialize <<<
 
+. "/home/lius/.deno/env"
+eval $(opam env)
