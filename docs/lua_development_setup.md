@@ -10,6 +10,7 @@ tar -xf lua-5.1.5.tar.gz
 rm lua-5.1.5.tar.gz
 cd lua-5.1.5/
 make local
-make linux install
-~/lua-5.1.5/bin/lua --help
+sudo make linux install
+lua --help
+rm -rf lua-5.1.5/
 ```
