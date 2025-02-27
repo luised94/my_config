@@ -1,0 +1,83 @@
+---
+title: "ChatGPT Writing prompt"
+output: html_document
+date: "2023-08-26"
+---
+
+**Purpose and Context**
+
+I am a graduate student writing a thesis for my doctor-of-philosophy degree in biochemistry. The topic is DNA-replication initiation in eukaryotes, focused on the role of the origin-recognition complex’s ATP hydrolysis activity. I would like you to revise my thesis so that it meets academic standards.
+
+**Task Definition** 
+
+Revise the following paragraphs to enhance grammatical accuracy and narrative coherence.
+
+Pay attention to the following areas:
+
+Structure: Is the organization of the text logical and easy to follow?
+
+Style: Is the style of the text appropriate for the intended audience?
+
+Strategy: Is the author's strategy effective in explaining the concept of replication, loading and ORC ATP hydrolysis?
+
+Specificity: Are the examples and explanations specific and relevant?
+
+Clarity: Is the meaning of the text clear? Are there any words or phrases that are unclear or ambiguous?
+
+Conciseness: Is the text concise and to the point? Are there any unnecessary words or phrases?
+
+Overall quality: Does the text meet the standards of academic writing?
+
+**Instructions**
+
+\- Maintain an active voice, and focus on clarity and conciseness in your revisions.   
+
+\- Pay attention to grammar, sentence structure, terminology consistency, and overall flow of the content.   
+
+\- Additionally, check for any instances of redundancy or repetitive phrasing that could be condensed or rephrased for improved readability.   
+
+\- If needed, suggest ways to enhance the text's organization and transition between ideas.   
+
+\- Please be specific in your feedback. Don't just say "this is unclear" or "this is confusing." Explain what is unclear or confusing and suggest how it could be improved.   
+
+\- Please be constructive in your feedback. Focus on helping the writer improve their writing, not on criticizing it.   
+
+\- Identify areas where the text could be expanded or improved.   
+
+\- Suggest related topics that the writer could research or explore. 
+
+**Examples**
+
+Here are two examples of formal academic writing.
+
+Example #1:
+
+“Helicase loading is tightly restricted to the G1 phase of the cell cycle to ensure that no origin of replication can reload Mcm2-7 at an origin that has initiated replication. At least three different mechanisms prevent helicase loading in S. cerevisiae cells. Each of these mechanisms is mediated by CDK phosphorylation of helicase-loading proteins. CDK phosphorylation of Cdc6 leads to its ubiquitin-mediated degradation CDK phosphorylation of Mcm3 results in the nuclear export of Mcm2-7 proteins that are not loaded onto origin DNA. Phosphorylation of ORC directly interferes with helicase loading, although the mechanism of inhibition is unclear. Finally, an RXL or Cy motif on Orc6 recruits Clb5 (the primary S-phase cyclin) to ORC, which presumably localizes CDK action to the origin and potentially directly inhibits loading. Simultaneous elimination of all of these mechanisms either by mutating phosphorylation/ binding sites or overriding the control mechanism results in uncontrolled replication and cell death. Consistent with all of the inhibitory mechanisms being mediated by CDK phosphorylation, inhibition of CDK activity outside of G1 leads to a new round of helicase loading and, when CDK activity is restored, re-replication of the genome.”
+
+Example #2:
+
+“The significant similarities between the early events of chromosomal DNA replication in E. coli and eukaryotic cells suggest that each system uses similar mechanisms for initiation. It is clear that switches in protein function controlled by ATP binding and hydrolysis play a critical role in the function of multiple replication proteins in each system. Despite this, neither ORC and DnaA nor Cdc6p and DnaC share similarity outside of their ATP-binding motifs. Nevertheless, the largest subunit of ORC and Cdc6p are highly related [36], and DnaC and DnaA also share similarity [37]. Thus, although these eukaryotic and prokaryotic replication proteins may not have evolved from one another [38], the mechanism of replication initiation may have evolved through the duplication of a primordial ATP-regulated initiator protein. It will be interesting to determine whether other similarities exist in these functionally analogous proteins. For example, does Cdc6p exhibit a masked ssDNA binding activity similar to that of DnaC? Does Cdc6p inhibit the DNA helicase activity of MCM proteins? Does ORC multimerize during the initiation process? Answers to these and other questions will require biochemical assays to probe the early events in eukaryotic DNA replication.”
+
+**Formatting**
+
+\- Write one or two paragraphs explaining the overall opinion on the text.   
+
+\- Output the most common writing errors and habits of the writer.   
+
+\- Provide a brief explanation of each change as a table and labeled the type of change it is.   
+
+\- Use formatting like headings, numbered lists, and bullets for clarity when appropriate.   
+
+\- Make sure that scientific names for species such as Saccharomyces cerevisiae and words in vivo and in vitro are italicized.
+
+\- Output a revision of a similar length. If it is too long, provide the revision in chunks of 4-5 paragraphs but wait till I say “Please output the following text” before proceding.
+
+\- Use track changes or a similar tool to highlight changes made to the text.   
+
+**Uncertainty**
+
+If you are unsure on how revise and edit certain paragraphs, please say this at the end and explain why. If the text is too long to revise in one setting, suggest the appropriate length input.
+
+**Verification**
+
+Provide a brief response to acknowledge and summarize the instructions and to make sure the prompt is clear. If there are any ambiguities in the prompt, ask for clarification before I submit the text.

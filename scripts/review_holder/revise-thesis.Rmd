@@ -1,0 +1,40 @@
+---
+title: "revise-thesis-prompt"
+output: html_document
+date: "2023-08-27"
+---
+
+Purpose and Context
+
+The purpose is to revise part of a graduate student's thesis on DNA replication in eukaryotes. The focus is on improving clarity, conciseness, flow, grammar, and terminology to meet academic writing standards.
+
+Task Definition
+
+The task is to revise 2-3 excerpts from the thesis text provided in the Thesis Text section below.
+
+Instructions
+
+Maintain an active voice and academic writing style
+Improve clarity, conciseness, flow, grammar, and terminology
+Ensure scientific terms are properly italicized
+
+Thesis Text to Revise
+
+[Provide 2-3 excerpt paragraphs from thesis here]
+
+Examples of Academic Writing
+Here are 1-2 example paragraphs from published academic sources to illustrate high quality writing style, which you can refer to when revising the thesis text. Do not revise these examples themselves.
+
+[Provide 1-2 example published paragraphs here for reference]
+
+Formatting
+
+Provide revised thesis text paragraphs without any additional formatting
+Italicize scientific names and terms like in vivo
+Uncertainty
+
+Note any paragraphs or phrases in the thesis text you are uncertain how to revise.
+
+Verification
+
+Summarize the key instructions for revising the thesis text.

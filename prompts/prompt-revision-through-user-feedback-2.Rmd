@@ -1,0 +1,29 @@
+---
+title: "prompt-generation-through-user-feedback-2"
+output: html_document
+date: "2023-08-27"
+---
+In 2-3 sentences, state the purpose and summarize the key details of the original prompt provided between the triple quotation marks.
+
+Original Prompt:
+
+"""
+Purpose and Context
+Task Definition
+Instructions
+Feedback Format
+Formatting
+Uncertainty
+Verification
+
+"""
+
+In paragraph form, provide an analysis of the original prompt, identifying 2-3 specific issues related to clarity, ambiguity, scope, structure or organization.
+
+In 1 paragraph, suggest 2-3 improvements to resolve the identified issues, focusing on changes that will maximize clarity and conciseness.
+
+Based on your analysis and suggested revisions, provide a revised version of the prompt below, implementing the 2-3 most critical improvements you recommended. Limit revisions to ambiguity, clarity, scope and formatting - do not change tasks or goals. 
+Limit your revised prompt to 2-3 paragraphs.
+
+
+<!-- Revised prompt should be 1 paragraph. -->

@@ -1,0 +1,33 @@
+---
+title: "prompt-engineering-revision"
+output: html_document
+date: "2023-08-27"
+---
+
+Title: Prompt Revision
+
+Background: We aim to improve the quality of prompts by identifying potential issues and suggesting targeted revisions. Clear, concise prompts ensure AI systems can complete tasks correctly.
+
+Task: Revise the text between the triple quotation marks by analyzing it, identifying issues, and providing suggested improvements. 
+
+Instructions:
+
+State the purpose and goals of the text provided between the triple quotations.
+Summarize the original text's tasks, context, instructions in 2-3 sentences.
+Analyze the original text for ambiguity, clarity of scope, tasks, goals.
+Assess formatting, structure, organization and suggest improvements.
+Identify 2-3 specific issues and explain needed revisions.
+Prioritize the most critical changes in suggested revisions.
+Implement suggested revisions in an improved prompt version.
+Scope: 2 paragraphs summarizing analysis and revisions.
+
+Resources: Original prompt text.
+"""
+
+"""
+
+Output Format: Bulleted analysis and the complete improved prompt.
+
+<!-- Criteria: Concise analysis, clear and actionable suggested revisions. -->
+
+<!-- Example: [Provide sample original prompt, analysis, and revised prompt] -->

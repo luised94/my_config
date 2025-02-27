@@ -1,0 +1,15 @@
+---
+title: "breakdown-complex-prompts"
+output: html_document
+date: "2023-08-27"
+---
+
+Sometimes prompts are just too long and complex. Use the following to have an AI system break it down for you. 
+
+##
+
+The following is a long prompt that I am trying to break down into simpler tasks. Summarize the key points of the following prompt in a paragraph. Identify the distinct tasks or questions contained in the prompt. For each task, suggest a focused prompt to address it. The prompt is attached in the text file.
+
+##
+
+Is there any ambiguity in the prompt?
