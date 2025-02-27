@@ -4,7 +4,11 @@ title: My personal configuration repository README
 # my_config
 Read common errors section.
 
-# Install neovim kickstart, quarto, and zotero
+## TODO
+- [] Ensure all checks for quarto check are fulfilled or use wslview/w3m.
+- [] vim_all does not handle files with spaces. Solutions: Enforce naming standard and upgrade vim_all to handle spaces better.
+
+## Install neovim kickstart, quarto, and zotero
 
 Install treesitter cli binary
 ```{bash}
@@ -61,7 +65,7 @@ rm ~/.vimrc # if there is a file there
 ln -s ~/my_config/dotfiles/vimrc ~/.vimrc
 ```
 
-## Install quarto  
+## Install quarto
 You can check the current version of quarto at the website but you can technically with any version. 
 ```{bash}
 export QUARTO_VERSION="1.4.550"
@@ -93,7 +97,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 See 000_install_R_4.2.0.sh to install R 4.2.0 which is the R available in my institution's linux cluster.
 
-## Install Pandoc 
+## Install Pandoc
 Download and uncompress pandoc
 1. Download using curl and uncompress using tar
 ```{bash}
@@ -101,20 +105,20 @@ mkdir pandoc/
 curl -L -o pandoc.tar.gz https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-linux-amd64.tar.gz
 tar -xvzf pandoc.tar.gz --strip-components=1 -C pandoc/
 ```
-### Set up symbolic link 
+### Set up symbolic link
 2. Use sudo ln to create a symbolic link.
 ```{bash}
 sudo ln -s ~/pandoc/bin/pandoc /usr/local/bin/pandoc
 pandoc --version #Verify that it installed correctly
 ```
 
-## Install dependencies 
+## Install dependencies
 3. Use apt-get to install different dependencies for conversion
 ```{bash}
 sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
 ```
 
-## Setup symbolic links for bashrc.
+## Setup symbolic links for bashrc
 Remove all gz files that were downloaded when install quarto, nvim, R and pandoc.
 ```{bash}
 # Remove any bashrc. Backup if necessary.
@@ -126,7 +130,7 @@ sudo ln -s ~/my_config/dotfiles/bashrc ~/.bashrc
 Since I use windows, I just download and install it from their website (Zotero)[https://www.zotero.org/download/]
 Zotero has limited storage for free members. I used dropbox and links to be able to have essentially unlimited storage. This can be changed to a hard drive or server but I havent tried to set this up.
 
-## Awesome plugins for zotero 
+## Awesome plugins for zotero
 
 Some of these are required for integration with neovim and quarto.
 - [BetterBibtex](https://retorque.re/zotero-better-bibtex/)
@@ -164,7 +168,7 @@ I disable automatic syncing and link to my account.
 ### Cite
 Leave defaults. Install Microsoft Word add on if required.
 
-### Advanced 
+### Advanced
 - Miscellaneous: Enable automatic check and report broken site translators.
 - Files and Folders: 
 Set base directory to 'C:\Users\Luis\MIT Dropbox\zotero-storage'
@@ -215,8 +219,6 @@ Test the configuration by running the plugin. If the resulting pdf has the text 
 
 Useful for fixing some text overlays that mess with annotations.
 
-## TODO
--[] Ensure all checks for quarto check are fulfilled or use wslview/w3m.
 
 ## Errors I encountered during installation
 
