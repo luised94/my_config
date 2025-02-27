@@ -1,6 +1,6 @@
 # Zig Development Setup on WSL
 
-This repository documents my Zig installation and development environment on WSL.
+This file documents my Zig installation and development environment on WSL.
 Zig and zls are binaries since it is simple. I ran into errors when trying to install zls from source.
 
 ## Installation Steps
