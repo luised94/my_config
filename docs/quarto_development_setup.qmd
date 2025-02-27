@@ -1,0 +1,48 @@
+
+## Install quarto
+You can check the current version of quarto at the website but you can technically with any version. 
+```{bash}
+export QUARTO_VERSION="1.4.550"
+sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
+mkdir quarto/
+sudo tar -xzvf quarto.tar.gz -C quarto/ # Adjust this line if you want. For example, to have different quarto installations.
+~/quarto/quarto-"${QUARTO_VERSION}"/bin/quarto check # Reverify this line depending on how it extracted
+sudo ln -s ~/quarto/quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
+```
+
+## Install other requirements for full utilization of quarto and kickstart plugin
+```{bash}
+quarto install tinytex
+sudo apt install python3-pip
+python3 -m pip install jupyter
+#sudo apt install r-base
+sudo apt-get install kitty # Quick message when I run nvim shows that command cant be found. Dont know much about kitty yet.
+sudo apt install imagemagick # Quick message said convert not found, which is part of imagemagick.
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+source ~/.bashrc # Check by running $nvm
+nvm install --lts
+node --version
+# Add to bashrc to make permanent
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## Install Pandoc
+Download and uncompress pandoc
+1. Download using curl and uncompress using tar
+```{bash}
+mkdir pandoc/
+curl -L -o pandoc.tar.gz https://github.com/jgm/pandoc/releases/download/3.2/pandoc-3.2-linux-amd64.tar.gz
+tar -xvzf pandoc.tar.gz --strip-components=1 -C pandoc/
+```
+### Set up symbolic link
+2. Use sudo ln to create a symbolic link.
+```{bash}
+sudo ln -s ~/pandoc/bin/pandoc /usr/local/bin/pandoc
+pandoc --version #Verify that it installed correctly
+```
+
+## Install dependencies
+3. Use apt-get to install different dependencies for conversion
+```{bash}
+sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
+```

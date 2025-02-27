@@ -18,3 +18,11 @@ sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu 
 sudo apt install tmux
 ```
 
+## Setup symbolic links for bashrc
+Remove all gz files that were downloaded when install quarto, nvim, R and pandoc.
+```{bash}
+# Remove any bashrc. Backup if necessary.
+rm ~/.bashrc
+sudo ln -s ~/my_config/dotfiles/bashrc ~/.bashrc
+# I have a second for bashrc for when I work in linux cluster. Perform same action.
+```

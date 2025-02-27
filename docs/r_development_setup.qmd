@@ -1,0 +1,2 @@
+
+See 000_install_R_4.2.0.sh to install R 4.2.0 which is the R available in my institution's linux cluster.
