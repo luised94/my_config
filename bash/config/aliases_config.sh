@@ -1,6 +1,7 @@
 # Standard aliases
 BASIC_ALIASES=(
     "ll=ls -alF"
+    "ls=ls --group-directories-first"
     "la=ls -A"
     "l=ls -CF"
     "R=R --no-save"
