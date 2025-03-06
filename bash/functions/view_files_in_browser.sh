@@ -134,6 +134,15 @@ Options:
     # )
     # Use the first browser for now
     local browser="/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    if [[ ! -f $browser ]]; then
+        browser="/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
+    fi
+    [ ! -f "$browser" ] && {
+        echo "Browser exe does not exist in both of the Program Files directories."
+        echo -e "${RED}[ERROR] Browser not found at specified path${NC}"
+        return 1
+    }
+
     # Add time filter variables
     local time_after=""
     local time_before=""
@@ -296,10 +305,6 @@ Options:
         return 1
     }
     
-    [ ! -f "$browser" ] && {
-        echo -e "${RED}[ERROR] Browser not found at specified path${NC}"
-        return 1
-    }
 
     echo -e "\n${BOLD}${separator}${NC}"
     printf "${BOLD}>> File Viewer - Target: ${BLUE}%s${NC}\n" "$target"
