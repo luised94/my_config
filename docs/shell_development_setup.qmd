@@ -16,6 +16,8 @@ sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade
 sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat
 sudo apt install tmux
+# For pdf encryption
+sudo apt install qpdf
 ```
 
 ## Setup symbolic links for bashrc
