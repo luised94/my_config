@@ -35,7 +35,7 @@ ENV_VARS=(
     "R_HOME=/usr/local/bin/R"
     "R_LIBS_USER=~/R/library/"
     "BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
-    "MANPAGER=nvim +Man!"
+    "MANPAGER=col -b | nvim +Man! -"
 )
 
 # Additional paths
