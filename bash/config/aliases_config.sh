@@ -13,6 +13,7 @@ GIT_ALIASES=(
     "gs=git status"
     "gd=git diff"
     "ogd=nvim < <(git diff)"
+    "sgl=git log | nvim -"
     "ogdc=nvim < <(git diff --cached)"
     "ogda=nvim < <(git diff HEAD)"
     "ga=git add"
