@@ -1,0 +1,3 @@
+
+Install pandoc
+Install xelatex
