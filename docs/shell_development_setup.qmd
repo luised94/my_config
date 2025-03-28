@@ -18,6 +18,7 @@ sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu 
 sudo apt install tmux
 # For pdf encryption
 sudo apt install qpdf
+sudo apt install poppler-utils
 ```
 
 ## Setup symbolic links for bashrc
