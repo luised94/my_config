@@ -37,6 +37,8 @@ I disable automatic syncing and link to my account.
 
 ### Export
 - Quick Copy: Set item format to Chicago Manual of Style 17th edition full note. Set Note Format to Markdown + Rich Text and enable Include Zotero Links.
+- Entire library or collection: Right click my library, collection or item of choice. Select better bibtex (requires plugin), press keep updated if you want to continuously update.
+     > I was getting an error when background export was enable. Disabling background export allows export to procede. (Zotero 7.0.15 (64-bit), BBT 7.0.13)
 
 ### Cite
 Leave defaults. Install Microsoft Word add on if required.
