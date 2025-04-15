@@ -47,9 +47,9 @@ set autoindent              " Auto indent
 set smartindent             " Smart indent
 set expandtab              " Use spaces instead of tabs
 set smarttab               " Smart tab handling
-set tabstop=4              " 4 spaces for tab
-set shiftwidth=4           " 4 spaces for indent
-set softtabstop=4          " 4 spaces in tab when editing
+set tabstop=2              " 4 spaces for tab
+set shiftwidth=2           " 4 spaces for indent
+set softtabstop=2          " 4 spaces in tab when editing
 set wrap                   " Wrap lines
 
 " Search
