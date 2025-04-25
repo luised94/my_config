@@ -14,11 +14,7 @@ I initially installed an outdated version of neovim distro (not compatible with 
 sudo apt remove neovim
 sudo apt autoclean && sudo apt autoremove
 apt-get update and upgrade
-<<<<<<< HEAD
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat shellcheck
-=======
 sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat shfmt shellcheck
->>>>>>> 2bf6689 (style(tab): Change tab to two spaces)
 sudo apt install tmux
 # For pdf encryption
 sudo apt install qpdf
