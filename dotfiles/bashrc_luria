@@ -19,6 +19,7 @@ export LANG=en_US.utf8
 export PATH=$HOME/.local/bin:$PATH
 alias R='R --no-save'
 alias edit_bmc_configs='vim ~/data/*Bel/documentation/*_bmc_config.R core_scripts/template_bmc_config.R'
+alias srun_r='srun --pty bash -c "module add r/4.2.0; exec bash"'
 #alias nvim="$HOME/nvim-linux64/bin/nvim"
 
 #!/bin/bash
