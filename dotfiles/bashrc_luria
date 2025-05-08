@@ -20,6 +20,20 @@ export PATH=$HOME/.local/bin:$PATH
 alias R='R --no-save'
 alias edit_bmc_configs='vim ~/data/*Bel/documentation/*_bmc_config.R core_scripts/template_bmc_config.R'
 alias srun_r='srun --pty bash -c "module add r/4.2.0; exec bash"'
+
+# Job monitoring
+alias myjobs='squeue -u $USER --format="%.18i %.9P %.30j %.8u %.2t %.10M %.6D %.R"'
+alias jobhist='sacct --format=JobID,JobName,Partition,Elapsed,State,ExitCode -j'
+
+# Job control
+alias killjobs='scancel -u $USER'
+alias jobwatch='watch -n 30 "squeue -u $USER"'
+# Archive completed jobs (run: jobclean)
+alias jobclean='find . -maxdepth 1 -name "slurm-*.out" -delete'
+
+# Environment checks
+alias modules_avail='module avail 2>&1 | less'
+alias diskquota='df -h | grep ~'
 #alias nvim="$HOME/nvim-linux64/bin/nvim"
 
 #!/bin/bash
