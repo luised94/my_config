@@ -1,0 +1,44 @@
+---
+title: Python development setup on wsl
+date: 2025-05-15
+---
+DATE UPDATED: 2025-05-15
+
+# Introduction
+
+
+This file documents how I setup odin programming language.
+
+```{bash}
+sudo apt update && sudo apt install -y git gcc clang llvm lld
+# Has to be the same as gcc version
+clang++ -v | grep "Selected GCC"
+# TODO: Update gcc if so.
+sudo apt install libstdc++-12-dev
+
+
+# Check the versions
+gcc --version
+clang-14 --version
+llvm-config --version
+
+# Clone the repository
+git clone --depth=1 --branch=dev-2024-06 https://github.com/odin-lang/Odin
+cd Odin
+
+# Parallel build
+# Explicit compiler selection
+LLVM_CONFIG=$(which llvm-config-14) make release-native \
+    -j$(nproc) \
+    CC=clang-14 CXX=clang++-14
+
+cat <<EOF >> ~/.bashrc
+# Odin (version-controlled PATH)
+export ODIN_ROOT="$HOME/Odin"
+export PATH="$ODIN_ROOT:$PATH"
+EOF
+```
+
+# Reference
+1. http://odin-lang.org/docs/install/#official-releases
+2. https://chat.deepseek.com/a/chat/s/46afcbb7-a238-4acd-8292-574633bd06c4
