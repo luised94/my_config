@@ -11,14 +11,26 @@ I am considering starship, just, jq, procs, and hyperfine.
 ## General setup
 I initially installed an outdated version of neovim distro (not compatible with plugins).
 ```{bash}
-sudo apt remove neovim
-sudo apt autoclean && sudo apt autoremove
+# If you installed neovim from command line,
+# below I build it from source.
+sudo apt remove -y neovim
+sudo apt autoclean && sudo apt autoremove -y
+
+# Core system tools
 apt-get update and upgrade
-sudo apt-get install build-essential make ripgrep unzip gcc xclip git xsel wslu fzf bat shfmt shellcheck
-sudo apt install tmux
-# For pdf encryption
-sudo apt install qpdf
-sudo apt install poppler-utils
+sudo apt install -y build-essential make unzip git wslu
+# Development dependencies
+sudo apt install -y gcc clang llvm lld
+
+# CLI productivity
+sudo apt install -y ripgrep fzf bat tmux
+sudo apt install -y shfmt shellcheck
+
+# PDF utilities
+sudo apt install -y qpdf poppler-utils
+
+# Wsl <-> Windows integration
+sudo apt install -y xclip xsel
 ```
 
 ## Setup symbolic links for bashrc
