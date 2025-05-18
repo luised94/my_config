@@ -52,7 +52,7 @@ g++ --version  # Should show 12.x.x
 # Recompile Odin
 # Restart clean just in case
 rm -rf ~/Odin
-git clone https://github.com/odin-lang/Odin 
+git clone https://github.com/odin-lang/Odin
 cd ~/Odin/
 
 # Change to the stable release
@@ -73,8 +73,24 @@ make release-native
 ./odin test tests/core/sync -collection:tests=.
 ```
 
-Run the classic hello world script.
+Run the classic hello world script as detailed in the odin guide.
+Create the odin file and then run.
+```{odin}
+package main
+import "core:fmt"
+main :: proc() {
+  fmt.println("Hellope!")
+}
+```
+
+```{bash}
+odin run .
+odin run hellope.odin -file
+```
+
+Go through the rest of the guide.
 
 # Reference
 1. http://odin-lang.org/docs/install/#official-releases
-2. https://chat.deepseek.com/a/chat/s/46afcbb7-a238-4acd-8292-574633bd06c4
+2. https://odin-lang.org/docs/overview/
+3. https://chat.deepseek.com/a/chat/s/46afcbb7-a238-4acd-8292-574633bd06c4
