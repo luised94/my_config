@@ -88,9 +88,9 @@ odin run .
 odin run hellope.odin -file
 ```
 
-Go through the rest of the guide.
+Go through the rest of the guide ([see Odin Guide Reference 2](#odin-overview)).
 
 # Reference
 1. http://odin-lang.org/docs/install/#official-releases
-2. https://odin-lang.org/docs/overview/
+2. <a id="odin-overview"></a>https://odin-lang.org/docs/overview/
 3. https://chat.deepseek.com/a/chat/s/46afcbb7-a238-4acd-8292-574633bd06c4
