@@ -24,12 +24,12 @@ llvm-config --version
 
 # Clone the repository
 git clone --depth=1 --branch=dev-2024-06 https://github.com/odin-lang/Odin
-cd Odin
+cd Odin || echo "Odin directory not available"
 
 # Parallel build
 # Explicit compiler selection
 LLVM_CONFIG=$(which llvm-config-14) make release-native \
-    -j$(nproc) \
+    -j"$(nproc)" \
     CC=clang-14 CXX=clang++-14
 
 cat <<EOF >> ~/.bashrc
@@ -38,6 +38,42 @@ export ODIN_ROOT="$HOME/Odin"
 export PATH="$ODIN_ROOT:$PATH"
 EOF
 ```
+
+Updating gcc and then recompiling
+```{bash}
+# Update gcc
+sudo apt install -y gcc-12 g++-12
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+sudo update-alternatives --config gcc  # Select gcc-12
+sudo update-alternatives --config g++  # Select g++-12
+gcc --version  # Should show 12.x.x
+g++ --version  # Should show 12.x.x
+# Recompile Odin
+# Restart clean just in case
+rm -rf ~/Odin
+git clone https://github.com/odin-lang/Odin 
+cd ~/Odin/
+
+# Change to the stable release
+# Choose previous month
+git checkout dev-2025-04
+# or stay on master/main, you have to decide
+git checkout master
+git pull
+
+# Explicitly set toolchain if you want
+LLVM_CONFIG=llvm-config-14 CC=gcc-12 CXX=g++-12
+make release-native
+
+# Test compiler
+./odin version
+
+# Run atomic tests (now should work)
+./odin test tests/core/sync -collection:tests=.
+```
+
+Run the classic hello world script.
 
 # Reference
 1. http://odin-lang.org/docs/install/#official-releases
