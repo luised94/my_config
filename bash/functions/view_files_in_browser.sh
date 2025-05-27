@@ -592,7 +592,7 @@ detect_browsers() {
         
         for path in "${win_paths[@]}"; do
             if [ -f "$path" ]; then
-                local browser_name=$(basename "$path" .exe)
+                local browser_name; browser_name=$(basename "$path" .exe)
                 browsers[$browser_name]=$path
                 # Set first found browser as default
                 [[ -z "$default_browser" ]] && default_browser=$browser_name
