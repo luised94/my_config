@@ -46,3 +46,27 @@ pandoc --version #Verify that it installed correctly
 ```{bash}
 sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
 ```
+
+## Updating quarto
+
+The steps in the installation guide can be easily adjusted to install other version and have multiple versions installed. For now, we will only maintain one version. If another user decides to adopt this simple strategy, they need to monitor for any version differences and potential disruptions to their own workflow. We will remove the previous version and the symlink and just rerun the commands adjusting the quarto version to the version we want to install. We will also adjust the installation folder to .local/quarto/ to clean up the home directory.
+
+```{bash}
+# If you followed the instructions above, otherwise, adjust to /.local/
+# Remember to adjust the version as well.
+rm -rf ~/quarto/quarto-1.4.550/ 
+sudo rm /usr/local/bin/quarto
+INSTALLATION_DIRECTORY="$HOME/.local/share/quarto/"
+QUARTO_VERSION="1.7.31"
+mkdir -p "${INSTALLATION_DIRECTORY}"
+sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
+sudo tar -xzvf quarto.tar.gz -C "$INSTALLATION_DIRECTORY"
+${INSTALLATION_DIRECTORY}quarto-"${QUARTO_VERSION}"/bin/quarto check # Reverify this line depending on how it extracted
+sudo ln -s ${INSTALLATION_DIRECTORY}quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
+
+# Double check installation
+quarto --version
+quarto check
+# Clean up
+rm quarto.tar.gz
+```
