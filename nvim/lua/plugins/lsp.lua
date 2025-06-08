@@ -229,14 +229,18 @@ return {
         -- for you, so that they are available from within Neovim.
         local ensure_installed = vim.tbl_keys(servers or {})
         vim.list_extend(ensure_installed, {
-          'stylua', -- Used to format Lua code
-          'shfmt', -- Used to format bash code
+          --'stylua', -- Used to format Lua code
+          --'shfmt', -- Used to format bash code
           'zls', -- Used for zig
         })
-        require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+        require('mason-tool-installer').setup {
+          ensure_installed = ensure_installed
+        }
 
         require('mason-lspconfig').setup {
+          ensure_installed = ensure_installed,
           handlers = {
+            -- Default handler for all servers
             function(server_name)
               local server = servers[server_name] or {}
               -- This handles overriding only values explicitly passed
