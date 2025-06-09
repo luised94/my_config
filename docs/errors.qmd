@@ -1,0 +1,43 @@
+---
+title: "Errors encountered while working on my_config repository
+date: 2025-06-08
+---
+
+# Overview
+Erros encountered during modifications my_config repository
+Each one will include the cli command or commit, the error and the solution.
+To revisit the state:
+git checkout <commit-hash>
+
+## 2025-06-08
+### Circular dependency between quarto and rmd files
+- Command
+```{bash}
+# Open files while in the explorations directory
+vim_all -f
+```
+- Commit hash
+2aad763627b9ffaa8c8b9e9c2ebb79e6f628b3be
+- Error
+```{error}
+Error detected while processing BufReadPost Autocommands for "*":
+Error executing lua callback: /home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:35:
+Error executing lua: /home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:36: BufReadPost Autocommands for "*"..FileType Autocommands for "*"..Syntax Autocommands for "*"..function <SNR>6_SynSet[26]..script /home/lius/nvim-linux64/share/nvim/runtime/syntax/quarto.vim[12]../home/lius/nvim-linux64/share/nvim/runtime/syntax/rmd.vim[238]..function <SNR>27_CheckRmdFencedLanguages[18]..<SNR>27_IncludeLanguage[13]..script /home/lius/nvim-linux64/share/nvim/runtime/syntax/quarto.vim[12]../home/lius/nvim-linux64/share/nvim/runtime/syntax/rmd.vim, line 180: Vim(function):E127: Cannot redefine function <SNR>27_IncludeLanguage: It is in use stack traceback: [C]: in function 'nvim_cmd'
+/home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:36: 
+in function </home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:35>
+[C]: in function 'nvim_buf_call'
+/home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:35: in function </home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:10> 
+stack traceback: [C]: 
+in function 'nvim_buf_call' /home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:35:
+in function </home/lius/nvim-linux64/share/nvim/runtime/filetype.lua:10>
+```
+- Solution
+```{lua}
+-- Add before lazy loading
+vim.filetype.add({
+    extension = {
+        qmd = "markdown",
+        quarto = "markdown",
+    },
+})
+```
