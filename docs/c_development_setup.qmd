@@ -1,0 +1,36 @@
+---
+title: C development setup
+date: 2025-06-16
+---
+
+# Overview
+
+Setup the basic components of a development environment for the programming language, C.
+
+## Instructions
+Install compiler. These are common across different tasks.
+
+```{bash}
+sudo apt update && sudo apt install -y git gcc clang llvm lld
+# Has to be the same as gcc version
+clang++ -v | grep "Selected GCC"
+# TODO: Update gcc if so.
+sudo apt install libstdc++-12-dev
+
+# Check the versions
+gcc --version
+clang-14 --version
+llvm-config --version
+```
+
+Install modern tools.
+```{bash}
+sudo apt update && sudo apt install clang-tidy cppcheck clang-format
+# Check
+clang-tidy --version
+cppcheck --version
+clang-format --version
+```
+
+Setup for neovim.
+
