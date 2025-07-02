@@ -1,0 +1,31 @@
+---
+title: Node development setup
+date: 2025-06-16
+---
+
+# Overview
+
+Setup the basic components of a development environment for the programming language, C.
+
+## Instructions
+
+```{bash}
+# If you previously installed into the home directory
+# Remember to adjust the version as well.
+rm -rf ~/quarto/quarto-1.4.550/
+sudo rm /usr/local/bin/quarto
+# Modify this directory with QUARTO_VERSION to have multiple installed.
+INSTALLATION_DIRECTORY="$HOME/.local/share/node/"
+NODE_VERSION="1.7.31"
+mkdir -p "${INSTALLATION_DIRECTORY}"
+# x86_64 does not exist
+sudo curl -o quarto.tar.gz -L "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.tar.gz"
+sudo tar -xzvf quarto.tar.gz -C "$INSTALLATION_DIRECTORY"
+${INSTALLATION_DIRECTORY}quarto-"${QUARTO_VERSION}"/bin/quarto check # Reverify this line depending on how it extracted
+sudo ln -s ${INSTALLATION_DIRECTORY}quarto-${QUARTO_VERSION}/bin/quarto /usr/local/bin/quarto
+# Double check installation
+quarto --version
+quarto check
+# Clean up
+rm quarto.tar.gz
+```
