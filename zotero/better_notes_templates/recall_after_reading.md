@@ -1,4 +1,4 @@
-name:
+name: [Item] Recall after reading
 content: |-
 // @use-markdown
 // @author YourName
@@ -6,6 +6,9 @@ content: |-
 ${{
 // ===== GRAB ALL THE DATA UPFRONT =====
 const item = topItem;
+// To debug:
+// Open debug output. 
+// Use Zotero.debug() to inspect values in script.
 
 // Basic bibliographic info
 const title = item.getField("title") || "Untitled";
@@ -13,6 +16,7 @@ const date = item.getField("date") || "No date";
 const url = item.getField("url") || "";
 const abstract = item.getField("abstractNote") || "No abstract available";
 const doi = item.getField("DOI") || "";
+const bibtexKey = item.getField("citationKey") || "";
 
 // Process creators (authors)
 const creators = item.getCreators();
@@ -44,13 +48,15 @@ sharedObj.biblio = {
  title, date, url, abstract, doi,
  authorList, firstAuthor,
  tagList, hasImportantTag,
- hasPDF, pdfLink
+ hasPDF, pdfLink,
+ bibtexKey
 };
 
 return ""; // Don't output anything here
 }}$
 
 # ${sharedObj.biblio.title}
+CitationKey: ${sharedObj.biblio.bibtexKey}
 
 ## Free recall
 
