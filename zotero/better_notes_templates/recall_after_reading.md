@@ -1,7 +1,7 @@
 name: [Item] Recall after reading
 content: |-
 // @use-markdown
-// @author YourName
+// @author Claude,luised94
 // <!-- VARIABLE DEFINITIONS -->
 ${{
 // ===== GRAB ALL THE DATA UPFRONT =====
@@ -17,6 +17,8 @@ const url = item.getField("url") || "";
 const abstract = item.getField("abstractNote") || "No abstract available";
 const doi = item.getField("DOI") || "";
 const bibtexKey = item.getField("citationKey") || "";
+const notes = item.getNotes() || "";
+const numberOfNotes = notes.length;
 
 // Process creators (authors)
 const creators = item.getCreators();
@@ -49,14 +51,16 @@ sharedObj.biblio = {
  authorList, firstAuthor,
  tagList, hasImportantTag,
  hasPDF, pdfLink,
- bibtexKey
+ bibtexKey, numberOfNotes
 };
 
 return ""; // Don't output anything here
 }}$
 
 # ${sharedObj.biblio.title}
+## General Information
 CitationKey: ${sharedObj.biblio.bibtexKey}
+Number of notes: ${sharedObj.biblio.numberOfNotes}
 
 ## Free recall
 
