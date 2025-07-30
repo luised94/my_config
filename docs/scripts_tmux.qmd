@@ -1,0 +1,32 @@
+---
+title: "Using tmux and scripts"
+date: 2025-07-30
+---
+
+# Overview
+
+Quick reference for using tmux and descriptions of some of the scripts to automate.
+
+# Quick reference
+```bash
+session_name="example"
+tmux # enter new tmux session
+tmux --help
+tmux ls
+tmux attach -d -t $session_name
+tmux kill-session
+tmux switch-client -t $session_name
+tmux choose-tree
+```
+
+```tmux
+<Ctrl+B> D # deattach
+<Ctrl+B>
+<Ctrl+B>
+```
+
+# Errors
+
+## 2025-07-30
+Windows start at 0. Can create windows with another number. Not sure the limit.
+
