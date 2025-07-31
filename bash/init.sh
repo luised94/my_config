@@ -16,8 +16,6 @@ fi
 # Missing file (typo or deletion) should output [ERROR] Required function file not found:
 readonly FUNCTION_FILES=(
     "logging_utils.sh"
-    "options_parser.sh"  # Must be early in the list
-    "option_validation.sh"  # Must be early in the list
     "file_operations.sh"
     "view_files_in_browser.sh"
     "git_automations.sh"
@@ -48,8 +46,8 @@ for func in "${FUNCTION_FILES[@]}"; do
 done
 
 # Export common variables
-export BASH_UTILS_CONFIG_DIR="${BASH_UTILS_ROOT}/config"
-export BASH_UTILS_FUNCTIONS_DIR="${BASH_UTILS_ROOT}/functions"
-export BASH_UTILS_SCRIPTS_DIR="${BASH_UTILS_ROOT}/scripts"
+#export BASH_UTILS_CONFIG_DIR="${BASH_UTILS_ROOT}/config"
+#export BASH_UTILS_FUNCTIONS_DIR="${BASH_UTILS_ROOT}/functions"
+#export BASH_UTILS_SCRIPTS_DIR="${BASH_UTILS_ROOT}/scripts"
 
 log_info "Bash utilities initialized successfully"
