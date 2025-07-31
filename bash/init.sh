@@ -9,7 +9,7 @@ readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Logging setup
 if [[ -z "$LOG_LEVEL" ]]; then
-    export LOG_LEVEL="INFO"
+  export LOG_LEVEL="INFO"
 fi
 
 # Function files
@@ -22,7 +22,6 @@ readonly FUNCTION_FILES=(
     "view_files_in_browser.sh"
     "git_automations.sh"
     "directory_tree.sh"
-    "repo_handler.sh"
     "search_utils.sh"
     "tag_processor.sh"
 )
