@@ -16,9 +16,7 @@ fi
 readonly CONFIG_FILES=(
     "editor_config.sh"
     "output_print_symbols.sh"
-    "search_config.sh"
 )
-
 
 # Function files
 # Missing file (typo or deletion) should output [ERROR] Required function file not found:
