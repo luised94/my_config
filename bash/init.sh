@@ -17,7 +17,6 @@ readonly CONFIG_FILES=(
     "editor_config.sh"
     "output_print_symbols.sh"
     "search_config.sh"
-    "shell_config.sh"
 )
 
 
@@ -37,7 +36,6 @@ readonly FUNCTION_FILES=(
     "prompt_utils.sh"
     "repo_handler.sh"
     "search_utils.sh"
-    "shell_setup.sh"
     "tag_processor.sh"
 )
 

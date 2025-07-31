@@ -5,10 +5,28 @@ case $- in
   *i*) ;;
     *) return;;
 esac
+#
+# Set vi mode
+set -o vi
 
 # Initialize bash utilities
 export BASH_UTILS_PATH="$HOME/my_config/bash"
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "$BASH_UTILS_PATH/init.sh"
+
+# History settings
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# Shell options
+SHELL_OPTIONS=(
+    "histappend"
+    "checkwinsize"
+)
+
+# Color support
+COLOR_SUPPORT=1
+GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 # Apply shell options from configuration
 for opt in "${SHELL_OPTIONS[@]}"; do
@@ -54,9 +72,9 @@ log_info "Setting up aliases..."
 
 MY_SHELL_ALIASES=(
   # --- Basic aliases ---
-  "ll=ls -alF"
-  "la=ls -A"
   "l=ls -CF"
+  "la=ls -A"
+  "ll=ls -alF"
   # --- Programming language aliases ---
   "R=R --no-save"
 
@@ -94,26 +112,31 @@ for alias_def in "${MY_SHELL_ALIASES[@]}"; do
   alias "${alias_def}"
 done
 
+# Alert alias for long running commands
+#alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+
 log_info "Aliases configured successfully"
 
 # Set up environment variables and paths
 log_info "Setting up environment..."
 # Path configurations
-#ADDITIONAL_PATHS=(
-#    "~/node-v22.5.1-linux-x64/bin"
-#)
+ADDITIONAL_PATHS=(
+    #"~/node-v22.5.1-linux-x64/bin"
+    "/opt/zig"
+)
 # Add additional paths
-#for path in "${ADDITIONAL_PATHS[@]}"; do
-#    eval "path_expanded=$path"
-#    [[ -d "$path_expanded" ]] && PATH="$PATH:$path_expanded"
-#done
+for path in "${ADDITIONAL_PATHS[@]}"; do
+    eval "path_expanded=$path"
+    [[ -d "$path_expanded" ]] && PATH="$PATH:$path_expanded"
+done
 
 # Environment variables
 ENV_VARS=(
-   "BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
-   "GIT_EDITOR=nvim"
-   "R_HOME=/usr/local/bin/R"
-   "R_LIBS_USER=/opt/R/library/"
+  "BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
+  "GIT_EDITOR=nvim"
+  "MANPAGER=nvim +Man!"
+  "R_HOME=/usr/local/bin/R"
+  "R_LIBS_USER=/opt/R/library/"
 )
 
 # Set environment variables
@@ -123,8 +146,6 @@ done
 
 log_info "Environment variables configured..."
 
-# Set vi mode
-set -o vi
 
 # Set up Windows environment if in WSL
 if [[ -n "$WSL_DISTRO_NAME" ]]; then
@@ -140,20 +161,20 @@ if [[ -n "$WSL_DISTRO_NAME" ]]; then
     dropbox_path="/mnt/c/Users/${windows_user}/MIT Dropbox/Luis Martinez"
     if [[ ! -d "$dropbox_path" ]]; then
 
-        log_warning "Warning: Dropbox directory not found at $dropbox_path" >&2
-        # Attempt to find Dropbox directory
-        local potential_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)"
-        if [[ -d "$potential_path" ]]; then
+      log_warning "Warning: Dropbox directory not found at $dropbox_path" >&2
+      # Attempt to find Dropbox directory
+      potential_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)"
+      if [[ -d "$potential_path" ]]; then
 
-            dropbox_path="$potential_path/"
-            log_info "Found Dropbox at $dropbox_path" >&2
+        dropbox_path="$potential_path/"
+        log_info "Found Dropbox at $dropbox_path" >&2
 
-        else
+      else
 
-            log_error "Error: Unable to locate Dropbox directory." >&2
-            return 1
+        log_error "Error: Unable to locate Dropbox directory." >&2
+        return 1
 
-        fi
+      fi
 
     fi
 
@@ -165,10 +186,20 @@ if [[ -n "$WSL_DISTRO_NAME" ]]; then
 fi
 
 # Enable programmable completion
-setup_completion
+log_info "Setting up completion..."
+if ! shopt -oq posix; then
+
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+
+fi
+log_info "Completion setup complete..."
 
 # Change to home directory
-cd ~
+#cd ~
 
 # Additional environment-specific settings
 if [ -x /usr/bin/lesspipe ]; then
@@ -179,9 +210,6 @@ fi
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
   debian_chroot=$(cat /etc/debian_chroot)
 fi
-
-# Alert alias for long running commands
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
 # Source additional local configurations if they exist
 if [ -f ~/.bash_aliases ]; then
@@ -200,9 +228,9 @@ if [ -d ~/.bash_completion.d ]; then
 fi
 
 # Display initialization message
-log_info "Shell initialization complete"
-log_info "Use 'vim_all <search_dir>' to open all files recursively"
-log_info "Use 'count_string <search_string>' to find files with search_string"
+log_info "Shell initialization complete..."
+#log_info "Use 'vim_all <search_dir>' to open all files recursively"
+#log_info "Use 'count_string <search_string>' to find files with search_string"
 
 # Optional: Set custom prompt string if not using setup_prompt
 # PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
