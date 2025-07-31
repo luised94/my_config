@@ -2,7 +2,6 @@ name: [Item] Recall after reading
 content: |-
 // @use-markdown
 // @author Claude,luised94
-// <!-- VARIABLE DEFINITIONS -->
 ${{
 // ===== GRAB ALL THE DATA UPFRONT =====
 const item = topItem;
@@ -63,6 +62,9 @@ CitationKey: ${sharedObj.biblio.bibtexKey}
 Number of notes: ${sharedObj.biblio.numberOfNotes}
 
 ## Free recall
+
+### What do you remember from the current reading session?
+### What are the main points?
 
 ## Assesment
 Comprehension Rating (1-5):
