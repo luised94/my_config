@@ -204,7 +204,7 @@ fi
 log_info "Completion setup complete..."
 
 # Change to home directory
-#cd ~
+#cd ~ || echo "Error changing to home directory"
 
 # Additional environment-specific settings
 if [ -x /usr/bin/lesspipe ]; then
@@ -243,6 +243,10 @@ log_info "Shell initialization complete..."
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# TODO: Have to add this to the configuration when I have time
+export ODIN_ROOT="$HOME/Odin"
+export PATH="$ODIN_ROOT:$PATH"
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
