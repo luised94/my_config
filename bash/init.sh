@@ -22,8 +22,6 @@ readonly FUNCTION_FILES=(
     "view_files_in_browser.sh"
     "git_automations.sh"
     "directory_tree.sh"
-    "search_utils.sh"
-    "tag_processor.sh"
 )
 
 # Initialize logging first
