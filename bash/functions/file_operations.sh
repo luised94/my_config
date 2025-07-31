@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
 # Editor preferences
 DEFAULT_EDITORS=(
@@ -163,9 +163,9 @@ build_exclude_args() {
 #=======================================================
 
 # Constants for option parsing
-readonly REQUIRES_VALUE_MARKER="(requires value)"
-readonly OPTION_DELIMITER=":"
-readonly OPTION_SEPARATOR="|"
+REQUIRES_VALUE_MARKER="(requires value)"
+OPTION_DELIMITER=":"
+OPTION_SEPARATOR="|"
 
 ###############################################################################
 # Generates formatted usage information for a command-line tool

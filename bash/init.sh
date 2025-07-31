@@ -4,9 +4,6 @@
 [[ -n "$_BASH_UTILS_INITIALIZED" ]] && return
 readonly _BASH_UTILS_INITIALIZED=1
 
-# Base directory detection
-readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # Logging setup
 if [[ -z "$LOG_LEVEL" ]]; then
   export LOG_LEVEL="INFO"

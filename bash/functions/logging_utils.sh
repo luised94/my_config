@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
 # Advanced Logging Functions for Bash Scripts
 #

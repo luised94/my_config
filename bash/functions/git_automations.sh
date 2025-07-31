@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
 # Standard output formatting symbols for CLI feedback
 # Should just be the actual words. No need for output...

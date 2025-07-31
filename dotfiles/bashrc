@@ -9,9 +9,40 @@ esac
 # Set vi mode
 set -o vi
 
+# Base directory detection
+BASH_UTILS_ROOT="$HOME/my_config/bash/"
+#readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#echo "$BASH_UTILS_ROOT"
+
 # Initialize bash utilities
-export BASH_UTILS_PATH="$HOME/my_config/bash"
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "$BASH_UTILS_PATH/init.sh"
+#export BASH_UTILS_PATH="$HOME/my_config/bash"
+# Logging setup
+if [[ -z "$LOG_LEVEL" ]]; then
+  export LOG_LEVEL="INFO"
+fi
+
+# Function files
+# Missing file (typo or deletion) should output [ERROR] Required function file not found:
+FUNCTION_FILES=(
+  "logging_utils.sh"
+  "file_operations.sh"
+  "view_files_in_browser.sh"
+  "git_automations.sh"
+  "directory_tree.sh"
+)
+
+# Load function files
+for func in "${FUNCTION_FILES[@]}"; do
+    if [[ -f "${BASH_UTILS_ROOT}/functions/${func}" ]]; then
+        source "${BASH_UTILS_ROOT}/functions/${func}"
+    else
+        echo "[ERROR] Required function file not found: ${func}"
+        return 1
+    fi
+done
+
+log_info "Bash utilities initialized successfully"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "$BASH_UTILS_PATH/init.sh"
 
 # History settings
 HISTCONTROL=ignoreboth
@@ -69,7 +100,6 @@ log_info "Prompt configuration complete..."
 # Set up aliases
 # Defined in aliases_config and source in init.sh
 log_info "Setting up aliases..."
-
 MY_SHELL_ALIASES=(
   # --- Basic aliases ---
   "l=ls -CF"
