@@ -2,6 +2,101 @@
 
 [[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
+# Standard output formatting symbols for CLI feedback
+# Should just be the actual words. No need for output...
+declare -A OUTPUT_SYMBOLS=(
+    ["START"]="=== "    # Indicates start of operation
+    ["PROCESSING"]=">>> " # Shows ongoing process
+    ["SUCCESS"]="[+] "   # Positive completion
+    ["ERROR"]="[!] "     # Error condition
+    ["WARNING"]="[?] "   # Warning or attention needed
+    ["INFO"]="[*] "      # General information
+    ["DONE"]="=== "      # Operation completion
+)
+
+display_message() {
+    local type="$1"
+    local message="$2"
+
+    # Check if the type exists as a key in the array
+    if [[ -v "OUTPUT_SYMBOLS[$type]" ]]; then # -v checks if the variable exists
+        echo "${OUTPUT_SYMBOLS[$type]}$message"
+    else
+        # Handle the error: Provide a default message or log an error
+        echo "[UNKNOWN MESSAGE TYPE] $message (Type: $type)" >&2 # Output to stderr
+        # OR:
+        # echo "[ERROR] Invalid message type: $type" >&2
+        # return 1 # Return an error code if you want to stop execution
+    fi
+}
+
+validate_dir_is_git_repo() {
+    if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        display_message "ERROR" "This script must be run from a git repository."
+        exit 1
+    fi
+    return 0
+}
+
+has_uncommitted_changes() {
+    validate_dir_is_git_repo
+    # Check if there are any changes staged or unstaged
+    if [[ -n $(git status --porcelain) ]]; then
+        return 0 # Has uncommitted changes
+    else
+        return 1 # No uncommitted changes
+    fi
+}
+
+display_changes() {
+    validate_dir_is_git_repo
+    local branch_name="$1"
+    local staged=false
+    local unstaged=false
+
+    if [[ -n $(git diff --cached --name-status) ]]; then # check for staged
+        staged=true
+    fi
+    if [[ -n $(git diff --name-status) ]]; then # check for unstaged
+        unstaged=true
+    fi
+    
+    if "$staged" || "$unstaged"; then
+        display_message "WARNING" "Local branch '$branch_name' has the following changes:"
+        if "$staged"; then
+            echo "Staged changes:"
+            git diff --cached --stat
+        fi
+        if "$unstaged"; then
+            echo "Unstaged changes:"
+            git diff --stat
+        fi
+    else
+        display_message "INFO" "No changes found on branch '$branch_name'."
+    fi
+}
+
+is_remote_reachable() {
+    local remote="${1:-origin}"
+    local timeout_seconds="${2:-5}" # Default timeout of 5 seconds
+
+    if ! timeout "$timeout_seconds" git ls-remote --exit-code "$remote" > /dev/null 2>&1; then
+        display_message ERROR "Remote '$remote' is not reachable (timeout after $timeout_seconds seconds). Check your network connection or remote configuration."
+        return 1
+    fi
+    return 0
+}
+
+branch_exists() {
+    local branch_name="$1"
+    local remote="${2:-false}" # Default to local branch check
+    if "$remote"; then
+        git show-ref --verify --quiet "refs/remotes/origin/$branch_name"
+    else
+        git show-ref --verify --quiet "refs/heads/$branch_name"
+    fi
+}
+
 sync_all_branches() {
     validate_dir_is_git_repo || return 1
     is_remote_reachable || return 1
