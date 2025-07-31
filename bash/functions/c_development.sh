@@ -16,6 +16,6 @@ cr() {
     echo "[WARNING] Binary '$binary_file' exists. Overwriting." >&2
   fi
 
-  gcc -Wall -Wextra -pedantic -std=c11 "$file_to_compile" -o "$binary_file" && ./"$binary_file"
+  gcc -Wall -Wextra -pedantic -std=c11 "$file_to_compile" -o "$binary_file" #&& ./"$binary_file"
 
 }
