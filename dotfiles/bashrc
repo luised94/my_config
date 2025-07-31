@@ -2,8 +2,8 @@
 
 # If not running interactively, don't do anything
 case $- in
-    *i*) ;;
-      *) return;;
+  *i*) ;;
+    *) return;;
 esac
 
 # Initialize bash utilities
@@ -12,11 +12,41 @@ export BASH_UTILS_PATH="$HOME/my_config/bash"
 
 # Apply shell options from configuration
 for opt in "${SHELL_OPTIONS[@]}"; do
-    shopt -s "$opt"
+  shopt -s "$opt"
 done
 
 # Set up prompt
-setup_prompt
+log_info "Configuring shell prompt..."
+
+# Check for color support
+color_prompt=
+case "$TERM" in
+  xterm-color|*-256color) color_prompt=yes;;
+esac
+
+# Set up debian chroot prefix
+debian_chroot=
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+  debian_chroot=$(cat /etc/debian_chroot)
+fi
+
+# Configure prompt based on color support
+if [ "$color_prompt" = yes ]; then
+  PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+  PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+
+# Special handling for xterm
+case "$TERM" in
+  xterm*|rxvt*)
+    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+  *)
+    ;;
+esac
+
+log_info "Prompt configuration complete"
 
 # Set up aliases
 setup_aliases
@@ -29,7 +59,7 @@ set -o vi
 
 # Set up Windows environment if in WSL
 if [[ -n "$WSL_DISTRO_NAME" ]]; then
-    setup_windows_environment
+  setup_windows_environment
 fi
 
 # Enable programmable completion
@@ -40,12 +70,12 @@ cd ~
 
 # Additional environment-specific settings
 if [ -x /usr/bin/lesspipe ]; then
-    eval "$(SHELL=/bin/sh lesspipe)"
+  eval "$(SHELL=/bin/sh lesspipe)"
 fi
 
 # Set up chroot
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+  debian_chroot=$(cat /etc/debian_chroot)
 fi
 
 # Alert alias for long running commands
@@ -53,18 +83,18 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo
 
 # Source additional local configurations if they exist
 if [ -f ~/.bash_aliases ]; then
-    . ~/.bash_aliases
+  . ~/.bash_aliases
 fi
 
 if [ -f ~/.bash_local ]; then
-    . ~/.bash_local
+  . ~/.bash_local
 fi
 
 # Load custom completions
 if [ -d ~/.bash_completion.d ]; then
-    for file in ~/.bash_completion.d/*; do
-        [ -f "$file" ] && . "$file"
-    done
+  for file in ~/.bash_completion.d/*; do
+    [ -f "$file" ] && . "$file"
+  done
 fi
 
 # Display initialization message
@@ -83,13 +113,13 @@ export NVM_DIR="$HOME/.nvm"
 # !! Contents within this block are managed by 'conda init' !!
 #__conda_setup="$('/home/lius/miniforge3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 #if [ $? -eq 0 ]; then
-#    eval "$__conda_setup"
+#  eval "$__conda_setup"
 #else
-#    if [ -f "/home/lius/miniforge3/etc/profile.d/conda.sh" ]; then
-#        . "/home/lius/miniforge3/etc/profile.d/conda.sh"
-#    else
-#        export PATH="/home/lius/miniforge3/bin:$PATH"
-#    fi
+#  if [ -f "/home/lius/miniforge3/etc/profile.d/conda.sh" ]; then
+#    . "/home/lius/miniforge3/etc/profile.d/conda.sh"
+#  else
+#    export PATH="/home/lius/miniforge3/bin:$PATH"
+#  fi
 #fi
 #unset __conda_setup
 # <<< conda initialize <<<
