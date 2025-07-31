@@ -114,3 +114,47 @@ setup_windows_environment() {
     echo "Use 'list_dropbox' to list contents of your Dropbox."
     echo "Use 'search_dropbox <term>' to search your Dropbox."
 }
+
+    list_dropbox() {
+        ls -la "$DROPBOX_PATH"
+    }
+    # Optional: Create a function to search Dropbox
+    search_dropbox() {
+        local usage="Usage: search_dropbox [-d depth] [-t filetype] [-c content] [-x exclude] search_term
+        -d: Max depth (default: 1)
+        -t: File type (e.g., pdf, txt)
+        -c: Search file contents
+        -x: Exclude directory (can be used multiple times)
+        -h: Show this help message"
+        local depth=1
+        local filetype=""
+        local content=""
+        local exclude_dirs=()
+        local OPTIND opt
+        while getopts "d:t:c:x:h" opt; do
+            case $opt in
+                d) depth=$OPTARG ;;
+                t) filetype=$OPTARG ;;
+                c) content=$OPTARG ;;
+                x) exclude_dirs+=("-not -path */$OPTARG/*") ;;
+                h) echo "$usage"; return 0 ;;
+                *) echo "Invalid option: -$OPTARG" >&2; echo "$usage" >&2; return 1 ;;
+            esac
+        done
+        shift $((OPTIND-1))
+        if [[ $# -eq 0 ]]; then
+            log_error "Error: No search term provided." >&2
+            echo "$usage" >&2
+            return 1
+        fi
+        local search_term=$1
+        local find_args=("$DROPBOX_PATH" -maxdepth "$depth" "${exclude_dirs[@]}")
+        if [[ -n $filetype ]]; then
+            find_args+=(-name "*.$filetype")
+        fi
+        if [[ -n $content ]]; then
+            find "${find_args[@]}" -type f -print0 | xargs -0 grep -l "$content" | grep -i "$search_term"
+        else
+            find "${find_args[@]}" -iname "*$search_term*" -type f
+        fi
+    }

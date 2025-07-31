@@ -1,0 +1,10 @@
+---
+title: Restructuring my config git repository
+date: 2025-04-01
+---
+
+# Introduction
+I created the my_config repository to store my dotfiles, use git for version control and github to sync to my other computer. I went through a phase were I broke everything off into distinct files for no reason and I vibe-coded my way into some nice functions that are not well designed and standarized. In the restructure branch of this repo, I am trying to slowly but surely rework the configuration to be centralized and provide a more uniform interface to my functions.
+
+## Variables
+I noticed that many of the files in the configuration directory were just defining variables. There was no reason to create a bunch of files for this. It seems like there should be a variables file and one with aliases since they are variables per se. Furthermore, some of the functions are doing some validations that should be done beforehand and the function should only confirm availability. It should also be clear what global variables they expect.
