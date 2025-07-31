@@ -14,7 +14,6 @@ fi
 
 # Configuration files
 readonly CONFIG_FILES=(
-    "editor_config.sh"
     "output_print_symbols.sh"
 )
 

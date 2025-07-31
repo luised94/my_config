@@ -100,6 +100,7 @@ MY_SHELL_ALIASES=(
   "ngd=nvim < <(git diff)"
   "ngda=nvim < <(git diff HEAD)"
   "ngdc=nvim < <(git diff --cached)"
+  "nglc=git diff-tree --no-commit-id --name-only -r -z HEAD | xargs -0 nvim"
   #"gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
   #"syncall=sync_all_branches"
 
