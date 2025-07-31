@@ -16,7 +16,6 @@ fi
 readonly CONFIG_FILES=(
     "editor_config.sh"
     "output_print_symbols.sh"
-    "path_config.sh"
     "search_config.sh"
     "shell_config.sh"
 )
@@ -40,7 +39,6 @@ readonly FUNCTION_FILES=(
     "search_utils.sh"
     "shell_setup.sh"
     "tag_processor.sh"
-    "windows_utils.sh"
 )
 
 
