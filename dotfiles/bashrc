@@ -49,7 +49,47 @@ esac
 log_info "Prompt configuration complete"
 
 # Set up aliases
-setup_aliases
+# Defined in aliases_config and source in init.sh
+log_info "Setting up aliases..."
+
+MY_SHELL_ALIASES=(
+  # --- Basic aliases ---
+  "ll=ls -alF"
+  "la=ls -A"
+  "l=ls -CF"
+  "R=R --no-save"
+  "explorer=explorer.exe ."
+  # --- Git aliases ---
+  "ga=git add"
+  "gb=git branch"
+  "gc=git commit"
+  "gcb=git checkout -b"
+  "gco=git checkout"
+  "gd=git diff"
+  "gfap=git fetch --all --prune"
+  "gl=git log --oneline --graph --decorate"
+  "gm=git merge"
+  "gmnff=git merge --no-ff"
+  "gpl=git pull"
+  "gps=git push"
+  "grm=git rebase main"
+  "gs=git status"
+  "ngd=nvim < <(git diff)"
+  "ngda=nvim < <(git diff HEAD)"
+  "ngdc=nvim < <(git diff --cached)"
+  #"gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
+  #"syncall=sync_all_branches"
+
+  # --- Lab utils aliases ---
+  "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_configuration_experiment_bmc.R ~/lab_utils/core_scripts/configuration_experiment_bmc.R"
+)
+
+for alias_def in "${MY_SHELL_ALIASES[@]}"; do
+  #echo "${alias_def}"
+  alias "${alias_def}"
+done
+
+log_info "Aliases configured successfully"
 
 # Set up environment variables and paths
 setup_environment
