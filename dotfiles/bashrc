@@ -64,7 +64,7 @@ case "$TERM" in
     ;;
 esac
 
-log_info "Prompt configuration complete"
+log_info "Prompt configuration complete..."
 
 # Set up aliases
 # Defined in aliases_config and source in init.sh
