@@ -55,6 +55,17 @@ new_worktree() {
 
 }
 
+sync_repos() {
+
+  local repository_location=${2:-$HOME/personal_repos}
+  mapfile -t repository_names < <(find "$repository_location" -mindepth 1 -maxdepth 1 -type d)
+
+  for repository in "${repository_names[@]}"; do
+    echo $repository
+  done
+
+
+}
 ##########################################
 # Must be inspected and simplified greatly.
 ##########################################
