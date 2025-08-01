@@ -10,7 +10,7 @@ esac
 set -o vi
 
 # Base directory detection
-BASH_UTILS_ROOT="$HOME/my_config/bash/"
+BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
 #readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #echo "$BASH_UTILS_ROOT"
 
