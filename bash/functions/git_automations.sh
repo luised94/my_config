@@ -8,13 +8,17 @@ new_worktree() {
 
     local worktree_location="$HOME/personal_repos/"
     local name_delimiter="-"
-    local repository_name=$1
+    local repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
     local branch_name=$2
 
-    #if
+    if [ ! $(git branch | grep "$branch_name" | wc -l ) -eq 1 ];
+    then
+      printf "[ERROR] Branch does not exist: %s\n: " "$branch_name"
+      exit 1
+    fi
 
-
-
+    full_worktree_path=${worktree_location}${repository_name}${name_delimiter}${branch_name}
+    git worktree add "${full_worktree_path}" "${branch_name}"
 
 }
 ##########################################
