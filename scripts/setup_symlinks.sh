@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE_DIRECTORY="~/personal_repos/my_config/"
+BASE_DIRECTORY="$HOME/personal_repos/my_config/"
 #FILE_SYMLINK_DIRECTORY="~/"
 DIR_SYMLINK_DIRECTORY="~/.config"
 FILES_TO_SYMLINK=(
@@ -11,13 +11,13 @@ FILES_TO_SYMLINK=(
 
 for filename in "${FILES_TO_SYMLINK[@]}";
 do
-  filepath="$(readlink -f ${BASE_DIRECTORY}${filename})"
+  filepath="${BASE_DIRECTORY}${filename}"
   printf "File to symlink: %s\n" "$filename"
   printf "Path to file: %s\n" "$filepath"
 
-  if [ -f "$filename" ];
+  if [ -f "$filepath" ];
   then
-      symlink_name=$(readlink -f "$filename" | awk -F/ -v home="$HOME" '{sub(/\..*$/,"",$NF); print home "/." $NF}' )
+      symlink_name=$(readlink -f "$filepath" | awk -F/ -v home="$HOME" '{sub(/\..*$/,"",$NF); print home "/." $NF}' )
       printf "Symbolic link to create: %s\n" "$symlink_name"
       if [ -h "$symlink_name" ];
       then
@@ -25,7 +25,7 @@ do
         continue
       fi
       echo "Creating symlink..."
-      #ln -s "$filepath" "$symlink_name"
+      ln -s "$filepath" "$symlink_name"
   fi
   #echo "File or directory do not exist."
   #exit 1
