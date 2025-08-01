@@ -10,12 +10,15 @@ esac
 set -o vi
 
 # Base directory detection
-BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
 #readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-#echo "$BASH_UTILS_ROOT"
+BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
+if [ ! -d "$BASH_UTILS_ROOT" ]; then
 
-# Initialize bash utilities
-#export BASH_UTILS_PATH="$HOME/my_config/bash"
+  printf "[WARNING] BASH_UTILS_ROOT dir does not exist.\n"
+  printf "Current setting: %s\n" "$BASH_UTILS_ROOT"
+
+fi
+
 # Logging setup
 if [[ -z "$LOG_LEVEL" ]]; then
   export LOG_LEVEL="INFO"
@@ -36,7 +39,7 @@ for func in "${FUNCTION_FILES[@]}"; do
   if [[ -f "${BASH_UTILS_ROOT}/functions/${func}" ]]; then
     source "${BASH_UTILS_ROOT}/functions/${func}"
   else
-    echo "[ERROR] Required function file not found: ${func}"
+    printf "[ERROR] Required function file not found: %s\n" "${func}"
     return 1
   fi
 done
