@@ -29,5 +29,10 @@ awk -F/ '{sub(/\.sh$/,"",$NF); print "." $NF}'
 ln -s $(readlink -f nvim) ~/.config/nvim
 ```
 
+### 2025-08-01
+Created a script to automate creation of symlinks. Not super useful but fun.
+Things I should really do: tmux automation, automate device switching git update in bashrc, clean up git functions to automate branch syncing (useful when you really work on multiple branches but they really are one at the end of the day.)
+Moved the repository to personal_repos. Go with ~/personal_repos/<repo_name>-<branch_name>/ convention.
+
 
 
