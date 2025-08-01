@@ -97,3 +97,8 @@ Useful for fixing some text overlays that mess with annotations.
 ## Errors encountered
 ### CRITICAL: Working with dropbox files
 Ensure that when you are moving a file from dropbox, it is downloaded. If you move a file from dropbox using wsl and the file isnt downloaded, it essentially deletes the file.
+
+### OCRmyPdf on ~400 files
+Wanted to rename and move 400 files to make sure they were in Dropbox. Accidentally clicked on OCRmyPdf...
+Tried to see if I could find a way to do it from the console but I failed.
+While pdftoppm is running, you can close and wait for pdftoppm to finish. That should stop everything. Restart computer just to be safe. Double check with any PDFs to check for corruption. Remove the leftover jpgs.
