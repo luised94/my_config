@@ -1,6 +1,9 @@
 # Managing dotfiles
 This is a way to have all dotfiles in a single directory that can be easily placed under version control and synchronized to other locations. I use a similar strategy for neovim.
 
+### 2025-08-01
+this is out of date although mostly correct but instead dotfiles is part of a git repository and I just sync via Github.
+
 ## Before beginning
 This file assumes that you have set the windows_path variable in your .bashrc file.
 
@@ -19,6 +22,7 @@ mkdir dotfiles
 '''
 
 2. Move any dotfiles to dotfiles folder and then create a symbolic link to the place where the file would be seen by the operating system. 
+Note: Symbolic links have to be absolute paths.
 '''{bash}
 mv ~/.bashrc mv ~/dotfiles/bashrc
 ln -s ~/dotfiles/bashrc ~/.bashrc

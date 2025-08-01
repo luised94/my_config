@@ -1,5 +1,4 @@
 " Basic Settings
-" Basic Settings
 " -----------------------------
 " set noinsertmode
 
