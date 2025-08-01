@@ -56,37 +56,62 @@ new_worktree() {
 }
 
 sync_repos() {
-
+  # Prerequisites
   if ! command -v git >/dev/null 2>&1; then
     echo "Git is not installed" >&2
     return 1
   fi
 
-  local repository_location=${1:-$HOME/personal_repos}
+  local repositories_root=${1:-$HOME/personal_repos}
+  if [[ ! -d $repositories_root ]]; then
 
-  if [[ ! -e $repository_location ]]; then
-
-    printf '[ERROR] Repository location does not exist.\nRepo location: %s\n' "$repository_location" >&2
+    printf '[ERROR] Repository location does not exist: %s\n' "$repositories_root" >&2
     return 1
 
   fi
 
-  mapfile -t repository_names < <(find "$repository_location" -mindepth 1 -maxdepth 1 -type d)
-  for repository in "${repository_names[@]}"; do
+  # Use native glob instead of 'find': one less process, safe with spaces/new-lines, and nullglob prevents literal * when no dirs exist.
+  shopt -s nullglob dotglob
+  local success_count=0 total_count=0
 
-    printf '\n%*s\n\n' "${COLUMNS:-80}" '' | tr ' ' '='
-    printf "Stashing any changes: %s\n" "$repository"
+  for repo_path in "$repositories_root"/*/; do
+    repo_path=${repo_path%/}
+    echo
+    echo "==============================="
+    echo "Repository: $(basename "$repo_path")"
+    echo "==============================="
 
-    # Save local changes if needed
-    git -C "$repository" diff-index --quiet HEAD || \
-      git -C "$repository" stash push -u -m "wip before pull $(date -Iseconds)"
+    total_count=$((total_count + 1))
+    # Check directory is a repository
+    if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+        echo "Skipping $(basename "$repo_path") (not a git repository)"
+        continue
+    fi
 
-    printf "Pulling repo: %s\n" "$repository"
-    # Pull the latest changes
-    git -C "$repository" pull --ff-only
+    # Stash changes if any to prevent loss
+    if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
+      echo "Stashing local changes..."
+      git -C "$repo_path" stash push -u -m "wip before pull $(date -Iseconds)"
+    fi
+
+    # Pull and track success
+    echo "Pulling latest changes..."
+    if git -C "$repo_path" pull --ff-only; then
+
+      success_count=$((success_count + 1))
+      echo "SUCCESS!"
+
+    else
+
+      echo "[**FAILED**]"
+
+    fi
 
   done
 
+    echo
+    echo "Summary: $success_count/$total_count repositories processed successfully"
+    [[ $success_count -eq $total_count ]]
 }
 ##########################################
 # Must be inspected and simplified greatly.
