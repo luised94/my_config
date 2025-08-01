@@ -1,24 +1,35 @@
 #!/bin/bash
 
 new_worktree() {
-    if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        echo "[ERROR] This script must be run from a git repository."
-        exit 1
-    fi
 
-    local worktree_location="$HOME/personal_repos/"
-    local name_delimiter="-"
-    local repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
-    local branch_name=$2
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "[ERROR] Must be run in git repo. Current dir: $(pwd)"
+    return 1
+  fi
 
-    if [ ! $(git branch | grep "$branch_name" | wc -l ) -eq 1 ];
-    then
-      printf "[ERROR] Branch does not exist: %s\n: " "$branch_name"
-      exit 1
-    fi
+  local worktree_location="$HOME/personal_repos/"
+  local name_delimiter="-"
+  local repository_name; repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
+  local branch_name=$1
 
-    full_worktree_path=${worktree_location}${repository_name}${name_delimiter}${branch_name}
-    git worktree add "${full_worktree_path}" "${branch_name}"
+  if [[ -z $branch_name ]]; then
+
+    printf 'Usage: %s <branch-name>\n' "${0##*/}" >&2
+    return 1
+
+  fi
+
+  if ! git show-ref --verify --quiet "refs/heads/$branch_name"; then
+
+    printf 'ERROR: branch "%s" does not exist\n' "$branch_name" >&2
+    printf 'To create use: git checkout -b %s\n' "$branch_name" >&2
+    return 1
+
+  fi
+
+  full_worktree_path=${worktree_location}${repository_name}${name_delimiter}${branch_name}
+  printf "Worktree path to create: %s\n" "$full_worktree_path"
+  #git worktree add "${full_worktree_path}" "${branch_name}"
 
 }
 ##########################################
