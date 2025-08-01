@@ -2,21 +2,22 @@
 
 new_worktree() {
 
-  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    echo "[ERROR] Must be run in git repo. Current dir: $(pwd)"
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+
+    printf 'ERROR: not inside a git repository (cwd: %s)\n' "$(pwd)" >&2
     return 1
+
   fi
 
-  local worktree_location="$HOME/personal_repos/"
+  local branch_name=$1
+  local worktree_root=${2:-$HOME/personal_repos/}
+
   local name_delimiter="-"
   local repository_name; repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
-  local branch_name=$1
 
   if [[ -z $branch_name ]]; then
-
-    printf 'Usage: %s <branch-name>\n' "${0##*/}" >&2
+    printf 'Usage: %s <branch-name> [<worktree-root>]\n' "${FUNCNAME[0]}" >&2
     return 1
-
   fi
 
   if ! git show-ref --verify --quiet "refs/heads/$branch_name"; then
@@ -27,9 +28,9 @@ new_worktree() {
 
   fi
 
-  full_worktree_path=${worktree_location}${repository_name}${name_delimiter}${branch_name}
+  full_worktree_path=${worktree_root}${repository_name}${name_delimiter}${branch_name}
   printf "Creating workpath tree: %s\n" "$full_worktree_path"
-  git worktree add "${full_worktree_path}" "${branch_name}"
+  #git worktree add "${full_worktree_path}" "${branch_name}"
 
 }
 ##########################################
