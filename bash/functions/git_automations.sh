@@ -28,8 +28,8 @@ new_worktree() {
   fi
 
   full_worktree_path=${worktree_location}${repository_name}${name_delimiter}${branch_name}
-  printf "Worktree path to create: %s\n" "$full_worktree_path"
-  #git worktree add "${full_worktree_path}" "${branch_name}"
+  printf "Creating workpath tree: %s\n" "$full_worktree_path"
+  git worktree add "${full_worktree_path}" "${branch_name}"
 
 }
 ##########################################
