@@ -1,7 +1,14 @@
 #!/bin/bash
 
+# Create worktree for branch at default root location
+# Tests:
+# new_worktree
+# new_worktree potato
+# new_worktree <branch_in_repo>
+# new_worktree <branch_in_repo> # after first run
 new_worktree() {
 
+  # --- basic preflight check ---
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 
     printf 'ERROR: not inside a git repository (cwd: %s)\n' "$(pwd)" >&2
@@ -12,27 +19,42 @@ new_worktree() {
   local branch_name=$1
   local worktree_root=${2:-$HOME/personal_repos/}
 
-  local name_delimiter="-"
-  local repository_name; repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
 
   if [[ -z $branch_name ]]; then
+
     printf 'Usage: %s <branch-name> [<worktree-root>]\n' "${FUNCNAME[0]}" >&2
     return 1
+
   fi
 
   if ! git show-ref --verify --quiet "refs/heads/$branch_name"; then
 
     printf 'ERROR: branch "%s" does not exist\n' "$branch_name" >&2
-    printf 'To create use: git checkout -b %s\n' "$branch_name" >&2
+    printf 'Create it with: git checkout -b %s\n' "$branch_name" >&2
     return 1
 
   fi
 
-  full_worktree_path=${worktree_root}${repository_name}${name_delimiter}${branch_name}
-  printf "Creating workpath tree: %s\n" "$full_worktree_path"
-  #git worktree add "${full_worktree_path}" "${branch_name}"
+  # --- build destination ---
+  local name_delimiter="-"
+  local repository_name; repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
+
+  destination_path=${worktree_root}${repository_name}${name_delimiter}${branch_name}
+
+  if [[ -e $destination_path ]]; then
+
+    printf 'ERROR: path already exists: %s\n' "$destination_path" >&2
+    return 1
+
+  fi
+
+  # --- create worktree ---
+  mkdir -p -- "$worktree_root" || return
+  printf "Creating workpath tree: %s\n" "$destination_path"
+  git worktree add "${destination_path}" "${branch_name}"
 
 }
+
 ##########################################
 # Must be inspected and simplified greatly.
 ##########################################
