@@ -12,7 +12,7 @@ if ! command -v tmux >/dev/null 2>&1; then
   return 1
 fi
 
-REPOSITORIES_ROOT="$HOME/personal_repos/"
+REPOSITORIES_ROOT="$HOME/personal_repos"
 SUCCESS_COUNT=0
 TOTAL_COUNT=0
 
@@ -29,16 +29,18 @@ for repo_path in "$REPOSITORIES_ROOT"/*/; do
   repo_path=${repo_path%/}
   echo
   echo "--------------------------------------"
-  echo "Repository: $(basename "$repo_path")"
-  echo "Repository: $repo_path"
-  echo "Repository: $basename_path"
+  echo "Repository name: $basename_path"
+  echo "Repository path: $repo_path"
   echo "--------------------------------------"
+
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
+
   # Check directory is a repository
   if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
-    echo "Skipping $(basename "$repo_path") (not a git repository)"
+    echo "Skipping $basename_path (not a git repository)"
     continue
   fi
+
 done
 
 echo
