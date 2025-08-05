@@ -21,7 +21,7 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
-IGNORE_REPOS=("main-project" "legacy-repo")
+IGNORE_REPOS=("main-project" "legacy-repo" "exercises")
 echo "Ignore repos: ${IGNORE_REPOS[@]}"
 
 # In your loop
@@ -55,11 +55,20 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Repository path: $repo_path"
   echo "Tmux session name: $session_name"
   echo "--------------------------------------"
+  if (( $TOTAL_COUNT == 2 )); then
+    printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
+    break
+  fi
 
-  #if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
-  #    echo "Skipping $basename_path (ignored)"
-  #    continue
-  #fi
+  if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
+      echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+      continue
+  fi
+
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+      echo "Session $session_name already exists, skipping"
+      continue
+  fi
 
   # Check directory is a repository
   if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -81,10 +90,6 @@ for repo_path in "${repo_paths[@]}"; do
   #tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
 
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-  if (( $TOTAL_COUNT == 2 )); then
-    printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
-    break
-  fi
 
 done
 
