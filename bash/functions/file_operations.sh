@@ -354,7 +354,7 @@ parse_options() {
 #     exit 1
 # fi
 ###############################################################################
-
+# Terrible function nesting... sigh. My bad but also early days of vibe coding
 vim_all() {
     local -A args=(
         ["directory"]="."

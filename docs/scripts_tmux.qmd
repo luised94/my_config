@@ -30,3 +30,5 @@ tmux choose-tree
 ## 2025-07-30
 Windows start at 0. Can create windows with another number. Not sure the limit.
 
+## 2025-08-04
+Completed new_worktree function and sync_repos functions that take advantage of the centralization in the personal_repos/ directory. Now I need to figure out how to automate tmux session creation for all of the directories in the personal_repos/ directory. I think the best would be to have the default repos be main or master and use worktrees for branches
