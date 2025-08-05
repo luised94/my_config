@@ -72,26 +72,32 @@ sync_repos() {
 
   # Use native glob instead of 'find': one less process, safe with spaces/new-lines, and nullglob prevents literal * when no dirs exist.
   shopt -s nullglob dotglob
-  local success_count=0 total_count=0
+  local success_count=0 total_count=0 stash_count=0
 
-  for repo_path in "$repositories_root"/*/; do
+  local repo_paths=( "$repositories_root"/*/ )
+  for repo_path in "${repo_paths[@]}"; do
     repo_path=${repo_path%/}
+    total_count=$((total_count + 1))
     echo
     echo "==============================="
     echo "Repository: $(basename "$repo_path")"
     echo "==============================="
 
-    total_count=$((total_count + 1))
     # Check directory is a repository
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+
         echo "Skipping $(basename "$repo_path") (not a git repository)"
         continue
+
     fi
 
     # Stash changes if any to prevent loss
     if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
+
       echo "Stashing local changes..."
+      stash_count=$((stash_count + 1))
       git -C "$repo_path" stash push -u -m "wip before pull $(date -Iseconds)"
+
     fi
 
     # Pull and track success
@@ -111,6 +117,7 @@ sync_repos() {
 
     echo
     echo "Summary: $success_count/$total_count repositories processed successfully"
+    echo "Summary: $stash_count/$total_count repositories have stashed changes"
     [[ $success_count -eq $total_count ]]
 }
 ##########################################

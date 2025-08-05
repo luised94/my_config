@@ -424,17 +424,17 @@ vim_all() {
             fi
             ;;
         time|*)
-    if ! mapfile -t files < <(
-        #set -x
-        eval "find \"${args["directory"]}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
-        sort -rn | \
-        cut -d' ' -f2- | \
-        tr -d '\r'
-        #set +x
-    ); then
-        log_error "Failed to collect files"
-        return 1
-    fi
+            if ! mapfile -t files < <(
+            set -x
+            eval "find \"${args["directory"]}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
+            sort -rn | \
+            cut -d' ' -f2- | \
+            tr -d '\r'
+            set +x
+            ); then
+              log_error "Failed to collect files"
+              return 1
+            fi
             ;;
     esac
 
