@@ -4,15 +4,6 @@
 # Each directory is assumed to be a worktree for a particular repository.
 # The session has a defined structure and can be modified.
 # for names to appear complete: set-option -g status-left-length 60
-# Attach to the session
-# tmux attach-session -t "$session_name"
-# Switch sessions
-# Ctrl+B s
-# Ctrl+B ( OR Ctrl+B )
-# switch-client -t <session_name>
-# tmux attach -t <session_name>
-# tmux kill-session -t <session_name>
-# tmux kill-server
 
 # Prerequisites
 # Requires tmux
@@ -23,12 +14,16 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
+
+# Define repos to ignore manually
+# Refer to my_config/docs/scripts_tmux.qmd | ## 2025-08-05 ### Session 2
 IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
-#mapfile -t IGNORE_REPOS < <(find "$REPOSITORIES_ROOT" -mindepth 1 -maxdepth 1 -type d | grep -v "-")
 echo "Ignore repos: ${IGNORE_REPOS[@]}"
 
 # In your loop
 SUCCESS_COUNT=0
+IGNORE_COUNT=0
+DUPLICATE_COUNT=0
 TOTAL_COUNT=0
 
 if [[ ! -d $REPOSITORIES_ROOT ]]; then
@@ -58,27 +53,19 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Repository path: $repo_path"
   echo "Tmux session name: $session_name"
   echo "--------------------------------------"
-  #if (( $TOTAL_COUNT == 5 )); then
-  #  printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
-  #  break
-  #fi
 
-  # Ignore repos: mostly meant for skipping main repos
-  if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
-      echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
-      continue
+  # Ignore repos: mostly meant for skipping main repos, defined manually
+  # Using printf and grep for exact matching
+  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$basename_path"; then
+    IGNORE_COUNT=$((IGNORE_COUNT + 1))
+    echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+    continue
   fi
 
-  # Skip non-worktree repos (no dash = main branch)
-  # Consider uncommeting if all main repos should be ignored
-  #if [[ ! "$basename_path" =~ "-" ]]; then
-  #    echo "Skipping main branch: $basename_path"
-  #    continue
-  #fi
-
   if tmux has-session -t "$session_name" 2>/dev/null; then
-      echo "Session \"$session_name\" already exists, skipping"
-      continue
+    DUPLICATE_COUNT=$((DUPLICATE_COUNT + 1))
+    echo "Session \"$session_name\" already exists, skipping"
+    continue
   fi
 
   # Check directory is a repository
@@ -106,6 +93,8 @@ done
 
 echo
 echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
+echo "IGNORED: $IGNORE_COUNT/$TOTAL_COUNT repos ignored"
+echo "DUPLICATES: $DUPLICATE_COUNT/$TOTAL_COUNT repos were duplicates"
 [[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
 
 echo "========== End: ${BASH_SOURCE[0]} =========="
