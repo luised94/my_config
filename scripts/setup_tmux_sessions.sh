@@ -23,8 +23,8 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
-IGNORE_REPOS=("main-project" "legacy-repo" "exercises")
-#IGNORE_REPOS=("main-project" "legacy-repo" "exercises")
+IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+#mapfile -t IGNORE_REPOS < <(find "$REPOSITORIES_ROOT" -mindepth 1 -maxdepth 1 -type d | grep -v "-")
 echo "Ignore repos: ${IGNORE_REPOS[@]}"
 
 # In your loop
@@ -68,6 +68,13 @@ for repo_path in "${repo_paths[@]}"; do
       echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
       continue
   fi
+
+  # Skip non-worktree repos (no dash = main branch)
+  # Consider uncommeting if all main repos should be ignored
+  #if [[ ! "$basename_path" =~ "-" ]]; then
+  #    echo "Skipping main branch: $basename_path"
+  #    continue
+  #fi
 
   if tmux has-session -t "$session_name" 2>/dev/null; then
       echo "Session \"$session_name\" already exists, skipping"
