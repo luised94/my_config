@@ -6,6 +6,11 @@
 # for names to appear complete: set-option -g status-left-length 60
 # Attach to the session
 # tmux attach-session -t "$session_name"
+# Switch sessions
+# Ctrl+B s
+# Ctrl+B ( OR Ctrl+B )
+# switch-client -t <session_name>
+# tmux attach -t <session_name>
 
 # Prerequisites
 # Requires tmux
@@ -16,6 +21,9 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
+IGNORE_REPOS=("main-project" "legacy-repo")
+
+# In your loop
 SUCCESS_COUNT=0
 TOTAL_COUNT=0
 
@@ -36,6 +44,7 @@ if (( ${#repo_paths[@]} == 0 )); then
 fi
 
 for repo_path in "${repo_paths[@]}"; do
+  TOTAL_COUNT=$((TOTAL_COUNT + 1))
   basename_path=$(basename "$repo_path")
   repo_path=${repo_path%/}
   session_name=$( echo $basename_path | sed 's/-/:/' )
@@ -44,9 +53,13 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Repository name: $basename_path"
   echo "Repository path: $repo_path"
   echo "Tmux session name: $session_name"
+  echo "Ignore repos: ${IGNORE_REPOS[@]}"
   echo "--------------------------------------"
 
-  TOTAL_COUNT=$((TOTAL_COUNT + 1))
+  #if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
+  #    echo "Skipping $basename_path (ignored)"
+  #    continue
+  #fi
 
   # Check directory is a repository
   if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -60,12 +73,13 @@ for repo_path in "${repo_paths[@]}"; do
   echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
   echo "tmux new-window -t "$session_name:3" -n 'cluster'"
 
-  tmux new-session -d -s "$session_name" -c "$repo_path"
-  tmux rename-window -t "$session_name:0" 'editing'
-  tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path"
-  tmux split-window -v -t "$session_name:2" -c "$repo_path"
-  tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
-  
+  # Tmux session creation logic
+  #tmux new-session -d -s "$session_name" -c "$repo_path"
+  #tmux rename-window -t "$session_name:0" 'editing'
+  #tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path"
+  #tmux split-window -v -t "$session_name:2" -c "$repo_path"
+  #tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
+
   if (( $TOTAL_COUNT == 2 )); then
     printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
     break
