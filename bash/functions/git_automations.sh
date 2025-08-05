@@ -73,8 +73,16 @@ sync_repos() {
   # Use native glob instead of 'find': one less process, safe with spaces/new-lines, and nullglob prevents literal * when no dirs exist.
   shopt -s nullglob dotglob
   local success_count=0 total_count=0 stash_count=0
-
   local repo_paths=( "$repositories_root"/*/ )
+
+  # Early exit if no sub-directories were found
+  if (( ${#repo_paths[@]} == 0 )); then
+
+      printf 'No repositories found under %s\n' "$repositories_root" >&2
+      return 0
+
+  fi
+
   for repo_path in "${repo_paths[@]}"; do
     repo_path=${repo_path%/}
     total_count=$((total_count + 1))
