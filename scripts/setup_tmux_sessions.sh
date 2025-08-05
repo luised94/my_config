@@ -3,6 +3,9 @@
 # Create tmux sessions for directories in REPOSITORIES_ROOT.
 # Each directory is assumed to be a worktree for a particular repository.
 # The session has a defined structure and can be modified.
+# for names to appear complete: set-option -g status-left-length 60
+# Attach to the session
+# tmux attach-session -t "$session_name"
 
 # Prerequisites
 # Requires tmux
@@ -24,13 +27,23 @@ if [[ ! -d $REPOSITORIES_ROOT ]]; then
 fi
 
 shopt -s nullglob dotglob
-for repo_path in "$REPOSITORIES_ROOT"/*/; do
+repo_paths=( "$REPOSITORIES_ROOT"/*/ )
+if (( ${#repo_paths[@]} == 0 )); then
+
+  printf 'No repositories found under %s\n' "$REPOSITORIES_ROOT" >&2
+  return 0
+
+fi
+
+for repo_path in "${repo_paths[@]}"; do
   basename_path=$(basename "$repo_path")
   repo_path=${repo_path%/}
+  session_name=$( echo $basename_path | sed 's/-/:/' )
   echo
   echo "--------------------------------------"
   echo "Repository name: $basename_path"
   echo "Repository path: $repo_path"
+  echo "Tmux session name: $session_name"
   echo "--------------------------------------"
 
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
@@ -41,6 +54,12 @@ for repo_path in "$REPOSITORIES_ROOT"/*/; do
     continue
   fi
 
+  echo "tmux new-session -d -s "$session_name" -c "$repo_path""
+  echo "tmux rename-window -t "$session_name:0" 'editing'"
+  echo "tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path""
+  echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
+  echo "tmux new-window -t "$session_name:3" -n 'cluster'"
+
 done
 
 echo
@@ -48,21 +67,3 @@ echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
 [[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
 
 echo "======================================"
-
-#SESSION_NAME="${REPOSITORIES_ROOT}_session"
-SESSION_NAME="session"
-
-#tmux new-session -d -s "$SESSION_NAME" -c "$REPOSITORIES_ROOT"
-#
-## Name window 1 (editing)
-#tmux rename-window -t "$SESSION_NAME:0" 'editing'
-#
-## Create window 2 (split vertical, both panes in $REPOSITORIES_ROOT)
-#tmux new-window -t "$SESSION_NAME:2" -n 'dev' -c "$REPOSITORIES_ROOT"
-#tmux split-window -v -t "$SESSION_NAME:2" -c "$REPOSITORIES_ROOT"
-#
-## Create window 3 (for cluster login, placeholder)
-#tmux new-window -t "$SESSION_NAME:3" -n 'cluster'
-
-# Attach to the session
-#tmux attach-session -t "$SESSION_NAME"
