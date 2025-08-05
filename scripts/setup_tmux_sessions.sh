@@ -14,7 +14,7 @@
 
 # Prerequisites
 # Requires tmux
-echo "======================================"
+echo "========== Start: ${BASH_SOURCE[0]} =========="
 if ! command -v tmux >/dev/null 2>&1; then
   echo "Tmux is not installed" >&2
   return 1
@@ -22,6 +22,7 @@ fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
 IGNORE_REPOS=("main-project" "legacy-repo")
+echo "Ignore repos: ${IGNORE_REPOS[@]}"
 
 # In your loop
 SUCCESS_COUNT=0
@@ -53,7 +54,6 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Repository name: $basename_path"
   echo "Repository path: $repo_path"
   echo "Tmux session name: $session_name"
-  echo "Ignore repos: ${IGNORE_REPOS[@]}"
   echo "--------------------------------------"
 
   #if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
@@ -80,6 +80,7 @@ for repo_path in "${repo_paths[@]}"; do
   #tmux split-window -v -t "$session_name:2" -c "$repo_path"
   #tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
 
+  SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
   if (( $TOTAL_COUNT == 2 )); then
     printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
     break
@@ -91,4 +92,4 @@ echo
 echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
 [[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
 
-echo "======================================"
+echo "========== End: ${BASH_SOURCE[0]} =========="
