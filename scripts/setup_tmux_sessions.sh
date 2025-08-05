@@ -60,6 +60,17 @@ for repo_path in "${repo_paths[@]}"; do
   echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
   echo "tmux new-window -t "$session_name:3" -n 'cluster'"
 
+  tmux new-session -d -s "$session_name" -c "$repo_path"
+  tmux rename-window -t "$session_name:0" 'editing'
+  tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path"
+  tmux split-window -v -t "$session_name:2" -c "$repo_path"
+  tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
+  
+  if (( $TOTAL_COUNT == 2 )); then
+    printf "Reached count limit for testing: %s\n" "$TOTAL_COUNT" >&2
+    break
+  fi
+
 done
 
 echo
