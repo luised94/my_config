@@ -82,10 +82,9 @@ for repo_path in "${repo_paths[@]}"; do
 
   # Tmux session creation logic
   tmux new-session -d -s "$session_name" -c "$repo_path"
-  #tmux rename-window -t "$session_name:0" 'editing'
-  #tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path"
-  #tmux split-window -v -t "$session_name:2" -c "$repo_path"
-  #tmux new-window -t "$session_name:3" -n 'cluster' -c "$repo_path"
+  tmux rename-window -t "$session_name:0" 'editing'
+  tmux new-window -t "$session_name:1" -n 'dev' -c "$repo_path"
+  tmux new-window -t "$session_name:2" -n 'docs' -c "$repo_path"
 
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 
