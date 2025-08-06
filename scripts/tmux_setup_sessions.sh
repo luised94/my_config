@@ -4,19 +4,26 @@
 # Each directory is assumed to be a worktree for a particular repository.
 # The session has a defined structure and can be modified.
 # for names to appear complete: set-option -g status-left-length 60
-# Attach to the session
-# tmux attach-session -t "$session_name"
 
 # Prerequisites
 # Requires tmux
-echo "======================================"
+echo "========== Start: ${BASH_SOURCE[0]} =========="
 if ! command -v tmux >/dev/null 2>&1; then
   echo "Tmux is not installed" >&2
   return 1
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
+
+# Define repos to ignore manually
+# Refer to my_config/docs/scripts_tmux.qmd | ## 2025-08-05 ### Session 2
+IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+echo "Ignore repos: ${IGNORE_REPOS[@]}"
+
+# In your loop
 SUCCESS_COUNT=0
+IGNORE_COUNT=0
+DUPLICATE_COUNT=0
 TOTAL_COUNT=0
 
 if [[ ! -d $REPOSITORIES_ROOT ]]; then
@@ -36,9 +43,10 @@ if (( ${#repo_paths[@]} == 0 )); then
 fi
 
 for repo_path in "${repo_paths[@]}"; do
+  TOTAL_COUNT=$((TOTAL_COUNT + 1))
   basename_path=$(basename "$repo_path")
   repo_path=${repo_path%/}
-  session_name=$( echo $basename_path | sed 's/-/:/' )
+  session_name=$( echo $basename_path | sed 's/-/>/' )
   echo
   echo "--------------------------------------"
   echo "Repository name: $basename_path"
@@ -46,11 +54,23 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Tmux session name: $session_name"
   echo "--------------------------------------"
 
-  TOTAL_COUNT=$((TOTAL_COUNT + 1))
+  # Ignore repos: mostly meant for skipping main repos, defined manually
+  # Using printf and grep for exact matching
+  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$basename_path"; then
+    IGNORE_COUNT=$((IGNORE_COUNT + 1))
+    echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+    continue
+  fi
+
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    DUPLICATE_COUNT=$((DUPLICATE_COUNT + 1))
+    echo "Session \"$session_name\" already exists, skipping"
+    continue
+  fi
 
   # Check directory is a repository
   if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
-    echo "Skipping $basename_path (not a git repository)"
+    echo "Skipping \"$basename_path\" (not a git repository)"
     continue
   fi
 
@@ -60,10 +80,20 @@ for repo_path in "${repo_paths[@]}"; do
   echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
   echo "tmux new-window -t "$session_name:3" -n 'cluster'"
 
+  # Tmux session creation logic
+  tmux new-session -d -s "$session_name" -c "$repo_path"
+  tmux rename-window -t "$session_name:0" 'editing'
+  tmux new-window -t "$session_name:1" -n 'dev' -c "$repo_path"
+  tmux new-window -t "$session_name:2" -n 'docs' -c "$repo_path"
+
+  SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+
 done
 
 echo
 echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
+echo "IGNORED: $IGNORE_COUNT/$TOTAL_COUNT repos ignored"
+echo "DUPLICATES: $DUPLICATE_COUNT/$TOTAL_COUNT repos were duplicates"
 [[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
 
-echo "======================================"
+echo "========== End: ${BASH_SOURCE[0]} =========="
