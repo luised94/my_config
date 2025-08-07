@@ -1,0 +1,104 @@
+
+## Install zotero
+Since I use windows, I just download and install it from their website (Zotero)[https://www.zotero.org/download/]
+Zotero has limited storage for free members. I used dropbox and links to be able to have essentially unlimited storage. This can be changed to a hard drive or server but I havent tried to set this up.
+
+## Awesome plugins for zotero
+
+Some of these are required for integration with neovim and quarto.
+- [BetterBibtex](https://retorque.re/zotero-better-bibtex/)
+- [Reading List](https://github.com/Dominic-DallOsto/zotero-reading-list)
+- [Zoplicate](https://chenglongma.com/zoplicate/)
+- [BetterNotes](https://github.com/windingwind/zotero-better-notes#readme)
+- [Zotfile](https://github.com/jlegewie/zotfile)
+
+I have some copies of the xpi files I used previously in my dropbox.
+## Configure Zotero Settings
+There are few modifications to the Zotero default settings.
+### General Settings
+
+- Appearance and Language: Set color scheme to dark. Language to automatic and Item Pane header to Title, Creator, Year
+- File Handling:
+Enable all three options in file handling. 
+I usually allow snapshots for websites to grab htmls for blogs. Zotero7 supports html and epub annotation.
+- File Renaming:
+Enable automatic renaming to PDF and Ebook. Havent used zotero for other types of media.
+Click 'Customize Filename Format':
+Set Filename Template:
+{{ authors name="family" join="_" max="1" suffix="_" replaceFrom="\s+" replaceTo="_" regexOpts="g" }}{{ year suffix="_" }}{{ title truncate="50" case="sentence" join="_" replaceFrom="\s+" replaceTo="_" regexOpts="g" }}
+- Reader: Leave defaults.
+- Locate: Leave defaults.
+- Miscellaneous: Leave defaults.
+- Groups: Leave defaults.
+
+### Sync
+I disable automatic syncing and link to my account. 
+- File syncing: Enable and download at sync time.
+
+### Export
+- Quick Copy: Set item format to Chicago Manual of Style 17th edition full note. Set Note Format to Markdown + Rich Text and enable Include Zotero Links.
+- Entire library or collection: Right click my library, collection or item of choice. Select better bibtex (requires plugin), press keep updated if you want to continuously update.
+     > I was getting an error when background export was enable. Disabling background export allows export to procede. (Zotero 7.0.15 (64-bit), BBT 7.0.13)
+
+### Cite
+Leave defaults. Install Microsoft Word add on if required.
+
+### Advanced
+- Miscellaneous: Enable automatic check and report broken site translators.
+- Files and Folders: 
+Set base directory to 'C:\Users\Luis\MIT Dropbox\zotero-storage'
+Set data directory to 'C:\Users\Luis\Zotero'
+
+Choose the zotero storage folder of your choice in dropbox or other cloud storage provider. 
+It should sync automatically for dropbox.
+
+### Actions and Tags
+Import the actions-zotero.yml from the my_config repository.
+
+### Attanger
+- Source path: Set Root directory to C:\Users\Luis\Downloads
+- Attach Type: Set to Link.
+- Destination Path: Set to C:\Users\Luis\MIT Dropbox\zotero-storage. Set subfolder to {{ authors name="family" join="_" max="1" }}. Leave parse forward slashes.
+- Other settings: Leave enabled. Set 'Types of Attachments for Renaming/Moving' to 'pdf,doc,docx,txt,rtf,djvu,epub,html,mobi'
+
+This an important plugin to circumvent storage issues.
+
+### BetterBibtex
+Citation Key Formula: auth.fold + year + title.lower.skipwords().select(1,1)
+Brief rational:
+Using auth and year is very simple and how I am accostumed to refer to citations. However, when there is a duplicate, it just appends a letter and is not very memorable and relative to addition data. Adding the first letter of the title does not add too much text but adds a bit of context. Does add overhead to the bib file if exporting.
+Enable citation key search and force citation key to plain text.
+Enable ignore upper/lowercase when comparing for uniqueness.
+Keep keys unique across all libraries.
+Set postfixed keys.
+Enable BibLatex extended name and extract JSTOR from URL into eprint fields.
+Leave others as default.
+Refresh keys if necessary.
+
+Reference: https://claude.ai/chat/44a9fa22-1018-4515-909e-9e2ab3a87105
+### Better Notes
+- Basic: Enable 'take over opening note' and 'take over exporting notes'
+- Note Editor: Enable show note linkes in outline, magic key to show command palette, use enhanced markdown paste.
+- Sync: Leave as default.
+- Template:
+- Note from Annotaiton: Enable.
+
+### Zoplicate
+Set Action Preferences to Always Ask. Set Master Item Preferences to Earliest added and append duplicate counts.
+
+### Zotero OCR
+Set location to C:\Program Files\Tesseract-OCR\tesseract.exe
+Set location to C:\Users\Luis\Desktop\poppler-24.02.0\Library\bin\pdftoppm.exe
+Leave defaults forlanguage, dpi and segmentation mode.
+Enable output to pdf with text layer, import resulting PDF as copy.
+Test the configuration by running the plugin. If the resulting pdf has the text layer as is not corrupted, then enable overwrite PDF.
+Useful for fixing some text overlays that mess with annotations.
+
+## Errors encountered
+### CRITICAL: Working with dropbox files
+Ensure that when you are moving a file from dropbox, it is downloaded. If you move a file from dropbox using wsl and the file isnt downloaded, it essentially deletes the file.
+
+### OCRmyPdf on ~400 files
+Wanted to rename and move 400 files to make sure they were in Dropbox. Accidentally clicked on OCRmyPdf...
+Tried to see if I could find a way to do it from the console but I failed.
+While pdftoppm is running, you can close and wait for pdftoppm to finish. That should stop everything. Restart computer just to be safe. Double check with any PDFs to check for corruption. Remove the leftover jpgs.

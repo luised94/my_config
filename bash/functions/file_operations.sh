@@ -1,7 +1,110 @@
 #!/bin/bash
 
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
+# Editor preferences
+DEFAULT_EDITORS=(
+    "nvim"
+    "vim"
+)
+
+# Editor options
+EDITOR_OPTIONS=(
+    "h|help:Show this help message"
+    "e|editor:Specify editor to use (requires value)"
+    "d|directory:Specify search directory (requires value)"
+    "f|force:Skip confirmation for large file counts"
+    "l|limit:Set file count warning threshold (requires value)"
+    "m|mode:Specify sort mode: modified, conflicts, search (requires value)"
+    "p|pattern:Search pattern for search mode (requires value)"
+)
+
+EDITOR_USAGE_EXAMPLES=(
+    "vim_all                                  # Open files in current directory sorted by modification time"
+    "vim_all -d ./src                         # Open files from specific directory"
+    "vim_all -e nvim                          # Use specific editor (nvim)"
+    "vim_all -m conflicts                     # Open files with Git conflicts"
+    "vim_all -m modified                      # Open Git modified/staged files"
+    "vim_all -m search -p 'TODO'              # Open files containing 'TODO'"
+    "vim_all -f -m modified                   # Force open modified files (skip confirmation)"
+    "vim_all -l 50                            # Set custom file limit warning threshold"
+)
+
+# Default settings
+DEFAULT_FILE_WARNING_THRESHOLD=100
+
+# Default exclusion patterns
+DEFAULT_SEARCH_EXCLUDE_DIRS=(
+    ".git"
+    "node_modules"
+    "build"
+    "dist"
+    "renv"
+    ".venv"
+)
+
+DEFAULT_SEARCH_EXCLUDE_FILES=(
+    "*.log"
+    "*repository_aggregate.md"
+    "*.tmp"
+    "*.bak"
+    "*.swp"
+    "*.gitignore"
+    "*.Rprofile"
+    "*renv.lock"
+)
+
+# Search options
+SEARCH_OPTIONS=(
+    "h|help:Show this help message"
+    "e|exclude-dir:Additional directory to exclude (requires value)"
+    "f|exclude-file:Additional file pattern to exclude (requires value)"
+    "v|verbose:Enable verbose output"
+    "q|quiet:Suppress all output except final counts"
+    "d|max-depth:Maximum directory depth to search (requires value)"
+)
+
+# Search defaults
+DEFAULT_SEARCH_VERBOSE=0
+DEFAULT_SEARCH_QUIET=0
+
+# Advanced search configuration
+declare -A SEARCH_CONFIG=(
+    ["MAX_RESULTS"]="1000"
+    ["CONTEXT_LINES"]="0"
+    ["COLORED_OUTPUT"]="true"
+)
+
+detect_editor() {
+    local -n editors_ref=$1
+    
+    for editor in "${editors_ref[@]}"; do
+        if command -v "$editor" >/dev/null 2>&1; then
+            echo "$editor"
+            return 0
+        fi
+    done
+    
+    log_error "No suitable editor found. Please install one of: ${editors_ref[*]}"
+    return 1
+}
+
+validate_editor_args() {
+    local dir="$1"
+    local editor="$2"
+    
+    if [[ ! -d "$dir" ]]; then
+        log_error "Directory '$dir' does not exist"
+        return 1
+    fi
+
+    if ! command -v "$editor" >/dev/null 2>&1; then
+        log_error "Editor '$editor' not found"
+        return 1
+    fi
+
+    return 0
+}
 
 build_exclude_args() {
     local -n dirs_ref=$1
@@ -26,6 +129,232 @@ build_exclude_args() {
     
     printf '%s\n' "${expressions[@]}"
 }
+
+#=======================================================
+# CLI Option Parser & Usage Generator
+#=======================================================
+# Core Components:
+#   1. Option Definition Format:
+#      <short_opt>|<long_opt>:<description>
+#   
+#   2. Pattern Elements:
+#      - short_opt:    Single-letter flag (e.g., 'h')
+#      - long_opt:     Full word flag (e.g., 'help')
+#      - description:  Help text with optional value marker
+#
+# Special Markers:
+#   - (requires value): Indicates option needs argument
+#=======================================================
+
+#=======================================================
+# Option Parser Implementation Details
+#=======================================================
+# !! Option parsing logic
+# Processing Flow:
+#   1. Split on ':' -> extract pattern and description
+#   2. Split pattern on '|' -> get short and long opts
+#   3. Store components in respective variables
+#
+# Variable Mapping:
+#   opt_pattern  = "h|help"
+#   short_opt    = "h"
+#   long_opt     = "help"
+#   description  = "Show help message"
+#=======================================================
+
+# Constants for option parsing
+REQUIRES_VALUE_MARKER="(requires value)"
+OPTION_DELIMITER=":"
+OPTION_SEPARATOR="|"
+
+###############################################################################
+# Generates formatted usage information for a command-line tool
+# Globals:
+#   None
+# Arguments:
+#   $1 - Name reference to options array
+#   $2 - Script/command name
+#   $3 - Name reference to examples array
+# Outputs:
+#   Writes usage information to stdout
+# Returns:
+#   0 if successful, non-zero on error
+###############################################################################
+generate_usage() {
+    # Input validation
+    if [[ $# -ne 3 ]]; then
+        log_error "generate_usage: Requires exactly 3 arguments"
+        return 1
+    fi
+
+    local -n opts_ref=$1
+    local script_name=$2
+    local -n examples_ref=$3
+    
+    # Header
+    printf "Usage: %s [OPTIONS]\n\n" "$script_name"
+    #
+    # Options section
+    printf "Options:\n"
+
+    local opt_def
+    # !! Option parsing logic
+    for opt_def in "${opts_ref[@]}"; do
+        # Parse option definition
+        local opt_pattern="${opt_def%%${OPTION_DELIMITER}*}"
+        local short_opt="${opt_pattern%%${OPTION_SEPARATOR}*}"
+        local long_opt="${opt_pattern##*${OPTION_SEPARATOR}}"
+        local description="${opt_def#*${OPTION_DELIMITER}}"
+        
+        # Format and print option
+        printf "  -%s, --%-20s %s\n" \
+            "$short_opt" \
+            "$long_opt" \
+            "$description"
+    done
+    
+    # Examples section (if provided)
+    if [[ ${#examples_ref[@]} -gt 0 ]]; then
+        printf "\nExamples:\n"
+        local example
+        for example in "${examples_ref[@]}"; do
+            printf "  %s\n" "$example"
+        done
+    fi
+}
+
+###############################################################################
+# Parses command-line options based on defined option patterns
+# Globals:
+#   None
+# Arguments:
+#   $1 - Name reference to options definition array
+#   $2 - Name reference to arguments associative array
+#   $@ - Command line arguments to parse
+# Outputs:
+#   Writes errors to stderr
+# Returns:
+#   0 if parsing successful, 1 if error
+###############################################################################
+parse_options() {
+    # Input validation
+    if [[ $# -lt 2 ]]; then
+        log_error "parse_options: Requires at least 2 arguments"
+        return 1
+    fi
+
+    local -n opts_ref=$1
+    local -n args_ref=$2
+    shift 2
+
+    # Debug support
+    [[ ${DEBUG:-0} -eq 1 ]] && set -x
+
+    while [[ $# -gt 0 ]]; do
+        local matched=0
+        local current_arg="$1"
+
+        # Handle special cases
+        if [[ "$current_arg" != -* ]]; then
+            # Non-option argument
+            args_ref["positional"]="${args_ref["positional"]} $current_arg"
+            shift
+            continue
+        fi
+
+        # Process options
+        local opt_def
+        for opt_def in "${opts_ref[@]}"; do
+            # Parse option definition
+            local opt_pattern="${opt_def%%${OPTION_DELIMITER}*}"
+            local short_opt="${opt_pattern%%${OPTION_SEPARATOR}*}"
+            local long_opt="${opt_pattern##*${OPTION_SEPARATOR}}"
+            local description="${opt_def#*${OPTION_DELIMITER}}"
+            local requires_value=0
+            
+            # Check if option requires value
+            [[ "$description" == *"${REQUIRES_VALUE_MARKER}"* ]] && requires_value=1
+
+            # Match option
+            if [[ "$current_arg" == "-$short_opt" ]] || 
+               [[ "$current_arg" == "--$long_opt" ]]; then
+                matched=1
+                
+                if ((requires_value)); then
+                    # Handle options requiring values
+                    if [[ -z "$2" ]] || [[ "$2" == -* ]]; then
+                        log_error "Option $current_arg requires a value"
+                        return 1
+                    fi
+                    args_ref["$long_opt"]="$2"
+                    shift 2
+                else
+                    # Handle boolean options
+                    args_ref["$long_opt"]=1
+                    shift
+                fi
+                break
+            fi
+        done
+
+
+        # Handle unknown options
+        if ((matched == 0)); then
+            log_error "Unknown option: $current_arg"
+            return 1
+        fi
+    done
+
+    [[ ${DEBUG:-0} -eq 1 ]] && set +x
+    return 0
+}
+
+#=======================================================
+# Usage Example Template
+#=======================================================
+# Define Options:
+#   COMMAND_OPTIONS=(
+#     "h|help:Show this help message"
+#     "f|file:Input file path (requires value)"
+#     "v|verbose:Enable verbose output"
+#   )
+#
+# Parse Command:
+#   parse_options COMMAND_OPTIONS args "$@"
+#
+# Result Storage:
+#   args["help"]="1"      # Flag was set
+#   args["file"]="input"  # Value was provided
+#
+# Example Usage:
+#
+# # Define options
+# readonly COMMAND_OPTIONS=(
+#     "h|help:Show this help message"
+#     "f|file:Input file path (requires value)"
+#     "v|verbose:Enable verbose output"
+# )
+#
+# # Define examples
+# readonly COMMAND_EXAMPLES=(
+#     "command -h                  # Show help"
+#     "command -f input.txt        # Process input file"
+#     "command -v -f input.txt     # Process with verbose output"
+# )
+#
+# # Initialize arguments
+# declare -A args=(
+#     ["file"]=""
+#     ["verbose"]=0
+# )
+#
+# # Parse options
+# if ! parse_options COMMAND_OPTIONS args "$@"; then
+#     generate_usage COMMAND_OPTIONS "command" COMMAND_EXAMPLES
+#     exit 1
+# fi
+###############################################################################
+# Terrible function nesting... sigh. My bad but also early days of vibe coding
 vim_all() {
     local -A args=(
         ["directory"]="."
@@ -95,17 +424,17 @@ vim_all() {
             fi
             ;;
         time|*)
-    if ! mapfile -t files < <(
-        #set -x
-        eval "find \"${args["directory"]}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
-        sort -rn | \
-        cut -d' ' -f2- | \
-        tr -d '\r'
-        #set +x
-    ); then
-        log_error "Failed to collect files"
-        return 1
-    fi
+            if ! mapfile -t files < <(
+            set -x
+            eval "find \"${args["directory"]}\" \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
+            sort -rn | \
+            cut -d' ' -f2- | \
+            tr -d '\r'
+            set +x
+            ); then
+              log_error "Failed to collect files"
+              return 1
+            fi
             ;;
     esac
 
@@ -126,101 +455,3 @@ vim_all() {
     log_info "Opening ${#files[@]} files in $editor"
     eval "$editor" "${files[@]}"
 }
-
-aggregate_repository() {
-    local output_file="repository_aggregate.md"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    local verbose=0
-    local quiet=0
-    local max_depth=""
-    
-    # Show usage if no arguments or help flag
-    if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
-        echo "${AGGREGATE_REPOSITORY_USAGE}"
-        return 0
-    fi
-    
-    # Initialize arrays for exclusions
-    local exclude_dirs=("${DEFAULT_SEARCH_EXCLUDE_DIRS[@]}")
-    local exclude_files=("${DEFAULT_SEARCH_EXCLUDE_FILES[@]}")
-
-    # Parse command line options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -d|--max-depth)
-                max_depth="-maxdepth $2"
-                shift 2
-                ;;
-            -e|--exclude-dir)
-                exclude_dirs+=("$2")
-                shift 2
-                ;;
-            -f|--exclude-file)
-                exclude_files+=("$2")
-                shift 2
-                ;;
-            -v|--verbose)
-                verbose=1
-                shift
-                ;;
-            -q|--quiet)
-                quiet=1
-                shift
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
-
-    # Construct find command exclusions
-    local dir_excludes=""
-    for dir in "${exclude_dirs[@]}"; do
-        dir_excludes="$dir_excludes -not -path '*/$dir/*'"
-    done
-
-    local file_excludes=""
-    for pattern in "${exclude_files[@]}"; do
-        file_excludes="$file_excludes -not -name '$pattern'"
-    done
-
-    # Create aggregate file with header
-    {
-        echo "# Repository Aggregation"
-        echo "Generated: $timestamp"
-        echo "---"
-        echo
-    } > "$output_file"
-
-    # Find and process files
-    local find_command="find . $max_depth -type f $dir_excludes $file_excludes"
-    local file_count=0
-    local total_lines=0
-
-    while IFS= read -r file; do
-        [[ "$file" == "./$output_file" ]] && continue
-
-        [[ $verbose -eq 1 ]] && echo "Processing: $file"
-
-        {
-            echo "## File: $file"
-            echo "\`\`\`${file##*.}"
-            cat "$file"
-            echo "\`\`\`"
-            echo
-        } >> "$output_file"
-
-        ((file_count++))
-        [[ $verbose -eq 1 ]] && total_lines+=$(wc -l < "$file")
-    done < <(eval "$find_command" | sort)
-
-    [[ $quiet -eq 0 ]] && {
-        echo "Repository aggregation complete:"
-        echo "- Files processed: $file_count"
-        [[ $verbose -eq 1 ]] && echo "- Total lines: $total_lines"
-        echo "- Output: $output_file"
-    }
-}
-
-# Usage example:
-# aggregate_repository -v -d 3 -e "tests" -f "*.csv" "Initial repository aggregation"

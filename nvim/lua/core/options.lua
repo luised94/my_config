@@ -33,9 +33,10 @@ vim.wo.linebreak = true
 -- end
 -- -- find ~/.vim/undo -type f -mtime +30 -delete --Useful for managing undo files to prevent clutteror persistence.
 
--- Add tab setting to make it 4 spaces.
-vim.opt.tabstop = 4
-vim.opt.shiftwidth = 4
+-- Tab settings 
+-- Add tab setting to make it 2 spaces.
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.smarttab = true
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term

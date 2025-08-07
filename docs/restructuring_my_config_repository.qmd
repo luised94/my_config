@@ -1,0 +1,38 @@
+---
+title: Restructuring my config git repository
+date: 2025-04-01
+---
+
+# Introduction
+I created the my_config repository to store my dotfiles, use git for version control and github to sync to my other computer. I went through a phase were I broke everything off into distinct files for no reason and I vibe-coded my way into some nice functions that are not well designed and standarized. In the restructure branch of this repo, I am trying to slowly but surely rework the configuration to be centralized and provide a more uniform interface to my functions.
+
+## Variables
+I noticed that many of the files in the configuration directory were just defining variables. There was no reason to create a bunch of files for this. It seems like there should be a variables file and one with aliases since they are variables per se. Furthermore, some of the functions are doing some validations that should be done beforehand and the function should only confirm availability. It should also be clear what global variables they expect.
+
+### 2025-07-31
+During the last few days, I was able to mitigate function overabstraction and file sprawl hell from my bashrc. The method was very simple. I just took the logic of the functions outside and into the bashrc and tried to consolidate some objects, variables and for loops. Worked good.
+
+I decided to move repositories into personal_repos directory to have cleaner home directory. Now I have to deal with how I initially established symbolic links. I removed the old ones, move the my_config directory into the personal_repos directory, and have to reset the symbolic links. Symbolic links use absolute paths. I just used readlink -f and process substitution to use the relative paths in the command.
+
+```bash
+ln -s $(readlink -f dotfiles/bashrc.sh) ~/.bashrc
+# Tried something complicated for no reason.
+#readlink -f dotfiles/bashrc.sh | awk -F'/' '{print $NF}' | sed 's/\.sh$//' | sed 's/.*/\.&/'
+# Ask Kimi for how to do it in awk and sed by themselves. Very cool.
+readlink -f dotfiles/bashrc.sh |
+sed -E 's|.*/||; s/\.sh$//; s/^/./'
+
+readlink -f dotfiles/bashrc.sh |
+awk -F/ '{sub(/\.sh$/,"",$NF); print "." $NF}'
+
+
+ln -s $(readlink -f nvim) ~/.config/nvim
+```
+
+### 2025-08-01
+Created a script to automate creation of symlinks. Not super useful but fun.
+Things I should really do: tmux automation, automate device switching git update in bashrc, clean up git functions to automate branch syncing (useful when you really work on multiple branches but they really are one at the end of the day.)
+Moved the repository to personal_repos. Go with ~/personal_repos/<repo_name>-<branch_name>/ convention.
+
+
+

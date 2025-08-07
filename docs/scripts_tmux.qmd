@@ -1,0 +1,96 @@
+---
+title: "Using tmux and scripts"
+date: 2025-07-30
+---
+
+# Overview
+
+Quick reference for using tmux and descriptions of some of the scripts to automate.
+
+# Quick reference
+```bash
+session_name="example"
+tmux # enter new tmux session
+tmux --help
+tmux ls
+tmux attach -d -t $session_name
+tmux kill-session
+tmux switch-client -t $session_name
+tmux choose-tree
+# switch-client -t <session_name>
+# tmux attach -t <session_name>
+# tmux kill-session -t <session_name>
+# tmux kill-server
+```
+
+```tmux
+<Ctrl+B> D # deattach
+# Switch sessions
+Ctrl+B s
+Ctrl+B ( OR Ctrl+B )
+<Ctrl+B>
+<Ctrl+B>
+```
+
+# Errors
+
+## 2025-07-30
+Windows start at 0. Can create windows with another number. Not sure the limit.
+
+## 2025-08-04
+Completed new_worktree function and sync_repos functions that take advantage of the centralization in the personal_repos/ directory. Now I need to figure out how to automate tmux session creation for all of the directories in the personal_repos/ directory. I think the best would be to have the default repos be main or master and use worktrees for branches
+
+## 2025-08-05
+### Session 1
+Got the script to setup tmux to work.
+Will create the symbolic link from my repo to the home directory to use the basic settings (extend status bar so it displays entire name.)
+Took the content of the tmux file (which I did not remember I had) and added to my dotfile, remove the file and created the link.
+
+```bash
+rm ~/.tmux.config
+ln -s $(readlink -f dotfiles/tmux.config) $(readlink -f ~/.tmux.config)
+```
+
+### Session 2
+Added verifications for session already existing and ignore repos. Had to adjust name for the tmux session to use ">" and not ":".
+There current way to ignore repos just matches and is set manually. Below I document some alternative ways to achieve the repo skipping but for future reference and/or solution when I bug happens.
+
+```bash
+# Setting the repositories to ignore
+IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+mapfile -t IGNORE_REPOS < <(find "$REPOSITORIES_ROOT" -mindepth 1 -maxdepth 1 -type d | grep -v "-")
+
+# Ways to ignore
+# 1.
+declare -A IGNORE_MAP
+for repo in "${IGNORE_REPOS[@]}"; do
+    IGNORE_MAP["$repo"]=1
+done
+
+# In your loop
+if [[ -n "${IGNORE_MAP[$basename_path]}" ]]; then
+    echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+    continue
+fi
+
+# 2.
+# Skip non-worktree repos (no dash = main branch)
+# Consider uncommeting if all main repos should be ignored
+if [[ ! "$basename_path" =~ "-" ]]; then
+  echo "Skipping main branch: $basename_path"
+  continue
+fi
+
+# 3. Naive
+if [[ " ${IGNORE_REPOS[@]} " =~ " ${basename_path} " ]]; then
+  echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+  continue
+fi
+
+# 4. Exact matching
+  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$basename_path"; then
+      echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+      continue
+  fi
+
+```

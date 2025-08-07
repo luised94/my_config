@@ -1,0 +1,27 @@
+---
+title: "prompt-revision"
+output: html_document
+date: "2023-08-27"
+---
+
+Analyze Prompt Clarity and Structure
+
+You are an AI assistant that helps improve prompts. Read the prompt below between the triple quotation marks and analyze it. In 1-2 paragraphs, please provide concrete feedback on how to revise this prompt:
+
+Summarize the goals and instructions in 1 sentence.
+Identify any ambiguous, vague, or unclear elements.
+Assess the logical flow and organization.
+Check the tone, level of detail, and complexity.
+Suggest 2-3 specific improvements to increase clarity.
+Prioritize fixes for ambiguity and logical flow over minor formatting.
+Provide 1-2 examples of clearer phrasing.
+Implement suggested revisions in a new 150 word prompt version.
+Use clear language, define key terms, anticipate edge cases.
+Verify the new prompt is unambiguous and provides sufficient guidance.
+
+Resources: Original prompt text.
+"""
+
+"""
+
+Output Format: 1-2 paragraphs concrete feedback and the complete improved prompt.

@@ -1,0 +1,43 @@
+---
+title: Setting up shell configuration
+---
+
+This document contains general steps for configuring the bash shell. I use wsl on windows and have not explored other modern alternatives to bash.
+I have mostly used bash 5.1.16 and bash 4.2.0 (while working on my institution's linux cluster).
+Has not been tested thoroughly. No guarantees.
+Other tools that I use are neovim, zotero (on windows), R and quarto.
+
+I am considering starship, just, jq, procs, and hyperfine.
+## General setup
+I initially installed an outdated version of neovim distro (not compatible with plugins).
+```{bash}
+# If you installed neovim from command line,
+# below I build it from source.
+sudo apt remove -y neovim
+sudo apt autoclean && sudo apt autoremove -y
+
+# Core system tools
+apt-get update and upgrade
+sudo apt install -y build-essential make unzip git wslu
+# Development dependencies
+sudo apt install -y gcc clang llvm lld
+
+# CLI productivity
+sudo apt install -y ripgrep fzf bat tmux
+sudo apt install -y shfmt shellcheck
+
+# PDF utilities
+sudo apt install -y qpdf poppler-utils
+
+# Wsl <-> Windows integration
+sudo apt install -y xclip xsel
+```
+
+## Setup symbolic links for bashrc
+Remove all gz files that were downloaded when install quarto, nvim, R and pandoc.
+```{bash}
+# Remove any bashrc. Backup if necessary.
+rm ~/.bashrc
+sudo ln -s ~/my_config/dotfiles/bashrc ~/.bashrc
+# I have a second for bashrc for when I work in linux cluster. Perform same action.
+```

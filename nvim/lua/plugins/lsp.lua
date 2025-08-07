@@ -206,12 +206,22 @@ return {
               },
             },
           },
+            zls = {
+              capabilities = capabilities,
+              flags = lsp_flags,
+              filetypes = { 'zig' }, -- Associate ZLS with .zig files
+              settings = {
+                zls = {
+                  enable_snippets = true, -- Enable code snippets
+                  enable_autofix = true,  -- Enable automatic fixes
+                },
+              },
+            },
         }
         -- Ensure the servers and tools above are installed
         --  To check the current status of installed tools and/or manually install
         --  other tools, you can run
         --    :Mason
-
         --  You can press `g?` for help in this menu.
         require('mason').setup()
 
@@ -219,13 +229,18 @@ return {
         -- for you, so that they are available from within Neovim.
         local ensure_installed = vim.tbl_keys(servers or {})
         vim.list_extend(ensure_installed, {
-          'stylua', -- Used to format Lua code
-          'shfmt', -- Used to format bash code
+          --'stylua', -- Used to format Lua code
+          --'shfmt', -- Used to format bash code
+          'zls', -- Used for zig
         })
-        require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+        require('mason-tool-installer').setup {
+          ensure_installed = ensure_installed
+        }
 
         require('mason-lspconfig').setup {
+          ensure_installed = ensure_installed,
           handlers = {
+            -- Default handler for all servers
             function(server_name)
               local server = servers[server_name] or {}
               -- This handles overriding only values explicitly passed

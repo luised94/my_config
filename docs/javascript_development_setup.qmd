@@ -1,0 +1,38 @@
+---
+title: Javascript development setup
+date: 2025-06-16
+---
+
+# Overview
+
+Setup the basic components of a development environment for the programming language, javascript/typescript.
+
+## Instructions
+### Download node
+Download from the [nodejs](https://nodejs.org/en/download) website.
+```{bash}
+# If you previously installed into the home directory
+# Remember to adjust the version as well.
+rm -rf ~/node-v22.5.1-linux-x64/
+#sudo rm /usr/local/bin/quarto
+# Modify this directory with NODE_VERSION to have multiple installed.
+INSTALLATION_DIRECTORY="$HOME/.local/share/node/"
+NODE_VERSION="22.17.0"
+mkdir -p "${INSTALLATION_DIRECTORY}"
+# x86_64 does not exist
+sudo curl -o node.tar.gz -L "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.gz"
+sudo tar -xzvf node.tar.gz -C "$INSTALLATION_DIRECTORY"
+
+${INSTALLATION_DIRECTORY}/bin/npm --version # Reverify this line depending on how it extracted
+sudo ln -s ${INSTALLATION_DIRECTORY}/bin/npm /usr/local/bin/npm
+sudo ln -s ${INSTALLATION_DIRECTORY}/bin/node /usr/local/bin/node
+
+# Clean up
+rm node.tar.gz
+```
+
+### Download deno
+
+```{bash}
+curl -fsSL https://deno.land/install.sh | sh
+```

@@ -5,6 +5,7 @@ vim.o.termguicolors = true
 require('core.options')
 require('core.keymaps')
 require('core.clipboard')
+require('core.search_quickfix')
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
@@ -33,6 +34,21 @@ vim.api.nvim_create_user_command('YankClean', function()
     -- Replace register with cleaned text
     vim.fn.setreg('"', cleaned_text)
 end, {})
+
+-- WORKAROUND: Fix for Neovim runtime syntax file bug
+-- Issue: Built-in quarto.vim and rmd.vim syntax files have a circular dependency
+-- that causes "Cannot redefine function IncludeLanguage: It is in use" error
+-- Root cause: quarto.vim includes rmd.vim, which tries to redefine a function
+-- while it's executing, creating a recursive loading conflict
+-- Solution: Treat .qmd files as markdown instead of using problematic syntax files
+-- Note: quarto-nvim plugin still provides LSP, code execution, and other features
+-- This only affects syntax highlighting, and markdown highlighting works well for .qmd
+vim.filetype.add({
+    extension = {
+        qmd = "markdown",
+        quarto = "markdown",
+    },
+})
 
 --[[
 local function is_on_cluster()

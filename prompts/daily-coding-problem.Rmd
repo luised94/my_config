@@ -1,0 +1,34 @@
+---
+title: "daily-coding-problem"
+output: html_document
+date: "2023-08-28"
+---
+
+Coding Challenge
+
+The goal of this prompt is to solve a coding problem that teaches core programming concepts through a detailed explanation. Please read the problem below and respond with a written solution identifying your approach.
+
+The goal is to thoroughly explain your approach and code logic for solving this problem. Focus on demonstrating core programming concepts, while clearly explaining your thinking process in a step-by-step manner.
+
+Your solution should include:
+
+Annotated code snippets to illustrate your approach. Implement your solution in Python.
+Explanations that tie to programming concepts covered previously
+Discussion of any edge cases considered and potential errors or faults handled
+
+At the beginning of your explanation, define and briefly explain any key programming concepts or keywords crucial to understanding your approach. For example, 'Depth first search is a traversal method that explores as far as possible down one branch before backtracking and exploring another branch. It goes deep first before exploring other options.'
+
+Aim to be concise yet detailed enough in your explanation for someone new to the concepts to understand your thinking and code. Do not worry about evaluating the quality of your code examples - the focus is on explaining your thinking process and approach in a clear, organized manner. High-quality explanations are valued over length.
+
+After explaining the initial solution, output three follow-up exercises that build on the core logic of the initial coding problem.
+
+Coding Problem:
+
+[Insert coding problem here]
+
+
+
+<!-- The purpose of this daily prompt is to provide a coding challenge that teaches core programming concepts through detailed explanations. Please read the problem below and write a comprehensive 1-2 page solution identifying the problem, outlining your approach, providing annotated code, and thoroughly explaining relevant concepts with examples. The explanation should provide enough detail for a student new to the topic to understand your code and thinking process. Your solution will be evaluated on the clarity, organization, completeness, and quality of examples in your explanation of the code and concepts. -->
+
+<!-- Coding Problem: -->
+<!-- [Insert daily coding problem here] -->

@@ -1,6 +1,7 @@
 # Standard aliases
 BASIC_ALIASES=(
     "ll=ls -alF"
+    "ls=ls --group-directories-first"
     "la=ls -A"
     "l=ls -CF"
     "R=R --no-save"
@@ -12,6 +13,7 @@ GIT_ALIASES=(
     "gs=git status"
     "gd=git diff"
     "ogd=nvim < <(git diff)"
+    "sgl=git log | nvim -"
     "ogdc=nvim < <(git diff --cached)"
     "ogda=nvim < <(git diff HEAD)"
     "ga=git add"
@@ -26,6 +28,14 @@ GIT_ALIASES=(
     "gpl=git pull"
     "gl=git log --oneline --graph --decorate"
     "gfap=git fetch --all --prune"
-    "gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
+    "gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!"
     "syncall=sync_all_branches"
+)
+
+PROGRAMMING_ALIASES=(
+  "gcc_strict=gcc -Wall -Wextra -pedantic -std=c11"
+)
+
+LABUTILS_ALIASES=(
+    "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_bmc_config.R ~/lab_utils/core_scripts/bmc_config.R"
 )

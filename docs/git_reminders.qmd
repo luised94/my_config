@@ -1,0 +1,32 @@
+---
+title: "Reminder of common git operations"
+date: 2025-08-05
+---
+
+# Overview
+Combinations of git commands that encapsulate common operations
+
+
+## 2025-08-05 Deleting branch locally and remotely
+Check if the branch has been completely merged and then delete if no longer needed
+```bash
+# Check if branch is fully merged
+git branch --merged
+# Combine with grep for a specific branch
+git branch --merged | grep "mybranch"
+
+# Compare commits
+git log --oneline main..your-branch-name
+# See diff between branches
+git diff main your-branch-name
+# Check if branch is ahead/behind main
+git rev-list --left-right --count main...your-branch-name
+
+# Delete the branches
+git branch -d your-branch-name
+git push origin --delete your-branch-name
+#OR
+git push origin :your-branch-name
+# Clean up all branches that do not exist in remote
+git fetch --prune
+```

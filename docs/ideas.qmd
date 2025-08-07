@@ -1,0 +1,2 @@
+# Quality of life
+- Use history command to get feedback and then decide what alias to make

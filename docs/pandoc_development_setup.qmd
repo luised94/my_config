@@ -1,0 +1,61 @@
+---
+title: "Installing and updating pandoc"
+date: 2025-06-09
+---
+# Overview
+Install pandoc via tarball release on the official github page. Required for quarto.
+The quarto section also has a pandoc installation section.
+
+## Install Pandoc
+Download and uncompress pandoc
+1. Download using curl and uncompress using tar
+```{bash}
+PANDOC_VERSION="3.7.0.2"
+INSTALLATION_DIRECTORY="$HOME/.local/share/pandoc/"
+mkdir -p "$INSTALLATION_DIRECTORY"
+
+curl -L -o pandoc.tar.gz "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-${PANDOC_VERSION}-linux-amd64.tar.gz"
+tar -xvzf pandoc.tar.gz --strip-components=1 -C "$INSTALLATION_DIRECTORY"
+${INSTALLATION_DIRECTORY}bin/pandoc --version
+```
+
+### Set up symbolic link
+2. Use sudo ln to create a symbolic link.
+```{bash}
+sudo ln -s ${INSTALLATION_DIRECTORY}bin/pandoc /usr/local/bin/pandoc
+pandoc --version #Verify that it installed correctly
+```
+
+## Install dependencies
+You can use pandoc or apt package manager to install the Tex package distribution.
+```{bash}
+# Using pandoc
+quarto install tinytex
+# Using package manager
+# Installs lualatex and xelatex
+sudo apt install texlive-fonts-recommended librsvg2-bin texlive-latex-recommended texlive-xetex texlive-latex-base
+```
+
+## Updating pandoc
+
+The steps in the installation guide can be easily adjusted to install other version and have multiple versions installed. For now, we will only maintain one version. If another user decides to adopt this simple strategy, they need to monitor for any version differences and potential disruptions to their own workflow. We will remove the previous version and the symlink and just rerun the commands adjusting the pandoc version to the version we want to install. We will also adjust the installation folder to .local/ to clean up the home directory.
+
+```{bash}
+# If you followed the instructions above, otherwise, adjust to /.local/
+# Remember to adjust the version as well.
+#rm -rf ~/pandoc/
+rm -rf .local/share/pandoc/
+sudo rm /usr/local/bin/pandoc
+# Modify this directory with PANDOC_VERSION to have multiple installed.
+INSTALLATION_DIRECTORY="$HOME/.local/share/pandoc/"
+PANDOC_VERSION="1.7.31"
+mkdir -p "${INSTALLATION_DIRECTORY}"
+# x86_64 does not exist
+sudo curl -o pandoc.tar.gz -L "https://github.com/pandoc-dev/pandoc-cli/releases/download/v${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-linux-amd64.tar.gz"
+sudo tar -xzvf pandoc.tar.gz -C "$INSTALLATION_DIRECTORY"
+sudo ln -s ${INSTALLATION_DIRECTORY}bin/pandoc /usr/local/bin/pandoc
+# Double check installation
+pandoc --version
+# Clean up
+rm pandoc.tar.gz
+```

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
+#[[ -z "$_BASH_UTILS_INITIALIZED" ]] && source "${BASH_SOURCE%/*}/../init.sh"
 
 # Advanced Logging Functions for Bash Scripts
 #
@@ -79,6 +79,15 @@ log_git_info() {
   else
     log_message "WARNING" "Not in a git repository" "$log_file"
   fi
+}
+
+# Purpose: Use for debugging during initialization.
+log_debug() {
+    if [[ "${DEBUG:-0}" -ne 0 ]]; then
+        local timestamp
+        timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        echo "[${timestamp}] [DEBUG] $*"
+    fi
 }
 
 # Function: log_message
