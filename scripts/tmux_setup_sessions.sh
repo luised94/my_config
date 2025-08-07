@@ -79,17 +79,13 @@ for repo_path in "${repo_paths[@]}"; do
     continue
   fi
 
-  echo "tmux new-session -d -s "$session_name" -c "$repo_path""
-  echo "tmux rename-window -t "$session_name:0" 'editing'"
-  echo "tmux new-window -t "$session_name:2" -n 'dev' -c "$repo_path""
-  echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
-  echo "tmux new-window -t "$session_name:3" -n 'cluster'"
 
   # Tmux session creation logic
   tmux new-session -d -s "$session_name" -c "$repo_path"
   tmux rename-window -t "$session_name:0" 'editing'
   tmux new-window -t "$session_name:1" -n 'dev' -c "$repo_path"
   tmux new-window -t "$session_name:2" -n 'docs' -c "$repo_path"
+  #echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
 
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 
@@ -99,6 +95,6 @@ echo
 echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
 echo "IGNORED: $IGNORE_COUNT/$TOTAL_COUNT repos ignored"
 echo "DUPLICATES: $DUPLICATE_COUNT/$TOTAL_COUNT repos were duplicates"
-[[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
+#[[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
 
 echo "========== End: ${BASH_SOURCE[0]} =========="
