@@ -235,36 +235,20 @@ if [ -d ~/.bash_completion.d ]; then
   done
 fi
 
-# Display initialization message
-log_info "Shell initialization complete..."
-#log_info "Use 'vim_all <search_dir>' to open all files recursively"
-#log_info "Use 'count_string <search_string>' to find files with search_string"
-
-# Optional: Set custom prompt string if not using setup_prompt
-# PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# TODO: Have to add this to the configuration when I have time
+# TODO: Add to configuration script or something
 export ODIN_ROOT="$HOME/Odin"
 export PATH="$ODIN_ROOT:$PATH"
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-#__conda_setup="$('/home/lius/miniforge3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-#if [ $? -eq 0 ]; then
-#  eval "$__conda_setup"
-#else
-#  if [ -f "/home/lius/miniforge3/etc/profile.d/conda.sh" ]; then
-#    . "/home/lius/miniforge3/etc/profile.d/conda.sh"
-#  else
-#    export PATH="/home/lius/miniforge3/bin:$PATH"
-#  fi
-#fi
-#unset __conda_setup
-# <<< conda initialize <<<
-
-#. "/home/lius/.deno/env"
 #eval $(opam env)
+#. "/home/lius/.deno/env"
+
+# Switch to home directory if not in Tmux
+if [ -z "$TMUX" ]; then
+  cd "$HOME"
+fi
+
+# End
+log_info "Shell initialization complete..."
