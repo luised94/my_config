@@ -111,6 +111,9 @@ MY_SHELL_ALIASES=(
   #"gitstart=git fetch --all --prune && git status && git pull && git rebase main && echo [X] Git workspace ready for coding!'"
   #"syncall=sync_all_branches"
 
+  # --- Script aliases ---
+  "stmux=~/personal_repos/my_config/scripts/tmux_setup_sessions.sh"
+
   # --- Lab utils aliases ---
   "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_configuration_experiment_bmc.R ~/lab_utils/core_scripts/configuration_experiment_bmc.R"
 )
