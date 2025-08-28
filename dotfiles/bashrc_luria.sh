@@ -18,8 +18,8 @@ export LANG=en_US.utf8
 # User specific aliases and functions
 export PATH=$HOME/.local/bin:$PATH
 alias R='R --no-save'
-alias edit_bmc_configs='vim ~/data/*Bel/documentation/*_bmc_config.R core_scripts/template_bmc_config.R'
-alias see_slurm_job_info='vim ~/data/*Bel/documentation/slurm_job_info.md'
+alias edit_bmc_configs='vim ~/data/*Bel/documentation/*_configuration_experiment_bmc.R'
+alias see_slurm_job_info='vim ~/data/*Bel/documentation/experiment_job_info.md'
 alias srun_r='srun --pty bash -c "module add r/4.2.0; exec bash"'
 
 # Job monitoring
