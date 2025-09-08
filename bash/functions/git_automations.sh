@@ -55,7 +55,7 @@ new_worktree() {
 
 }
 
-sync_repos() {
+pull_all_repos() {
   # Prerequisites
   if ! command -v git >/dev/null 2>&1; then
     echo "Git is not installed" >&2
