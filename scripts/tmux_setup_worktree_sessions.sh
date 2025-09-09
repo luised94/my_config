@@ -17,12 +17,14 @@ REPOSITORIES_ROOT="$HOME/personal_repos"
 
 # Define repos to ignore manually
 # Refer to my_config/docs/scripts_tmux.qmd | ## 2025-08-05 ### Session 2
+# @QUES Use find on directories with mapfile? See git_clone_repos_from_username.sh
 IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
 
 
 echo "--- Script parameters ---"
 echo "REPOSITORIES_ROOT: ${REPOSITORIES_ROOT}"
-echo "Ignore repos: ${IGNORE_REPOS[@]}"
+echo "Ignore repos: "
+printf '%s\n' "${IGNORE_REPOS[@]}"
 echo "-------------------------"
 
 # In your loop
