@@ -21,6 +21,7 @@ echo "Username: ${USERNAME}"
 echo "-------------------------"
 
 # Use API. Think the output is JSON.
+# Can replace with jq
 mapfile -t git_repositories < <(
   curl -s "https://api.github.com/users/$USERNAME/repos?per_page=100" |
   grep "full_name" | awk -F'[/"]' '{print $5}'
@@ -65,11 +66,12 @@ for repo in "${git_repositories[@]}"; do
     echo "-------------------------"
     continue
   fi
+  # @QUES Would it make more sense to check the directory as well?
   echo "Repo is not downloaded."
   repo_url="https://github.com/$USERNAME/${repo}.git"
   echo "Repo url to clone: $repo_url"
   echo "git clone $repo_url ${ROOT_DIRECTORY}$repo"
-  #git clone $repo_url "${ROOT_DIRECTORY}/$repo"
+  git clone $repo_url "${ROOT_DIRECTORY}$repo"
   echo "-------------------------"
 done
 
