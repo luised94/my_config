@@ -12,11 +12,11 @@ if ! command -v git >/dev/null 2>&1; then
   return 1
 fi
 
-ROOT_DIRECTORY="$HOME/personal_repos/"
+REPOSITORIES_ROOT="$HOME/personal_repos/"
 USERNAME="luised94"
 
 echo "--- Script parameters ---"
-echo "ROOT DIRECTORY: ${ROOT_DIRECTORY}"
+echo "ROOT DIRECTORY: ${REPOSITORIES_ROOT}"
 echo "Username: ${USERNAME}"
 echo "-------------------------"
 
@@ -30,11 +30,11 @@ mapfile -t git_repositories < <(
 #grep -o 'git@[^"]*' | \
 #xargs -L1 git clone
 
-# Search ROOT_DIRECTORY for repos already present.
+# Search REPOSITORIES_ROOT for repos already present.
 # Filter results using '-', a unique string found in worktree names.
 # Take the name of the repo as the last part of the string divided by '/' separator
 mapfile -t repos_downloaded < <(
-  find "$ROOT_DIRECTORY" -maxdepth 1 -mindepth 1 -type d |
+  find "$REPOSITORIES_ROOT" -maxdepth 1 -mindepth 1 -type d |
   grep -v "-" |
   awk -F'/' '{print $NF}'
 )
@@ -58,7 +58,7 @@ if [ "${#repos_downloaded[@]}" -eq "${#git_repositories[@]}" ]; then
 fi
 
 # For all found repos, if already downloaed, skip.
-# Otherwise, clone the repo to ROOT_DIRECTORY
+# Otherwise, clone the repo to REPOSITORIES_ROOT
 for repo in "${git_repositories[@]}"; do
   echo "Current repo: $repo"
   if [[ "${repos_downloaded[@]}" =~ "$repo" ]]; then
@@ -70,8 +70,8 @@ for repo in "${git_repositories[@]}"; do
   echo "Repo is not downloaded."
   repo_url="https://github.com/$USERNAME/${repo}.git"
   echo "Repo url to clone: $repo_url"
-  echo "git clone $repo_url ${ROOT_DIRECTORY}$repo"
-  git clone $repo_url "${ROOT_DIRECTORY}$repo"
+  echo "git clone $repo_url ${REPOSITORIES_ROOT}$repo"
+  git clone $repo_url "${REPOSITORIES_ROOT}$repo"
   echo "-------------------------"
 done
 

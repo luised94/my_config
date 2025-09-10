@@ -17,8 +17,13 @@ REPOSITORIES_ROOT="$HOME/personal_repos"
 
 # Define repos to ignore manually
 # Refer to my_config/docs/scripts_tmux.qmd | ## 2025-08-05 ### Session 2
-# @QUES Use find on directories with mapfile? See git_clone_repos_from_username.sh
-IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+# Set manually in the array or find the repos in the root directory to ignore.
+#IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+mapfile -t IGNORE_REPOS < <(
+  find "$REPOSITORIES_ROOT" -maxdepth 1 -mindepth 1 -type d |
+  grep -v "-" |
+  awk -F'/' '{print $NF}'
+)
 
 
 echo "--- Script parameters ---"
@@ -61,7 +66,7 @@ for repo_path in "${repo_paths[@]}"; do
   echo "Tmux session name: $session_name"
   echo "--------------------------------------"
 
-  # Ignore repos: mostly meant for skipping main repos, defined manually
+  # Ignore repos: mostly meant for skipping main repos
   # Using printf and grep for exact matching
   if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$basename_path"; then
     IGNORE_COUNT=$((IGNORE_COUNT + 1))
