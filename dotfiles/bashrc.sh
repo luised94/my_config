@@ -5,7 +5,7 @@ case $- in
   *i*) ;;
     *) return;;
 esac
-#
+# @QUES: Should I add basic checks for assumed programs in my bashrc?
 # Set vi mode
 set -o vi
 

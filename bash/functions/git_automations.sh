@@ -1,4 +1,22 @@
 #!/bin/bash
+# Remove worktree
+# git worktree remove <path_to_worktree>
+
+# Rebase branches on main.
+# Useful after updating some core functions that should applied to all branches.
+# Tests:
+# rebase_branches_on_main
+# rebase_branches_on_main <branch_in_repo>
+rebase_branches_on_main() {
+  
+  # --- basic preflight check --- may convert to simple function.
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+
+    printf 'ERROR: not inside a git repository (cwd: %s)\n' "$(pwd)" >&2
+    return 1
+
+  fi
+}
 
 # Create worktree for branch at default root location
 # Tests:
@@ -37,9 +55,11 @@ new_worktree() {
 
   # --- build destination ---
   local name_delimiter="-"
+  # @ANTICIPATE: The use of name delimiter could matter in the future.
+  local sanitized_branch_name=$( echo "$branch_name" | sed 's/\//-/g' )
   local repository_name; repository_name=$(git rev-parse --show-toplevel | awk -F/ '{print $NF}')
 
-  destination_path=${worktree_root}${repository_name}${name_delimiter}${branch_name}
+  destination_path=${worktree_root}${repository_name}${name_delimiter}${sanitized_branch_name}
 
   if [[ -e $destination_path ]]; then
 
