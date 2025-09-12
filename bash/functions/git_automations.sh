@@ -7,15 +7,45 @@
 # Tests:
 # rebase_branches_on_main
 # rebase_branches_on_main <branch_in_repo>
-rebase_branches_on_main() {
+rebase_worktrees_on_main() {
   
   # --- basic preflight check --- may convert to simple function.
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-
     printf 'ERROR: not inside a git repository (cwd: %s)\n' "$(pwd)" >&2
     return 1
 
   fi
+
+  local current_repository; current_repository=$(basename `git rev-parse --show-toplevel`)
+  local current_directory; current_directory=$(pwd)
+
+  local REPOSITORIES_ROOT=${1:-$HOME/personal_repos}
+  if [[ ! -d $REPOSITORIES_ROOT ]]; then
+    printf '[ERROR] Repository location does not exist: %s\n' "$REPOSITORIES_ROOT" >&2
+    return 1
+
+  fi
+
+  mapfile -t path_to_worktrees < <(
+    find "$REPOSITORIES_ROOT" -maxdepth 1 -mindepth 1 -type d |
+    grep "-" |
+    grep "$current_repository"
+  )
+  
+  for path in "${path_to_worktrees[@]}"; do
+    cd "$path"
+    git rebase main
+    if [ $? -eq 0 ]; then 
+        git push --force-with-lease origin "$branch"
+    else 
+        echo "Rebase conflict in $branch. Aborting rebase."
+        git rebase --abort
+    fi
+
+  done
+  echo "Rebasing complete. Returning to previous directory."
+  cd "$current_directory"
+  
 }
 
 # Create worktree for branch at default root location
