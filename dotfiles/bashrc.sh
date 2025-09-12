@@ -13,15 +13,31 @@ set -o vi
 #readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
 if [ ! -d "$BASH_UTILS_ROOT" ]; then
-
   printf "[WARNING] BASH_UTILS_ROOT dir does not exist.\n"
   printf "Current setting: %s\n" "$BASH_UTILS_ROOT"
 
 fi
 
+# Verify that programs used throughout scripts and configuration are available 
+REQUIRED_PROGRAMS=(
+  "git"
+  "tmux"
+  "nvim"
+  "fzf"
+)
+
+for program in "${REQUIRED_PROGRAMS[@]}"; do
+  if ! command -v "$program" >/dev/null 2>&1; then
+    printf 'WARNING: %s program is not available. Some scripts or functions may not work.\n' "${program}" >&2
+
+  fi
+
+done
+
 # Logging setup
 if [[ -z "$LOG_LEVEL" ]]; then
   export LOG_LEVEL="INFO"
+
 fi
 
 # Function files
@@ -42,6 +58,7 @@ for func in "${FUNCTION_FILES[@]}"; do
     printf "[ERROR] Required function file not found: %s\n" "${func}"
     return 1
   fi
+
 done
 
 log_info "Bash utilities initialized successfully"
@@ -251,6 +268,7 @@ export PATH="$ODIN_ROOT:$PATH"
 # Switch to home directory if not in Tmux
 if [ -z "$TMUX" ]; then
   cd "$HOME"
+
 fi
 
 # End
