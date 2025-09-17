@@ -129,10 +129,10 @@ MY_SHELL_ALIASES=(
   #"syncall=sync_all_branches"
 
   # --- Script aliases ---
-  "stmux=~/personal_repos/my_config/scripts/tmux_setup_sessions.sh"
+  "setup_tmux=~/personal_repos/my_config/scripts/tmux_setup_worktree_sessions.sh"
 
   # --- Lab utils aliases ---
-  "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/lab_utils/core_scripts/template_configuration_experiment_bmc.R ~/lab_utils/core_scripts/configuration_experiment_bmc.R"
+  "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/personal_repos/lab_utils/core_scripts/template_configuration_experiment_bmc.R ~/personal_repos/lab_utils/core_scripts/template_configuration_experiment_bmc.R"
 )
 
 for alias_def in "${MY_SHELL_ALIASES[@]}"; do
