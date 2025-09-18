@@ -1,7 +1,9 @@
-**// @use-markdown**
+name: [Item] Recall after reading
+comment: This template may be too long. Not sure.
+content: |-
+// @use-markdown
 // @author Claude,luised94,justin_skycak_inspired
-// @url https://claude.ai/chat/8e423ca6-48b2-4be8-bd93-f6eb8e607823
-**${{**
+${{
 // ===== GRAB ALL THE DATA UPFRONT =====
 const item = topItem;
 // Basic bibliographic info
@@ -48,12 +50,12 @@ sharedObj.biblio = {
  bibtexKey, numberOfNotes
 };
 return ""; // Don't output anything here
-**}}$**
+}}$
 
 # ${sharedObj.biblio.title}
 
 ## Metadata
-- **Authors:** ${sharedObj.biblio.authorList}
+- **First Author:** ${sharedObj.biblio.firstAuthor}
 - **Date:** ${sharedObj.biblio.date}
 - **Citation Key:** ${sharedObj.biblio.bibtexKey}
 - **Tags:** ${sharedObj.biblio.tagList}
@@ -116,7 +118,7 @@ return ""; // Don't output anything here
 - Misremembered:
 
 ### The Big Picture
-- **Main contribution:** 
+- **Main contribution:**
 - **Why does this matter?**
 - **What's the "so what" factor?**
 
@@ -137,9 +139,7 @@ return ""; // Don't output anything here
 
 ### Related Work Links
 *Link to other papers/concepts in my collection:*
-- @smith2023learning - because it uses similar methodology
-- @jones2022cognition - contradicts their findings on X
-- @wilson2021memory - builds on their theoretical framework
+*Use @citationkey to link*
 
 ### Implications for My Work
 - **How might I apply this?**
@@ -151,22 +151,22 @@ return ""; // Don't output anything here
 ## Spaced Repetition Cues
 
 ### Key Concepts to Remember
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ### Review Schedule
 - [ ] Review in 1 day
-- [ ] Review in 3 days  
+- [ ] Review in 3 days
 - [ ] Review in 1 week
 - [ ] Review in 2 weeks
 
 ---
 
 ## Session Metadata
-- **Date:** 
-- **Reading Time:** 
-- **Comprehension (1-5):** 
-- **Effort Required (1-5):** 
-- **Interest Level (1-5):** 
+- **Date:**
+- **Reading Time:**
+- **Comprehension (1-5):**
+- **Effort Required (1-5):**
+- **Interest Level (1-5):**
 - **Distractions:**

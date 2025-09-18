@@ -6,7 +6,7 @@ ${{
 // ===== GRAB ALL THE DATA UPFRONT =====
 const item = topItem;
 // To debug:
-// Open debug output. 
+// Open debug output.
 // Use Zotero.debug() to inspect values in script.
 
 // Basic bibliographic info
