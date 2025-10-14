@@ -34,5 +34,10 @@ Created a script to automate creation of symlinks. Not super useful but fun.
 Things I should really do: tmux automation, automate device switching git update in bashrc, clean up git functions to automate branch syncing (useful when you really work on multiple branches but they really are one at the end of the day.)
 Moved the repository to personal_repos. Go with ~/personal_repos/<repo_name>-<branch_name>/ convention.
 
-
-
+### 2025-10-14
+Started using desktop in house but it was desynced with my current approach.
+What I need to do:
+- Took some files and added to main branch. Verified that there were no secrets.
+- Move most of the binaries to the /opt/.
+- Reestablish symbolic links and download other repos.
+- Confirm setup works (test vim_all function)
