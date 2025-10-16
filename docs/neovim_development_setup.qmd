@@ -64,7 +64,8 @@ Create the my_config directory. Move the different files to the my_config direct
 ```{bash}
 mkdir my_config
 mv ~/.config/nvim ~/my_config/nvim
-ln -s ~/my_config/nvim ~/.config/
+ln -s ~/personal_repos/my_config/nvim ~/.config/nvim
+#ln -s ~/my_config/nvim ~/.config/
 ```
 Use git status to check that the files within the nvim directory are now part of the my_config directory. When first cloned, the nvim directory is treated as a submodule. This could be useful for some.
 

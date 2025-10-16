@@ -183,10 +183,13 @@ if [[ -n "$WSL_DISTRO_NAME" ]]; then
       log_error "Error: Unable to retrieve Windows username." >&2
       return 1
     fi
-    log_info "Windows User: $windows_user"
     # Set up Dropbox path
     #dropbox_path="/mnt/c/Users/${windows_user}/Dropbox (MIT)/"
     dropbox_path="/mnt/c/Users/${windows_user}/MIT Dropbox/Luis Martinez"
+
+    log_info "Windows User: $windows_user"
+    log_info "Dropbox path: $dropbox_path"
+
     if [[ ! -d "$dropbox_path" ]]; then
 
       log_warning "Warning: Dropbox directory not found at $dropbox_path" >&2
