@@ -6,6 +6,7 @@ case $- in
 esac
 set -o vi # Set vi mode
 
+# @Q: Do something if in git worktree?
 BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
 
 DEFAULT_EDITORS=(
@@ -23,6 +24,7 @@ REQUIRED_PROGRAMS=(
 FUNCTION_FILES=(
   "logging_utils.sh"
   "file_operations.sh"
+  "vim_helpers.sh"
   "view_files_in_browser.sh"
   "git_automations.sh"
   "directory_tree.sh"
