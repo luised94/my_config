@@ -1,65 +1,136 @@
+
+#!/bin/bash
+# vim_helpers.sh
+
+# ============================================================================
+# File and directory exclusions for vim helper functions
+# These can be overridden by defining these arrays before sourcing this file
+# ============================================================================
+
+# Default exclusion directories (if not already defined)
+if [[ ${#VIMALL_EXCLUDE_DIRS[@]} -eq 0 ]]; then
+    VIMALL_EXCLUDE_DIRS=(
+        # Version control
+        ".git"
+
+        # Node/JavaScript ecosystem
+        "node_modules"
+        ".next"
+        ".nuxt"
+        ".svelte-kit"
+
+        # Python ecosystem
+        "__pycache__"
+        ".venv"
+        "venv"
+        "env"
+        ".pytest_cache"
+        ".mypy_cache"
+        ".tox"
+        ".ipynb_checkpoints"
+
+        # R ecosystem
+        "renv"
+        ".Rproj.user"
+
+        # Build artifacts (multi-language)
+        "build"
+        "dist"
+        "target"
+        "out"
+        "bin"
+
+        # Dependencies/vendors
+        "vendor"
+        "deps"
+
+        # IDE/Editor
+        ".idea"
+        ".vscode"
+
+        # Cache/temp
+        ".cache"
+        "tmp"
+        "temp"
+
+        # Coverage/test reports
+        "coverage"
+        "htmlcov"
+    )
+fi
+
+# Default exclusion file patterns (if not already defined)
+if [[ ${#VIMALL_EXCLUDE_FILES[@]} -eq 0 ]]; then
+    VIMALL_EXCLUDE_FILES=(
+        # Logs and temp files
+        "*.log"
+        "*.tmp"
+        "*.bak"
+        "*.swp"
+        "*.swo"
+
+        # Compiled/bytecode
+        "*.pyc"
+        "*.pyo"
+        "*.o"
+        "*.so"
+        "*.a"
+        "*.class"
+
+        # OS files
+        ".DS_Store"
+        "Thumbs.db"
+
+        # Your custom exclusions
+        "*repository_aggregate.md"
+        "*.gitignore"
+        "*.Rprofile"
+        "*renv.lock"
+    )
+fi
+
 vimall() {
-  # show usage?
-  # options?
-  # Use editor that is set in config.
-
+  # Validate EDITOR
   if [[ -z $EDITOR ]]; then
-    echo "[ERROR] EDITOR variable not set."
-    echo "[ERROR] Please assign manually."
-    return 1
-
+      printf "[ERROR] EDITOR variable not set.\n" >&2
+      return 1
   fi
 
-  local search_exclude_dirs=(
-    ".git"
-    "node_modules"
-    "build"
-    "dist"
-    "renv"
-    ".venv"
-  )
+  # Use module-level arrays, or minimal fallback if somehow undefined
+  local exclude_dirs=("${VIMALL_EXCLUDE_DIRS[@]}")
+  local exclude_files=("${VIMALL_EXCLUDE_FILES[@]}")
 
-  local search_exclude_files=(
-    "*.log"
-    "*repository_aggregate.md"
-    "*.tmp"
-    "*.bak"
-    "*.swp"
-    "*.gitignore"
-    "*.Rprofile"
-    "*renv.lock"
-  )
+  if [[ ${#exclude_dirs[@]} -eq 0 ]]; then
+      # Minimal fallback (should never happen if file sourced properly)
+      exclude_dirs=(".git" "node_modules")
+  fi
 
-  local expressions=()
+  if [[ ${#exclude_files[@]} -eq 0 ]]; then
+      # Minimal fallback (should never happen if file sourced properly)
+      exclude_files=("*.log" "*.bak")
+  fi
+
+  # Build find command using arrays
+  local find_args=()
+
   # Add directory exclusions
-  local first=true
-  for dir in "${search_exclude_dirs[@]}"; do
-    if [[ "$first" == true ]]; then
-        expressions+=("-path" "\"*/${dir}/*\"")
-        first=false
-
-    else
-        expressions+=("-o" "-path" "\"*/${dir}/*\"")
-
-    fi
-
+  for dir in "${exclude_dirs[@]}"; do
+      find_args+=(-path "*/${dir}/*" -o)
   done
 
-  # Add file exclusions
-  for file in "${search_exclude_files[@]}"; do
-    expressions+=("-o" "-name" "\"${file}\"")
-
+  # Add file exclusions  
+  for file in "${exclude_files[@]}"; do
+      find_args+=(-name "${file}" -o)
   done
 
-  local exclude_args=$(printf '%s ' "${expressions[@]}")
+  # Remove trailing -o (last element)
+  unset 'find_args[-1]'
 
   if ! mapfile -t files < <(
-    set -x
-    eval "find . \( ${exclude_args[@]} \) -prune -o -type f -printf '%T@ %p\n'" 2>/dev/null |
+    find . \( "${find_args[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
     cut -d' ' -f2- | \
     tr -d '\r'
-    set +x
   ); then
     printf "[ERROR] Failed to collect files"
     return 1
