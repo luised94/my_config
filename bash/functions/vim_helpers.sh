@@ -115,6 +115,12 @@ EOF
   return 0
 
   fi
+  # Add at top, parse args
+  local force=0
+  if [[ "$1" == "-f" ]] || [[ "$1" == "--force" ]]; then
+    force=1
+    shift
+  fi
 
   local file_limit=${VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
 
@@ -182,7 +188,7 @@ EOF
 
   fi
 
-  if [ $number_of_files -gt $file_limit ]; then
+  if [[ $number_of_files -gt $file_limit ]] && [[ $force -eq 0 ]]; then
     printf "[WARNING] Found $number_of_files. Are you sure you want to open all of them? (y/N)"
     read -r confirm
     if [[ $confirm != [yY] ]]; then
