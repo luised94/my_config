@@ -4,17 +4,22 @@ case $- in
   *i*) ;;
     *) return;;
 esac
-# @QUES: Should I add basic checks for assumed programs in my bashrc?
-# Set vi mode
-set -o vi
+set -o vi # Set vi mode
 
 BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
+
+DEFAULT_EDITORS=(
+    "nvim"
+    "vim"
+)
+
 REQUIRED_PROGRAMS=(
   "git"
   "tmux"
   "nvim"
   "fzf"
 )
+
 FUNCTION_FILES=(
   "logging_utils.sh"
   "file_operations.sh"
@@ -22,11 +27,13 @@ FUNCTION_FILES=(
   "git_automations.sh"
   "directory_tree.sh"
 )
+
 # Path configurations
 ADDITIONAL_PATHS=(
     #"~/node-v22.5.1-linux-x64/bin"
     "/opt/zig"
 )
+
 # Environment variables
 ENV_VARS=(
   "BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
@@ -35,6 +42,7 @@ ENV_VARS=(
   "R_HOME=/usr/local/bin/R"
   "R_LIBS_USER=/opt/R/library/"
 )
+
 MY_SHELL_ALIASES=(
   # --- Basic aliases ---
   "l=ls -CF"
@@ -76,10 +84,12 @@ MY_SHELL_ALIASES=(
   # Needs to be turned into a project specific config.
   "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R ~/personal_repos/lab_utils/core_scripts/template_configuration_experiment_bmc.R ~/personal_repos/lab_utils/core_scripts/template_configuration_experiment_bmc.R"
 )
+
 # History settings
 HISTCONTROL=ignoreboth
 HISTSIZE=1000
 HISTFILESIZE=2000
+
 # Shell options
 SHELL_OPTIONS=(
   "histappend"
@@ -91,14 +101,11 @@ COLOR_SUPPORT=1
 GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 PS1='\u@\h:\w\$ '
-# Alert alias for long running commands
-#alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
-# Base directory detection
-#readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ ! -d "$BASH_UTILS_ROOT" ]; then
   printf "[WARNING] BASH_UTILS_ROOT dir does not exist.\n"
   printf "Current setting: %s\n" "$BASH_UTILS_ROOT"
+  printf "Clone git repository."
 
 fi
 
@@ -110,6 +117,20 @@ for program in "${REQUIRED_PROGRAMS[@]}"; do
   fi
 
 done
+
+for editor in "${DEFAULT_EDITORS[@]}"; do
+  if command -v "$editor" >/dev/null 2>&1; then
+    EDITOR="$editor"
+    break
+
+  fi
+
+done
+
+if [[ -z $EDITOR ]]; then
+  printf "[ERROR] No suitable editors found."
+
+fi
 
 # Logging setup
 if [[ -z "$LOG_LEVEL" ]]; then
@@ -255,3 +276,8 @@ fi
 
 # End
 log_info "Shell initialization complete..."
+
+# Alert alias for long running commands
+#alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+# Base directory detection
+#readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,4 +1,6 @@
+vimall() {
 
+}
 build_exclude_args() {
     local -n dirs_ref=$1
     local -n files_ref=$2
