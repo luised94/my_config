@@ -90,32 +90,38 @@ if [[ ${#VIMALL_EXCLUDE_FILES[@]} -eq 0 ]]; then
 fi
 
 vimall() {
-  # Add at top
+
+
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-      cat << 'EOF'
-  Usage: vimall [OPTIONS]
+    printf "=== Current Configuration ===\n"
+    printf "EDITOR:              %s\n" "${EDITOR:-<not set>}"
+    printf "VIMALL_FILE_LIMIT:   %s\n\n" "${VIMALL_FILE_LIMIT:-150}"
 
-  Opens all files in the current directory tree in EDITOR variable, sorted by modification time.
+    cat << 'EOF'
+Usage: vimall [OPTIONS]
 
-  Options:
-    -f, --force    Skip confirmation prompt for large file counts
-    -h, --help     Show this help message
+Opens all files in the current directory tree in $EDITOR, sorted by modification time.
 
-  Environment Variables:
-    EDITOR              Editor to use (required)
-    VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
-    VIMALL_EXCLUDE_DIRS Directories to exclude (array)
-    VIMALL_EXCLUDE_FILES File patterns to exclude (array)
+Options:
+  -f, --force    Skip confirmation prompt for large file counts
+  -h, --help     Show this help message
 
-  Examples:
-    vimall              # Open all files with confirmation if > 150
-    vimall -f           # Open all files without confirmation
-    VIMALL_FILE_LIMIT=50 vimall  # Lower confirmation threshold
+Environment Variables:
+  EDITOR              Editor to use (required)
+  VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
+  VIMALL_EXCLUDE_DIRS Directories to exclude (array)
+  VIMALL_EXCLUDE_FILES File patterns to exclude (array)
+
+Examples:
+  vimall                        # Open all files with confirmation if > 150
+  vimall -f                     # Open all files without confirmation
+  VIMALL_FILE_LIMIT=50 vimall   # Lower confirmation threshold
 EOF
-  return 0
+
+    printf "=== end vimall help ===\n"
+    return 0
 
   fi
-  # Add at top, parse args
   local force=0
   if [[ "$1" == "-f" ]] || [[ "$1" == "--force" ]]; then
     force=1
