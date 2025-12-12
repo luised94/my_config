@@ -46,7 +46,7 @@ vimall() {
   done
 
   # Add file exclusions
-  for file in "${search_exclude_dirs[@]}"; do
+  for file in "${search_exclude_files[@]}"; do
     expressions+=("-o" "-name" "\"${file}\"")
 
   done
