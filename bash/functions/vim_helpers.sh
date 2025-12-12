@@ -1,4 +1,3 @@
-
 #!/bin/bash
 # vim_helpers.sh
 
@@ -6,7 +5,6 @@
 # File and directory exclusions for vim helper functions
 # These can be overridden by defining these arrays before sourcing this file
 # ============================================================================
-
 # Default exclusion directories (if not already defined)
 if [[ ${#VIMALL_EXCLUDE_DIRS[@]} -eq 0 ]]; then
     VIMALL_EXCLUDE_DIRS=(
@@ -57,6 +55,7 @@ if [[ ${#VIMALL_EXCLUDE_DIRS[@]} -eq 0 ]]; then
         "coverage"
         "htmlcov"
     )
+
 fi
 
 # Default exclusion file patterns (if not already defined)
@@ -87,9 +86,12 @@ if [[ ${#VIMALL_EXCLUDE_FILES[@]} -eq 0 ]]; then
         "*.Rprofile"
         "*renv.lock"
     )
+
 fi
 
 vimall() {
+  local file_limit=150 # How many files will trigger confirmation?
+
   # Validate EDITOR
   if [[ -z $EDITOR ]]; then
       printf "[ERROR] EDITOR variable not set.\n" >&2
@@ -123,8 +125,10 @@ vimall() {
       find_args+=(-name "${file}" -o)
   done
 
-  # Remove trailing -o (last element)
-  unset 'find_args[-1]'
+  # Remove trailing -o (last element) if array is not empty
+  if [[ ${#find_args[@]} -gt 0 ]]; then
+      unset 'find_args[-1]'
+  fi
 
   if ! mapfile -t files < <(
     find . \( "${find_args[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
@@ -132,19 +136,31 @@ vimall() {
     cut -d' ' -f2- | \
     tr -d '\r'
   ); then
-    printf "[ERROR] Failed to collect files"
+    printf "[ERROR] Failed to collect files" >&2
     return 1
 
   fi
 
-  if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n"
+  local number_of_files=${#files[@]}
+  if [ $number_of_files -eq 0 ]; then
+    printf "[ERROR] No files found to edit.\n" >&2
     return 1
 
   fi
 
-  echo "[INFO] Opening ${#files[@]} files in $EDITOR"
-  eval "$EDITOR" "${files[@]}"
+  if [ $number_of_files -gt $file_limit ]; then
+    printf "[WARNING] Found $number_of_files. Are you sure you want to open all of them? (y/N)"
+    read -r confirm
+    if [[ $confirm != [yY] ]]; then
+      printf "Operation cancelled."
+      return 0
+
+    fi
+
+  fi 
+
+  printf "[INFO] Opening $number_of_files files in $EDITOR"
+  "$EDITOR" "${files[@]}"
 
 }
 
@@ -152,117 +168,124 @@ vimpattern() {
   local pattern=$1
 
   if [[ -z $pattern ]]; then
-    echo "[ERROR] Provide search string as first argument."
+    printf "[ERROR] Provide search string as first argument." >&2
     return 1
 
   fi
 
+  # Validate EDITOR
   if [[ -z $EDITOR ]]; then
-    echo "[ERROR] EDITOR variable not set."
-    echo "[ERROR] Please assign manually."
-    return 1
+      printf "[ERROR] EDITOR variable not set.\n" >&2
+      return 1
 
   fi
 
   if ! command -v git &>/dev/null; then
       printf "[ERROR] git is not installed\n" >&2
       return 1
+
   fi
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
       printf "[ERROR] Not inside a git repository\n" >&2
       return 1
+
   fi
 
 
   if ! mapfile -t files < <(git grep -l "${pattern}"); then
-      pritnf "[ERROR] Failed to search files.\n"
+      pritnf "[ERROR] Failed to search files.\n" >&2
       return 1
 
   fi
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n"
+    printf "[ERROR] No files found to edit.\n" >&2
     return 1
 
   fi
 
-  echo "[INFO] Opening ${#files[@]} files in $EDITOR"
-  eval "$EDITOR" "${files[@]}"
+  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  "$EDITOR" "${files[@]}"
 
 }
 
 vimconflict() {
 
+  # Validate EDITOR
   if [[ -z $EDITOR ]]; then
-    echo "[ERROR] EDITOR variable not set."
-    echo "[ERROR] Please assign manually."
-    return 1
+      printf "[ERROR] EDITOR variable not set.\n" >&2
+      return 1
 
   fi
 
   if ! command -v git &>/dev/null; then
       printf "[ERROR] git is not installed\n" >&2
       return 1
+
   fi
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
       printf "[ERROR] Not inside a git repository\n" >&2
       return 1
+
   fi
 
   if ! mapfile -t files < <(
     git diff --name-only --diff-filter=U
     ); then
-    printf "[ERROR] Failed to collect conflicted files.\n"
+    printf "[ERROR] Failed to collect conflicted files.\n" >&2
     return 1
+
   fi
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n"
+    printf "[ERROR] No files found to edit.\n" >&2
     return 1
 
   fi
 
-  echo "[INFO] Opening ${#files[@]} files in $EDITOR"
-  eval "$EDITOR" "${files[@]}"
+  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  "$EDITOR" "${files[@]}"
 
 }
 
 vimmodified() {
 
+  # Validate EDITOR
   if [[ -z $EDITOR ]]; then
-    echo "[ERROR] EDITOR variable not set."
-    echo "[ERROR] Please assign manually."
-    return 1
+      printf "[ERROR] EDITOR variable not set.\n" >&2
+      return 1
 
   fi
 
   if ! command -v git &>/dev/null; then
       printf "[ERROR] git is not installed\n" >&2
       return 1
+
   fi
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
       printf "[ERROR] Not inside a git repository\n" >&2
       return 1
+
   fi
 
   if ! mapfile -t files < <(
     git status --porcelain | sed 's/^...//'
     ); then
-    echo " [ERROR] Failed to collect modified files"
+    printf " [ERROR] Failed to collect modified files" >&2
     return 1
 
   fi
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n"
+    printf "[ERROR] No files found to edit.\n" >&2
     return 1
 
   fi
 
-  echo "[INFO] Opening ${#files[@]} files in $EDITOR"
-  eval "$EDITOR" "${files[@]}"
+  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  "$EDITOR" "${files[@]}"
 
 }
