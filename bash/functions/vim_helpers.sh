@@ -90,12 +90,46 @@ if [[ ${#VIMALL_EXCLUDE_FILES[@]} -eq 0 ]]; then
 fi
 
 vimall() {
-  local file_limit=150 # How many files will trigger confirmation?
+  # Add at top
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+      cat << 'EOF'
+  Usage: vimall [OPTIONS]
+
+  Opens all files in the current directory tree in EDITOR variable, sorted by modification time.
+
+  Options:
+    -f, --force    Skip confirmation prompt for large file counts
+    -h, --help     Show this help message
+
+  Environment Variables:
+    EDITOR              Editor to use (required)
+    VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
+    VIMALL_EXCLUDE_DIRS Directories to exclude (array)
+    VIMALL_EXCLUDE_FILES File patterns to exclude (array)
+
+  Examples:
+    vimall              # Open all files with confirmation if > 150
+    vimall -f           # Open all files without confirmation
+    VIMALL_FILE_LIMIT=50 vimall  # Lower confirmation threshold
+EOF
+  return 0
+
+  fi
+
+  local file_limit=${VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
 
   # Validate EDITOR
   if [[ -z $EDITOR ]]; then
       printf "[ERROR] EDITOR variable not set.\n" >&2
       return 1
+
+  fi
+  #
+  # Validate EDITOR is executable
+  if ! command -v "$EDITOR" &>/dev/null; then
+      printf "[ERROR] EDITOR '%s' not found or not executable.\n" "$EDITOR" >&2
+      return 1
+
   fi
 
   # Use module-level arrays, or minimal fallback if somehow undefined
@@ -159,7 +193,7 @@ vimall() {
 
   fi 
 
-  printf "[INFO] Opening $number_of_files files in $EDITOR"
+  printf "[INFO] Opening %d files in %s\n" "$number_of_files" "$EDITOR"
   "$EDITOR" "${files[@]}"
 
 }
