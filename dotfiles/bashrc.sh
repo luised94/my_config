@@ -6,8 +6,21 @@ case $- in
 esac
 set -o vi # Set vi mode
 
-# @Q: Do something if in git worktree?
-BASH_UTILS_ROOT="$HOME/personal_repos/my_config/bash/"
+if [[ -n "$TMUX" ]]; then
+  _session=$(tmux display-message -p '#S')
+
+  if [[ "$_session" == my_config\>* ]]; then
+    _branch=${_session#my_config>}
+    BASH_UTILS_ROOT="$HOME/personal_repos/my_config-${_branch}/bash"
+
+  fi
+
+  unset _session _branch
+
+fi
+
+BASH_UTILS_ROOT="${BASH_UTILS_ROOT:-$HOME/personal_repos/my_config/bash}"
+#BASH_UTILS_ROOT="$HOME/personal_repos/my_config-vim_all_in_R/bash/"
 
 DEFAULT_EDITORS=(
     "nvim"
