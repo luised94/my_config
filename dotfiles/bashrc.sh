@@ -6,9 +6,11 @@ case $- in
 esac
 set -o vi # Set vi mode
 
-# Determine the root directory depending on tmux session
-# That way if I am modifying my_config in a tmux session, 
-# bashrc will update using that repo.
+# BASH_UTILS_ROOT: root directory for sourced bash config files
+# When in a tmux session named my_config>BRANCH, uses the worktree path
+# ~/personal_repos/my_config-BRANCH/bash if it exists, otherwise falls
+# back to the main repo. This allows testing bashrc changes in worktrees.
+
 if [[ -n "$TMUX" ]]; then
   _session=$(tmux display-message -p '#S')
 
@@ -18,11 +20,8 @@ if [[ -n "$TMUX" ]]; then
 
     if [[ -d "$_possible_root" ]]; then
       BASH_UTILS_ROOT="$_possible_root"
-
-    else
+    elif [[ $- == *i* ]]; then # Only warn if the shell is interactive
       printf "[WARN] Worktree config not found: %s\n" "$_possible_root" >&2
-      printf "[WARN] Falling back to default\n" >&2
-
     fi
 
   fi
@@ -31,13 +30,16 @@ if [[ -n "$TMUX" ]]; then
 
 fi
 
+# Set default and clean up trailing slashes
 BASH_UTILS_ROOT="${BASH_UTILS_ROOT:-$HOME/personal_repos/my_config/bash}"
+BASH_UTILS_ROOT="${BASH_UTILS_ROOT%/}"
 
-if [[ ! -d "$BASH_UTILS_ROOT" ]]; then
+if [[ ! -d "$BASH_UTILS_ROOT" && $- == *i* ]]; then
   printf "[ERROR] BASH_UTILS_ROOT does not exist: %s\n" "$BASH_UTILS_ROOT" >&2
 
 fi
 
+export BASH_UTILS_ROOT
 DEFAULT_EDITORS=(
     "nvim"
     "vim"
