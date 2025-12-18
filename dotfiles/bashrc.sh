@@ -6,21 +6,37 @@ case $- in
 esac
 set -o vi # Set vi mode
 
+# Determine the root directory depending on tmux session
+# That way if I am modifying my_config in a tmux session, 
+# bashrc will update using that repo.
 if [[ -n "$TMUX" ]]; then
   _session=$(tmux display-message -p '#S')
 
-  if [[ "$_session" == my_config\>* ]]; then
-    _branch=${_session#my_config>}
-    BASH_UTILS_ROOT="$HOME/personal_repos/my_config-${_branch}/bash"
+  if [[ "$_session" =~ ^my_config\>(.*) ]]; then
+    _branch=${BASH_REMATCH[1]}
+    _possible_root="$HOME/personal_repos/my_config-${_branch}/bash"
+
+    if [[ -d "$_possible_root" ]]; then
+      BASH_UTILS_ROOT="$_possible_root"
+
+    else
+      printf "[WARN] Worktree config not found: %s\n" "$_possible_root" >&2
+      printf "[WARN] Falling back to default\n" >&2
+
+    fi
 
   fi
 
-  unset _session _branch
+  unset _session _branch _possible_root
 
 fi
 
 BASH_UTILS_ROOT="${BASH_UTILS_ROOT:-$HOME/personal_repos/my_config/bash}"
-#BASH_UTILS_ROOT="$HOME/personal_repos/my_config-vim_all_in_R/bash/"
+
+if [[ ! -d "$BASH_UTILS_ROOT" ]]; then
+  printf "[ERROR] BASH_UTILS_ROOT does not exist: %s\n" "$BASH_UTILS_ROOT" >&2
+
+fi
 
 DEFAULT_EDITORS=(
     "nvim"
@@ -117,12 +133,6 @@ GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 PS1='\u@\h:\w\$ '
 
-if [ ! -d "$BASH_UTILS_ROOT" ]; then
-  printf "[WARNING] BASH_UTILS_ROOT dir does not exist.\n"
-  printf "Current setting: %s\n" "$BASH_UTILS_ROOT"
-  printf "Clone git repository."
-
-fi
 
 # Verify that programs used throughout scripts and configuration are available 
 for program in "${REQUIRED_PROGRAMS[@]}"; do
@@ -286,13 +296,7 @@ if [ -z "$TMUX" ]; then
 
 fi
 
-# Change to home directory
-#cd ~ || echo "Error changing to home directory"
-
-# End
 log_info "Shell initialization complete..."
 
 # Alert alias for long running commands
 #alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-# Base directory detection
-#readonly BASH_UTILS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
