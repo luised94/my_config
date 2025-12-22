@@ -10,6 +10,7 @@ REQUIRED_PROGRAMS=(
   "tmux"
   "nvim"
   "fzf"
+  "tput"
 )
 
 FUNCTION_FILES=(
@@ -192,10 +193,6 @@ if [[ -t 2 ]] && command -v tput &>/dev/null && [[ $(tput colors) -ge 8 ]]; then
     _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || echo -n '')
     _MC_COLOR_INFO=$(tput setaf 4 2>/dev/null || echo -n '')
     _MC_COLOR_DEBUG=$(tput setaf 2 2>/dev/null || echo -n '')
-    _MC_COLOR_ERROR='\033[0;31m'
-    _MC_COLOR_WARN='\033[0;33m'
-    _MC_COLOR_INFO='\033[0;36m'
-    _MC_COLOR_DEBUG='\033[0;90m'
 
 else
     _MC_COLOR_RESET=''
