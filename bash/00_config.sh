@@ -186,20 +186,25 @@ if [[ ${#MC_EXCLUDE_FILES[@]} -eq 0 ]]; then
 fi
 
 
-# --- Color Codes ---
-if [[ -t 2 ]] && command -v tput &>/dev/null && [[ $(tput colors) -ge 8 ]]; then
-    _MC_COLOR_RESET="$(tput sgr0 2>/dev/null || echo '')"
-    _MC_COLOR_ERROR=$(tput setaf 1 2>/dev/null || echo -n '')
-    _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || echo -n '')
-    _MC_COLOR_INFO=$(tput setaf 4 2>/dev/null || echo -n '')
-    _MC_COLOR_DEBUG=$(tput setaf 2 2>/dev/null || echo -n '')
+# --- Assign color codes ---
+_MC_COLOR_RESET=$(tput sgr0 2>/dev/null || printf '\033[0m')  # Critical first!
 
+# Only enable colors if:
+#   (a) Output is a terminal, AND
+#   (b) TERM is set and not "dumb", AND
+#   (c) At least basic color support exists
+if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != "dumb" ]; then
+  # Get terminal's actual color capabilities
+  _MC_COLOR_ERROR=$(tput setaf 1 2>/dev/null || printf '\033[0;31m')
+  _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || printf '\033[0;33m')
+  _MC_COLOR_INFO=$(tput setaf 6 2>/dev/null || printf '\033[0;36m')
+  _MC_COLOR_DEBUG=$(tput setaf 2 2>/dev/null || printf '\033[0;90m')
+
+  # FINAL SAFETY: Disable ALL colors if reset code failed
+  if [ -z "$_MC_COLOR_RESET" ] || printf "%s" "$_MC_COLOR_RESET" | grep -q 'tput: unknown'; then
+    _MC_COLOR_ERROR=''; _MC_COLOR_WARN=''; _MC_COLOR_INFO=''; _MC_COLOR_DEBUG=''
+  fi
 else
-    _MC_COLOR_RESET=''
-    _MC_COLOR_ERROR=''
-    _MC_COLOR_WARN=''
-    _MC_COLOR_INFO=''
-    _MC_COLOR_DEBUG=''
-
+  _MC_COLOR_ERROR=''; _MC_COLOR_WARN=''; _MC_COLOR_INFO=''; _MC_COLOR_DEBUG=''
 fi
 
