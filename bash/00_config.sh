@@ -198,13 +198,15 @@ if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != "dumb" ]; then
   _MC_COLOR_ERROR=$(tput setaf 1 2>/dev/null || printf '\033[0;31m')
   _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || printf '\033[0;33m')
   _MC_COLOR_INFO=$(tput setaf 6 2>/dev/null || printf '\033[0;36m')
-  _MC_COLOR_DEBUG=$(tput setaf 2 2>/dev/null || printf '\033[0;90m')
+  _MC_COLOR_DEBUG=$(tput setaf 8 2>/dev/null || printf '\033[0;90m')
 
   # FINAL SAFETY: Disable ALL colors if reset code failed
   if [ -z "$_MC_COLOR_RESET" ] || printf "%s" "$_MC_COLOR_RESET" | grep -q 'tput: unknown'; then
     _MC_COLOR_ERROR=''; _MC_COLOR_WARN=''; _MC_COLOR_INFO=''; _MC_COLOR_DEBUG=''
+
   fi
+
 else
   _MC_COLOR_ERROR=''; _MC_COLOR_WARN=''; _MC_COLOR_INFO=''; _MC_COLOR_DEBUG=''
-fi
 
+fi

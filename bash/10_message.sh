@@ -1,19 +1,20 @@
-
 _msg() {
   if [[ $# -lt 3 ]]; then
-    printf "ERROR: _msg requires at least three arguments.\n"
+    printf "ERROR: _msg requires Level, Num, and Color arguments.\n"
+    printf "ERROR: Only $# arguments passed.\n"
     return 1
   fi
 
-    local level=$1
-    local level_num=$2
-    local color=$3
-    shift 3
+  local level=$1
+  local level_num=$2
+  local color=$3
+  shift 3
 
-    # Validation: Ensure level_num is actually a digit to prevent script errors
-    if [[ ! "$level_num" =~ ^[0-9]+$ ]]; then
-        return 1
-    fi
+  # Validation: Ensure level_num is actually a digit to prevent script errors
+  if [[ ! "$level_num" =~ ^[0-9]$ ]]; then
+    return 1
+
+  fi
 
   # Exit early if below threshold.
   if [[ $MC_VERBOSITY -lt $level_num ]]; then
@@ -23,14 +24,31 @@ _msg() {
 
   # Message Check: If no message is left after shift, don't print anything
   if [[ -z "$*" ]]; then
-    printf "ERROR: _msg called with no message.\n"
-    return 1
+    printf "%b[WARN ] _msg called with empty message%b\n" \
+    "$_MC_COLOR_WARN" \
+    "$_MC_COLOR_RESET" >&2
+    return 0
 
   fi
 
-  printf "%b[%s] %s%b\n" \
+  # Color Integrity Check: Ensure it looks like an ANSI escape code
+  # If it doesn't start with ESC (ASCII 27), we strip it to prevent printing garbage
+  if [[ -n "$color" && ! "$color" =~ ^$'\E' ]]; then
+    color=""
+
+  fi
+
+  local trace=""
+  if [[ ${MC_VERBOSITY:-0} -ge 5 ]]; then
+    # FUNCNAME[1] is _msg, FUNCNAME[2] is msg_info, FUNCNAME[3] is the caller
+    trace="(${FUNCNAME[3]:-main}) "
+
+  fi
+
+  printf "%b[%-5s] %s%s%b\n" \
     "$color" \
     "$level" \
+    "$trace" \
     "$*" \
     "$_MC_COLOR_RESET" >&2
 }
