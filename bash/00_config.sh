@@ -1,4 +1,5 @@
 
+: "${MC_VERBOSITY:=3}"
 DEFAULT_EDITORS=(
     "nvim"
     "vim"
@@ -92,24 +93,8 @@ SHELL_OPTIONS=(
 COLOR_SUPPORT=1
 GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
+# Prompt
 PS1='\u@\h:\w\$ '
-
-# --- Color Codes ---
-if [[ -t 2 ]] && command -v tput &>/dev/null && [[ $(tput colors) -ge 8 ]]; then
-    _COLOR_RESET='\033[0m'
-    _COLOR_ERROR='\033[0;31m'
-    _COLOR_WARN='\033[0;33m'
-    _COLOR_INFO='\033[0;36m'
-    _COLOR_DEBUG='\033[0;90m'
-
-else
-    _COLOR_RESET=''
-    _COLOR_ERROR=''
-    _COLOR_WARN=''
-    _COLOR_INFO=''
-    _COLOR_DEBUG=''
-
-fi
 
 # ============================================================================
 # File and directory exclusions for vim helper functions
@@ -198,3 +183,26 @@ if [[ ${#MC_EXCLUDE_FILES[@]} -eq 0 ]]; then
     )
 
 fi
+
+
+# --- Color Codes ---
+if [[ -t 2 ]] && command -v tput &>/dev/null && [[ $(tput colors) -ge 8 ]]; then
+    _MC_COLOR_RESET="$(tput sgr0 2>/dev/null || echo '')"
+    _MC_COLOR_ERROR=$(tput setaf 1 2>/dev/null || echo -n '')
+    _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || echo -n '')
+    _MC_COLOR_INFO=$(tput setaf 4 2>/dev/null || echo -n '')
+    _MC_COLOR_DEBUG=$(tput setaf 2 2>/dev/null || echo -n '')
+    _MC_COLOR_ERROR='\033[0;31m'
+    _MC_COLOR_WARN='\033[0;33m'
+    _MC_COLOR_INFO='\033[0;36m'
+    _MC_COLOR_DEBUG='\033[0;90m'
+
+else
+    _MC_COLOR_RESET=''
+    _MC_COLOR_ERROR=''
+    _MC_COLOR_WARN=''
+    _MC_COLOR_INFO=''
+    _MC_COLOR_DEBUG=''
+
+fi
+
