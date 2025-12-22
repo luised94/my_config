@@ -69,6 +69,16 @@ for verbosity_level in ${VERBOSITY_LEVELS[@]}; do
   msg_debug "Debug message"
 done
 
+echo "--- Argument number ---"
+echo "--- No arguments ---"
+_msg
+echo "--- One arguments ---"
+_msg "ERROR"
+echo "--- Two arguments ---"
+_msg "ERROR" 1
+echo "--- Three arguments ---"
+_msg "ERROR" 1 "$_MC_COLOR_ERROR"
+echo "--- Four arguments ---"
+_msg "ERROR" 1 "$_MC_COLOR_ERROR" "All arguments provided."
+echo "---"
 echo "DONE!"
-
-
