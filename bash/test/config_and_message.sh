@@ -1,84 +1,55 @@
 #!/bin/bash
+#!/bin/bash
 
-FILES_TO_TEST=(
-  "00_config.sh"
-  "10_message.sh"
-)
+# --- 1. BOOTSTRAP (Basic reporting before library loads) ---
+_ERR='\033[0;31m' _OK='\033[0;32m' _RST='\033[0m'
+_report() { printf "[%b%s%b] %s\n" "$1" "$2" "$_RST" "$3"; }
 
-VERBOSITY_LEVELS=(
-  0 1 2 3 4 5
-)
-
-# Set the appropriate root directory.
+# --- 2. ENVIRONMENT DISCOVERY ---
+# Determine root based on TMUX worktrees or default
 if [[ -n "$TMUX" ]]; then
-  _session=$(tmux display-message -p '#S')
-
-  if [[ "$_session" =~ ^my_config\>(.*) ]]; then
-    _branch=${BASH_REMATCH[1]}
-    _possible_root="$HOME/personal_repos/my_config-${_branch}/bash"
-
-    if [[ -d "$_possible_root" ]]; then
-      BASH_UTILS_ROOT="$_possible_root"
-    elif [[ $- == *i* ]]; then # Only warn if the shell is interactive
-      printf "[WARN] Worktree config not found: %s\n" "$_possible_root" >&2
+    _session=$(tmux display-message -p '#S')
+    if [[ "$_session" =~ ^my_config\>(.*) ]]; then
+        _possible_root="$HOME/personal_repos/my_config-${BASH_REMATCH[1]}/bash"
+        [[ -d "$_possible_root" ]] && BASH_UTILS_ROOT="$_possible_root"
     fi
-
-  fi
-
-  unset _session _branch _possible_root
-
 fi
 
-# Set default and clean up trailing slashes
 BASH_UTILS_ROOT="${BASH_UTILS_ROOT:-$HOME/personal_repos/my_config/bash}"
 BASH_UTILS_ROOT="${BASH_UTILS_ROOT%/}"
 
-if [[ ! -d "$BASH_UTILS_ROOT" && $- == *i* ]]; then
-  printf "[ERROR] BASH_UTILS_ROOT does not exist: %s\n" "$BASH_UTILS_ROOT" >&2
+[[ ! -d "$BASH_UTILS_ROOT" ]] && { _report "$_ERR" "FAIL" "Root not found: $BASH_UTILS_ROOT"; exit 1; }
 
-fi
-
-echo "BASH ROOT: $BASH_UTILS_ROOT"
+# --- 3. SOURCING ---
+FILES_TO_TEST=("00_config.sh" "10_message.sh")
 
 for file in "${FILES_TO_TEST[@]}"; do
-  echo "Sourcing $file"
-  filepath="$BASH_UTILS_ROOT/$file"
-
-  if [[ ! -f $filepath ]]; then
-    echo "File $filepath does not exist."
-    exit 1
-
-  fi
-
-  if ! source "$filepath"; then
-    printf "[ERROR] Failed to source %s (exit code: %s)" "${filepath}" "$?" >&2
-    continue
-
-  fi
-
-  echo "Sourced $file !"
-
+    filepath="$BASH_UTILS_ROOT/$file"
+    if [[ -f "$filepath" ]] && source "$filepath"; then
+        _report "$_OK" "LOAD" "$file"
+    else
+        _report "$_ERR" "FAIL" "Could not source $filepath"
+        exit 1
+    fi
 done
 
-for verbosity_level in ${VERBOSITY_LEVELS[@]}; do
-  MC_VERBOSITY=$verbosity_level
-  echo "--- Current verbosity: $MC_VERBOSITY ---"
-  msg_error "Error message"
-  msg_warn "Warn message"
-  msg_info "Info message"
-  msg_debug "Debug message"
+# --- 4. TEST SUITE ---
+# Test Level Filtering
+echo -e "\n--- TESTING VERBOSITY LEVELS ---"
+for v in {0..5}; do
+    MC_VERBOSITY=$v
+    echo "Level: $MC_VERBOSITY"
+    msg_error "Testing Error"
+    msg_warn  "Testing Warn"
+    msg_info  "Testing Info"
+    msg_debug "Testing Debug"
 done
 
-echo "--- Argument number ---"
-echo "--- No arguments ---"
-_msg
-echo "--- One arguments ---"
-_msg "ERROR"
-echo "--- Two arguments ---"
-_msg "ERROR" 1
-echo "--- Three arguments ---"
-_msg "ERROR" 1 "$_MC_COLOR_ERROR"
-echo "--- Four arguments ---"
-_msg "ERROR" 1 "$_MC_COLOR_ERROR" "All arguments provided."
-echo "---"
-echo "DONE!"
+# Test Robustness (Boundary Conditions)
+echo -e "\n--- TESTING ROBUSTNESS (Boundary Conditions) ---"
+_report "$_OK" "TEST" "Zero Args: $(_msg 2>&1)"
+_report "$_OK" "TEST" "One Args: $(_msg "ERR" 2>&1)"
+_report "$_OK" "TEST" "Two Args: $(_msg "ERR" 1 2>&1)"
+_report "$_OK" "TEST" "Empty Msg: $(_msg "INFO" 3 "$_MC_COLOR_INFO" 2>&1)"
+
+echo -e "\n${_OK}ALL TESTS COMPLETE${_RST}"

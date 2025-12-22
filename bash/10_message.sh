@@ -1,3 +1,12 @@
+# ------------------------------------------------------------------------------
+# TITLE      : _msg (Internal Logging Engine)
+# PURPOSE    : Centralized output handler with level filtering and color support.
+# INIT       : Requires MC_VERBOSITY and _MC_COLOR_* variables to be defined.
+# USAGE      : Internal: _msg "LEVEL" "PRIORITY" "COLOR_CODE" "Message"
+#              External: source mc_config.sh && msg_info "Hello"
+# DEPENDS    : printf, tput, bash 4.0+
+# DATE       : 2025-12-22
+# ------------------------------------------------------------------------------
 _msg() {
   if [[ $# -lt 3 ]]; then
     printf "ERROR: _msg requires Level, Num, and Color arguments.\n"
@@ -17,7 +26,7 @@ _msg() {
   fi
 
   # Exit early if below threshold.
-  if [[ $MC_VERBOSITY -lt $level_num ]]; then
+  if [[ ${MC_VERBOSITY:-3} -lt $level_num ]]; then
     return 0
 
   fi
@@ -53,6 +62,11 @@ _msg() {
     "$_MC_COLOR_RESET" >&2
 }
 
+# ------------------------------------------------------------------------------
+# TITLE      : Public Logging Wrappers
+# PURPOSE    : Simplify calls to _msg using predefined levels and colors.
+# USAGE      : msg_info "Task complete"; msg_error "File not found"
+# ------------------------------------------------------------------------------
 msg_error() { _msg "ERROR" 1 "$_MC_COLOR_ERROR" "$@"; }
 msg_warn()  { _msg "WARN" 2 "$_MC_COLOR_WARN"  "$@"; }
 msg_info()  { _msg "INFO" 3 "$_MC_COLOR_INFO"  "$@"; }
