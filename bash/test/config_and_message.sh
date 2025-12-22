@@ -5,6 +5,10 @@ FILES_TO_TEST=(
   "10_message.sh"
 )
 
+VERBOSITY_LEVELS=(
+  0 1 2 3 4 5
+)
+
 # Set the appropriate root directory.
 if [[ -n "$TMUX" ]]; then
   _session=$(tmux display-message -p '#S')
@@ -56,4 +60,15 @@ for file in "${FILES_TO_TEST[@]}"; do
 
 done
 
+for verbosity_level in ${VERBOSITY_LEVELS[@]}; do
+  MC_VERBOSITY=$verbosity_level
+  echo "--- Current verbosity: $MC_VERBOSITY ---"
+  msg_error "Error message"
+  msg_warn "Warn message"
+  msg_info "Info message"
+  msg_debug "Debug message"
+done
+
 echo "DONE!"
+
+
