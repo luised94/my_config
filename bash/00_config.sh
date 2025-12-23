@@ -92,7 +92,7 @@ MC_EXCLUDE_DIRS=(
 )
 
 MC_EXCLUDE_FILES=(
-    "*.log" "*.tmp" "*.bak" "*.swp" "*.swo" "*.pyc" "*.pyo" "*.o" "*.so"
+    "*.log" "*.git" "*.tmp" "*.bak" "*.swp" "*.swo" "*.pyc" "*.pyo" "*.o" "*.so"
     "*.a" "*.class" ".DS_Store" "Thumbs.db" "*repository_aggregate.md"
     "*.gitignore" "*.Rprofile" "*renv.lock"
 )

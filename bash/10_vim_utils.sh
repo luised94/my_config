@@ -50,6 +50,30 @@ _mc_vim_utils_health() {
     return $status
 }
 
+# --- Private Helper for Find Arguments ---
+# This ensures vimall, vimreverse, and vimstale all behave the same way.
+_mc_vim_get_exclude_args() {
+    # Check if variables exist
+    if [[ -z ${MC_EXCLUDE_DIRS+x} ]] || [[ -z ${MC_EXCLUDE_FILES+x} ]]; then
+        return 0
+    fi
+
+    local args=()
+    for dir in "${MC_EXCLUDE_DIRS[@]}"; do
+        args+=(-path "*/${dir}/*" -o)
+    done
+
+    for file in "${MC_EXCLUDE_FILES[@]}"; do
+        args+=(-name "${file}" -o)
+    done
+
+    # Remove trailing -o
+    if [[ ${#args[@]} -gt 0 ]]; then
+        unset 'args[-1]'
+        printf "%s\n" "${args[@]}"
+    fi
+}
+
 vimall() {
 
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
@@ -68,32 +92,16 @@ vimall() {
   local find_args=()
   local force=0
   local file_limit=${MC_VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
-  local exclude_dirs=("${MC_EXCLUDE_DIRS[@]}")
-  local exclude_files=("${MC_EXCLUDE_FILES[@]}")
 
   if [[ "$1" == "-f" ]] || [[ "$1" == "--force" ]]; then
     force=1
     shift
   fi
 
-  # --- Build find command using arrays ---
-  # Add directory exclusions
-  for dir in "${exclude_dirs[@]}"; do
-      find_args+=(-path "*/${dir}/*" -o)
-  done
-
-  # Add file exclusions
-  for file in "${exclude_files[@]}"; do
-      find_args+=(-name "${file}" -o)
-  done
-
-  # Remove trailing -o (last element) if array is not empty
-  if [[ ${#find_args[@]} -gt 0 ]]; then
-      unset 'find_args[-1]'
-  fi
+  mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
 
   mapfile -t files < <(
-    find . \( "${find_args[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
+    find . \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
     cut -d' ' -f2- | \
     tr -d '\r'
@@ -224,10 +232,14 @@ vimstale() {
     local days="${1:-30}"
     local files=()
 
+    mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
+
     msg_info "Searching for files untouched for $days+ days..."
 
     # Gather files older than X days
-    mapfile -t files < <(find . -type f -mtime +"$days" 2>/dev/null)
+    mapfile -t files < <(
+        find . \( "${find_excludes[@]}" \) -prune -o -type f -mtime +"$days" -print 2>/dev/null
+    )
 
     msg_debug "Stale count: ${#files[@]}"
 
@@ -253,13 +265,14 @@ vimreverse() {
     local count="${1:-10}"
     local files=()
 
+    mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
+
     msg_info "Collecting the $count oldest files..."
 
     # Sort by time (oldest first) and take the top N
     mapfile -t files < <(
-        find . -type f -printf '%T+ %p\n' 2>/dev/null |
+        find . \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T+ %p\n' 2>/dev/null |
         sort |
-        head -n "$count" |
         cut -d' ' -f2-
     )
 
