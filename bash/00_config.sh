@@ -16,6 +16,7 @@ MC_HIST_SIZE=1000
 MC_HIST_FILESIZE=2000
 MC_COLOR_SUPPORT=1
 MC_PS1='\u@\h:\w\$ '
+MC_DROPBOX_SUBPATH="MIT Dropbox/Luis Martinez"
 
 # Arrays for Shell Management
 MC_REQUIRED_PROGS=(
@@ -111,14 +112,6 @@ MC_EXCLUDE_FILES=(
 # OS & WSL Detection
 _MC_OS_TYPE=$(uname -s)
 _MC_WSL_DISTRO="$WSL_DISTRO_NAME"
-
-
-# WSL Specific Windows Discovery (Computed Only)
-if [[ -n "$_MC_WSL_DISTRO" ]]; then
-    _MC_WIN_USER=$(cmd.exe /C "echo %USERNAME%" 2>/dev/null | tr -d '\r\n')
-    _MC_DROPBOX_BASE="/mnt/c/Users/${_MC_WIN_USER}/MIT Dropbox/Luis Martinez"
-    [[ ! -d "$_MC_DROPBOX_BASE" ]] && _MC_DROPBOX_BASE="/mnt/c/Users/${_MC_WIN_USER}/Dropbox (MIT)"
-fi
 
 # ------------------------------------------------------------------------------
 # [MC_03_COLORS]: tput logic with POSIX fallbacks

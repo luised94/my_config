@@ -41,17 +41,24 @@ fi
 export MC_ROOT
 
 # We loop through files in the 'core' directory numbered 00-03
-for _file in ${MC_ROOT}/[0-9][0-9]_*.sh; do
-    if [[ -f "$_file" ]]; then
-        # Temporary "Testing" print - we can remove this once stable
-        printf "Loading %s...\n" "$(basename "$_file")"
-        source "$_file"
-    fi
-done
+for _file in "${MC_ROOT}"/[0-9][0-9]_*.sh; do
+    if [[ -r "$_file" ]]; then
+        # The basename helps keep the "Loading" message clean
+        printf "Loading %-20s ... " "$(basename "$_file")"
 
+        if source "$_file"; then
+            printf "Done\n"
+
+        else
+            printf "FAILED (exit: $?)\n" >&2
+
+        fi
+
+    fi
+
+done
 unset _file
 
-#
 #DEFAULT_EDITORS=(
 #    "nvim"
 #    "vim"
