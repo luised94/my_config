@@ -59,6 +59,11 @@ for _file in "${MC_ROOT}"/[0-9][0-9]_*.sh; do
 done
 unset _file
 
+# Device specific settings.
+[[ -f ~/.mc_local ]] && source ~/.mc_local
+
+echo "Bashrc done!"
+
 #DEFAULT_EDITORS=(
 #    "nvim"
 #    "vim"

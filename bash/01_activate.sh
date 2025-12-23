@@ -27,7 +27,6 @@ for p in "${MC_ADDITIONAL_PATHS[@]}"; do
     eval "p_expanded=$p"
     [[ -d "$p_expanded" ]] && PATH="$PATH:$p_expanded"
 done
-export PATH
 
 # Set the default editor.
 for editor in "${MC_DEFAULT_EDITORS[@]}"; do
@@ -38,9 +37,30 @@ for editor in "${MC_DEFAULT_EDITORS[@]}"; do
   fi
 
 done
-export EDITOR
+
+# Allow less to open compressed files as text.
+[[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Setup completions
+if ! shopt -oq posix; then
+    if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+        source /usr/share/bash-completion/bash_completion
+    elif [[ -f /etc/bash_completion ]]; then
+        source /etc/bash_completion
+    fi
+fi
+
+# Also include your custom completions loop here
+if [[ -d ~/.bash_completion.d ]]; then
+    for _comp_file in ~/.bash_completion.d/*; do
+        [[ -f "$_comp_file" ]] && source "$_comp_file"
+    done
+    unset _comp_file
+fi
 
 # Apply Individual Preferences
+export PATH
+export EDITOR
 export HISTCONTROL="$MC_HISTCONTROL"
 export HISTSIZE="$MC_HISTSIZE"
 export HISTFILESIZE="$MC_HISTFILESIZE"
