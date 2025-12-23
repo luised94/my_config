@@ -213,3 +213,97 @@ vimmodified() {
   "$EDITOR" "${files[@]}"
 
 }
+
+vimstale() {
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        printf "Usage: vimstale [DAYS]\n"
+        printf "Opens files that have not been modified in X days (default: 30).\n"
+        return 0
+    fi
+
+    local days="${1:-30}"
+    local files=()
+
+    msg_info "Searching for files untouched for $days+ days..."
+
+    # Gather files older than X days
+    mapfile -t files < <(find . -type f -mtime +"$days" 2>/dev/null)
+
+    msg_debug "Stale count: ${#files[@]}"
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        msg_info "No stale files found."
+        return 0
+    fi
+
+    msg_warn "Found ${#files[@]} stale files. Open them? (y/N)"
+    read -r confirm
+    if [[ "$confirm" == "y" ]] || [[ "$confirm" == "Y" ]]; then
+        "$EDITOR" "${files[@]}"
+    fi
+}
+
+vimreverse() {
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        printf "Usage: vimreverse [COUNT]\n"
+        printf "Opens the X oldest files in the current tree (default: 10).\n"
+        return 0
+    fi
+
+    local count="${1:-10}"
+    local files=()
+
+    msg_info "Collecting the $count oldest files..."
+
+    # Sort by time (oldest first) and take the top N
+    mapfile -t files < <(
+        find . -type f -printf '%T+ %p\n' 2>/dev/null |
+        sort |
+        head -n "$count" |
+        cut -d' ' -f2-
+    )
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        msg_error "No files found."
+        return 1
+    fi
+
+    msg_debug "Opening oldest files: ${files[*]}"
+    "$EDITOR" "${files[@]}"
+}
+
+vimdiff() {
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        printf "Usage: vimdiff [TARGET]\n"
+        printf "Opens files that differ between current state and TARGET.\n"
+        printf "TARGET can be a branch (main), a commit, or a tag.\n"
+        printf "Default TARGET: main\n"
+        return 0
+    fi
+
+    if ! _is_git_repo; then
+        msg_error "This command requires a git repository."
+        return 1
+    fi
+
+    local target="${1:-main}"
+
+    # Validation: Does the target exist in Git?
+    if ! git rev-parse --verify "$target" >/dev/null 2>&1; then
+        msg_error "Invalid target: '$target' is not a valid branch, commit, or tag."
+        return 1
+    fi
+
+    msg_info "Checking differences against '$target'..."
+
+    mapfile -t files < <(git diff --name-only "$target")
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        msg_info "No differences found against $target."
+        return 0
+    fi
+
+    msg_debug "Changed files: ${files[*]}"
+    msg_info "Opening ${#files[@]} changed files..."
+    "$EDITOR" "${files[@]}"
+}
