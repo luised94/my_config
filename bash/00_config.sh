@@ -10,7 +10,6 @@
 # ------------------------------------------------------------------------------
 
 # General Preferences
-MC_ROOT="${HOME}/personal_repos/my_config/bash"
 MC_VERBOSITY=3
 MC_HIST_CONTROL="ignoreboth"
 MC_HIST_SIZE=1000
@@ -113,22 +112,6 @@ MC_EXCLUDE_FILES=(
 _MC_OS_TYPE=$(uname -s)
 _MC_WSL_DISTRO="$WSL_DISTRO_NAME"
 
-# TMUX Worktree Root Discovery
-if [[ -n "$TMUX" ]]; then
-    _MC_TMUX_SESSION=$(tmux display-message -p '#S' 2>/dev/null)
-
-    if [[ "$_MC_TMUX_SESSION" =~ ^my_config\>(.*) ]]; then
-        _MC_BRANCH=${BASH_REMATCH[1]}
-        _MC_POSSIBLE_ROOT="$HOME/personal_repos/my_config-${_MC_BRANCH}/bash"
-
-        if [[ -d "$_MC_POSSIBLE_ROOT" ]]; then
-            MC_ROOT="$_MC_POSSIBLE_ROOT"
-        fi
-    fi
-fi
-
-# Cleanup of trailing slashes for the root
-MC_ROOT="${MC_ROOT%/}"
 
 # WSL Specific Windows Discovery (Computed Only)
 if [[ -n "$_MC_WSL_DISTRO" ]]; then
@@ -157,7 +140,5 @@ else
     _MC_COLOR_ERROR='' _MC_COLOR_WARN='' _MC_COLOR_INFO='' _MC_COLOR_DEBUG=''
 fi
 
-# Exporting Core variables for sub-shells
-export MC_ROOT
 export _MC_OS_TYPE
 export _MC_WSL_DISTRO
