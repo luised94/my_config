@@ -1,101 +1,13 @@
 #!/bin/bash
 # vim_helpers.sh
 
-# ============================================================================
-# File and directory exclusions for vim helper functions
-# These can be overridden by defining these arrays before sourcing this file
-# ============================================================================
-# Default exclusion directories (if not already defined)
-if [[ ${#VIMALL_EXCLUDE_DIRS[@]} -eq 0 ]]; then
-    VIMALL_EXCLUDE_DIRS=(
-        # Version control
-        ".git"
-
-        # Node/JavaScript ecosystem
-        "node_modules"
-        ".next"
-        ".nuxt"
-        ".svelte-kit"
-
-        # Python ecosystem
-        "__pycache__"
-        ".venv"
-        "venv"
-        "env"
-        ".pytest_cache"
-        ".mypy_cache"
-        ".tox"
-        ".ipynb_checkpoints"
-
-        # R ecosystem
-        "renv"
-        ".Rproj.user"
-
-        # Build artifacts (multi-language)
-        "build"
-        "dist"
-        "target"
-        "out"
-        "bin"
-
-        # Dependencies/vendors
-        "vendor"
-        "deps"
-
-        # IDE/Editor
-        ".idea"
-        ".vscode"
-
-        # Cache/temp
-        ".cache"
-        "tmp"
-        "temp"
-
-        # Coverage/test reports
-        "coverage"
-        "htmlcov"
-    )
-
-fi
-
-# Default exclusion file patterns (if not already defined)
-if [[ ${#VIMALL_EXCLUDE_FILES[@]} -eq 0 ]]; then
-    VIMALL_EXCLUDE_FILES=(
-        # Logs and temp files
-        "*.log"
-        "*.tmp"
-        "*.bak"
-        "*.swp"
-        "*.swo"
-
-        # Compiled/bytecode
-        "*.pyc"
-        "*.pyo"
-        "*.o"
-        "*.so"
-        "*.a"
-        "*.class"
-
-        # OS files
-        ".DS_Store"
-        "Thumbs.db"
-
-        # Your custom exclusions
-        "*repository_aggregate.md"
-        "*.gitignore"
-        "*.Rprofile"
-        "*renv.lock"
-    )
-
-fi
-
 vimall() {
 
 
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     printf "=== Current Configuration ===\n"
     printf "EDITOR:              %s\n" "${EDITOR:-<not set>}"
-    printf "VIMALL_FILE_LIMIT:   %s\n\n" "${VIMALL_FILE_LIMIT:-150}"
+    printf "MC_VIMALL_FILE_LIMIT:   %s\n\n" "${MC_VIMALL_FILE_LIMIT:-150}"
 
     cat << 'EOF'
 Usage: vimall [OPTIONS]
@@ -108,14 +20,14 @@ Options:
 
 Environment Variables:
   EDITOR              Editor to use (required)
-  VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
-  VIMALL_EXCLUDE_DIRS Directories to exclude (array)
-  VIMALL_EXCLUDE_FILES File patterns to exclude (array)
+  MC_VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
+  MC_EXCLUDE_DIRS Directories to exclude (array)
+  MC_EXCLUDE_FILES File patterns to exclude (array)
 
 Examples:
   vimall                        # Open all files with confirmation if > 150
   vimall -f                     # Open all files without confirmation
-  VIMALL_FILE_LIMIT=50 vimall   # Lower confirmation threshold
+  MC_VIMALL_FILE_LIMIT=50 vimall   # Lower confirmation threshold
 EOF
 
     printf "=== end vimall help ===\n"
@@ -128,7 +40,7 @@ EOF
     shift
   fi
 
-  local file_limit=${VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
+  local file_limit=${MC_VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
 
   # Validate EDITOR
   if [[ -z $EDITOR ]]; then
@@ -136,7 +48,7 @@ EOF
       return 1
 
   fi
-  #
+
   # Validate EDITOR is executable
   if ! command -v "$EDITOR" &>/dev/null; then
       printf "[ERROR] EDITOR '%s' not found or not executable.\n" "$EDITOR" >&2
@@ -145,8 +57,8 @@ EOF
   fi
 
   # Use module-level arrays, or minimal fallback if somehow undefined
-  local exclude_dirs=("${VIMALL_EXCLUDE_DIRS[@]}")
-  local exclude_files=("${VIMALL_EXCLUDE_FILES[@]}")
+  local exclude_dirs=("${MC_EXCLUDE_DIRS[@]}")
+  local exclude_files=("${MC_EXCLUDE_FILES[@]}")
 
   if [[ ${#exclude_dirs[@]} -eq 0 ]]; then
       # Minimal fallback (should never happen if file sourced properly)
@@ -166,7 +78,7 @@ EOF
       find_args+=(-path "*/${dir}/*" -o)
   done
 
-  # Add file exclusions  
+  # Add file exclusions
   for file in "${exclude_files[@]}"; do
       find_args+=(-name "${file}" -o)
   done

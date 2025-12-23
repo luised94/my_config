@@ -73,5 +73,3 @@ if [ -z "$TMUX" ]; then
   cd "$HOME"
 
 fi
-
-msg_info "Bashrc done!"

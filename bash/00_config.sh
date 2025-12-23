@@ -105,6 +105,7 @@ MC_EXCLUDE_FILES=(
     "*.gitignore" "*.Rprofile" "*renv.lock"
 )
 
+MC_VIMALL_FILE_LIMIT=150
 # ------------------------------------------------------------------------------
 # [MC_02_COMPUTED_ENV]: Logic for system detection
 # ------------------------------------------------------------------------------
