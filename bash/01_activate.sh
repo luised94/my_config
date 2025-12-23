@@ -65,9 +65,3 @@ export HISTCONTROL="$MC_HISTCONTROL"
 export HISTSIZE="$MC_HISTSIZE"
 export HISTFILESIZE="$MC_HISTFILESIZE"
 export PS1="$MC_PS1"
-
-# Final Verification Call (The Caching Strategy we discussed)
-# This ensures that even after activating, we double-check everything works.
-if [[ $(type -t mc_verify_system) == "function" ]]; then
-    mc_verify_system
-fi

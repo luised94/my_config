@@ -43,26 +43,25 @@ export MC_ROOT
 # We loop through files in the 'core' directory numbered 00-03
 for _file in "${MC_ROOT}"/[0-9][0-9]_*.sh; do
     if [[ -r "$_file" ]]; then
-        # The basename helps keep the "Loading" message clean
-        printf "Loading %-20s ... " "$(basename "$_file")"
-
-        if source "$_file"; then
-            printf "Done\n"
-
-        else
-            printf "FAILED (exit: $?)\n" >&2
-
+        if ! source "$_file"; then
+            # Use raw printf here because the logger might not be loaded yet
+            printf "[ERROR] MC Framework failed to source: %s\n" "$_file" >&2
         fi
-
     fi
-
 done
+
 unset _file
 
 # Device specific settings.
 [[ -f ~/.mc_local ]] && source ~/.mc_local
 
-echo "Bashrc done!"
+## Switch to home directory if not in Tmux
+#if [ -z "$TMUX" ]; then
+#  cd "$HOME"
+#
+#fi
+
+msg_info "Bashrc done!"
 
 #DEFAULT_EDITORS=(
 #    "nvim"
@@ -316,11 +315,6 @@ echo "Bashrc done!"
 ##eval $(opam env)
 ##. "/home/lius/.deno/env"
 #
-## Switch to home directory if not in Tmux
-#if [ -z "$TMUX" ]; then
-#  cd "$HOME"
-#
-#fi
 #
 #log_info "Shell initialization complete..."
 #
