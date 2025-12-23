@@ -53,69 +53,30 @@ _mc_vim_utils_health() {
 vimall() {
 
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-    printf "=== Current Configuration ===\n"
-    printf "EDITOR:              %s\n" "${EDITOR:-<not set>}"
-    printf "MC_VIMALL_FILE_LIMIT:   %s\n\n" "${MC_VIMALL_FILE_LIMIT:-150}"
-
-    cat << 'EOF'
-Usage: vimall [OPTIONS]
-
-Opens all files in the current directory tree in $EDITOR, sorted by modification time.
-
-Options:
-  -f, --force    Skip confirmation prompt for large file counts
-  -h, --help     Show this help message
-
-Environment Variables:
-  EDITOR              Editor to use (required)
-  MC_VIMALL_FILE_LIMIT   File count that triggers confirmation (default: 150)
-  MC_EXCLUDE_DIRS Directories to exclude (array)
-  MC_EXCLUDE_FILES File patterns to exclude (array)
-
-Examples:
-  vimall                        # Open all files with confirmation if > 150
-  vimall -f                     # Open all files without confirmation
-  MC_VIMALL_FILE_LIMIT=50 vimall   # Lower confirmation threshold
-EOF
-
-    printf "=== end vimall help ===\n"
+    printf "Usage: vimall [OPTIONS]\n"
+    printf "Opens files in tree, sorted by time, respecting MC_EXCLUDE arrays.\n\n"
+    printf "Options:\n"
+    printf "%s\n" "-f, --force    Skip confirmation prompt"
+    printf "%s\n" "-h, --help     Show help message"
+    printf "Environment variables:\n"
+    printf "  Configured Limit: %s\n" "${MC_VIMALL_FILE_LIMIT:-150}"
+    printf "  Current Editor   : %s\n" "${EDITOR}"
+    printf "  Exclusion criteria: See MC_EXCLUDE_DIRS and MC_EXCLUDE_FILES\n"
     return 0
-
   fi
+
+  local find_args=()
   local force=0
+  local file_limit=${MC_VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
+  local exclude_dirs=("${MC_EXCLUDE_DIRS[@]}")
+  local exclude_files=("${MC_EXCLUDE_FILES[@]}")
+
   if [[ "$1" == "-f" ]] || [[ "$1" == "--force" ]]; then
     force=1
     shift
   fi
 
-  local file_limit=${MC_VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
-
-  # Validate EDITOR
-  if [[ -z $EDITOR ]]; then
-      printf "[ERROR] EDITOR variable not set.\n" >&2
-      return 1
-
-  fi
-
-  # Validate EDITOR is executable
-
-  # Use module-level arrays, or minimal fallback if somehow undefined
-  local exclude_dirs=("${MC_EXCLUDE_DIRS[@]}")
-  local exclude_files=("${MC_EXCLUDE_FILES[@]}")
-
-  if [[ ${#exclude_dirs[@]} -eq 0 ]]; then
-      # Minimal fallback (should never happen if file sourced properly)
-      exclude_dirs=(".git" "node_modules")
-  fi
-
-  if [[ ${#exclude_files[@]} -eq 0 ]]; then
-      # Minimal fallback (should never happen if file sourced properly)
-      exclude_files=("*.log" "*.bak")
-  fi
-
-  # Build find command using arrays
-  local find_args=()
-
+  # --- Build find command using arrays ---
   # Add directory exclusions
   for dir in "${exclude_dirs[@]}"; do
       find_args+=(-path "*/${dir}/*" -o)
@@ -131,36 +92,33 @@ EOF
       unset 'find_args[-1]'
   fi
 
-  if ! mapfile -t files < <(
+  mapfile -t files < <(
     find . \( "${find_args[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
     cut -d' ' -f2- | \
     tr -d '\r'
-  ); then
-    printf "[ERROR] Failed to collect files" >&2
-    return 1
-
-  fi
+  )
 
   local number_of_files=${#files[@]}
+  msg_debug "Files found: $number_of_files"
   if [ $number_of_files -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n" >&2
+    msg_error "No files found to open."
     return 1
 
   fi
 
   if [[ $number_of_files -gt $file_limit ]] && [[ $force -eq 0 ]]; then
-    printf "[WARNING] Found $number_of_files. Are you sure you want to open all of them? (y/N)"
+    msg_warn "Found ${#files[@]} files. Open all? (y/N)"
     read -r confirm
     if [[ $confirm != [yY] ]]; then
-      printf "Operation cancelled."
+      msg_info "Operation cancelled by user."
       return 0
 
     fi
 
-  fi 
+  fi
 
-  printf "[INFO] Opening %d files in %s\n" "$number_of_files" "$EDITOR"
+  msg_info "Opening ${#files[@]} files in $EDITOR..."
   "$EDITOR" "${files[@]}"
 
 }
