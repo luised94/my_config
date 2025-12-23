@@ -125,12 +125,18 @@ vimall() {
 }
 
 vimpattern() {
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    printf "Usage: vimpattern [SEARCH_STRING]\n"
+    printf "Searches the Git index for files containing the string and opens them.\n"
+    return 0
+  fi
+
   local pattern=$1
 
-  if [[ -z $pattern ]]; then
-    msg_error "Provide search string as first argument."
-    return 1
-
+  # Check if empty or only whitespace
+  if [[ -z "${pattern// }" ]]; then
+      msg_error "Search pattern cannot be empty or only whitespace."
+      return 1
   fi
 
   if ! _is_git_repo; then
@@ -139,6 +145,8 @@ vimpattern() {
   fi
 
   mapfile -t files < <(git grep -l "${pattern}")
+
+  msg_debug "Pattern: $pattern | Count: ${#files[@]}"
 
   if [ ${#files[@]} -eq 0 ]; then
     msg_error "No files found to open."
@@ -152,6 +160,11 @@ vimpattern() {
 }
 
 vimconflict() {
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    printf "Usage: vimconflict\n"
+    printf "Opens all files currently in a 'Unmerged' (conflict) state.\n"
+    return 0
+  fi
 
   if ! _is_git_repo; then
     msg_error "This command requires a git repository."
@@ -174,6 +187,11 @@ vimconflict() {
 }
 
 vimmodified() {
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    printf "Usage: vimmodified\n"
+    printf "Opens all files changed in the working tree and index.\n"
+    return 0
+  fi
 
   if ! _is_git_repo; then
     msg_error "This command requires a git repository."
@@ -181,7 +199,8 @@ vimmodified() {
   fi
 
   mapfile -t files < <(
-    git status --porcelain | sed 's/^...//'
+    git ls-files -m --others --exclude-standard
+    #git status --porcelain | sed 's/^...//'
   )
 
   if [ ${#files[@]} -eq 0 ]; then
