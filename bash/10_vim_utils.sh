@@ -101,6 +101,7 @@ vimall() {
 
   local number_of_files=${#files[@]}
   msg_debug "Files found: $number_of_files"
+
   if [ $number_of_files -eq 0 ]; then
     msg_error "No files found to open."
     return 1
@@ -127,124 +128,69 @@ vimpattern() {
   local pattern=$1
 
   if [[ -z $pattern ]]; then
-    printf "[ERROR] Provide search string as first argument." >&2
+    msg_error "Provide search string as first argument."
     return 1
 
   fi
 
-  # Validate EDITOR
-  if [[ -z $EDITOR ]]; then
-      printf "[ERROR] EDITOR variable not set.\n" >&2
-      return 1
-
+  if ! _is_git_repo; then
+    msg_error "This command requires a git repository."
+    return 1
   fi
 
-  if ! command -v git &>/dev/null; then
-      printf "[ERROR] git is not installed\n" >&2
-      return 1
-
-  fi
-
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-      printf "[ERROR] Not inside a git repository\n" >&2
-      return 1
-
-  fi
-
-
-  if ! mapfile -t files < <(git grep -l "${pattern}"); then
-      pritnf "[ERROR] Failed to search files.\n" >&2
-      return 1
-
-  fi
+  mapfile -t files < <(git grep -l "${pattern}")
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n" >&2
+    msg_error "No files found to open."
     return 1
 
   fi
 
-  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  msg_info "Opening ${#files[@]} files in $EDITOR"
   "$EDITOR" "${files[@]}"
 
 }
 
 vimconflict() {
 
-  # Validate EDITOR
-  if [[ -z $EDITOR ]]; then
-      printf "[ERROR] EDITOR variable not set.\n" >&2
-      return 1
-
-  fi
-
-  if ! command -v git &>/dev/null; then
-      printf "[ERROR] git is not installed\n" >&2
-      return 1
-
-  fi
-
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-      printf "[ERROR] Not inside a git repository\n" >&2
-      return 1
-
-  fi
-
-  if ! mapfile -t files < <(
-    git diff --name-only --diff-filter=U
-    ); then
-    printf "[ERROR] Failed to collect conflicted files.\n" >&2
+  if ! _is_git_repo; then
+    msg_error "This command requires a git repository."
     return 1
-
   fi
+
+  mapfile -t files < <(
+    git diff --name-only --diff-filter=U
+  )
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n" >&2
+    msg_error "No files found to open."
     return 1
 
   fi
 
-  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  msg_info "Opening ${#files[@]} files in $EDITOR"
   "$EDITOR" "${files[@]}"
 
 }
 
 vimmodified() {
 
-  # Validate EDITOR
-  if [[ -z $EDITOR ]]; then
-      printf "[ERROR] EDITOR variable not set.\n" >&2
-      return 1
-
-  fi
-
-  if ! command -v git &>/dev/null; then
-      printf "[ERROR] git is not installed\n" >&2
-      return 1
-
-  fi
-
-  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-      printf "[ERROR] Not inside a git repository\n" >&2
-      return 1
-
-  fi
-
-  if ! mapfile -t files < <(
-    git status --porcelain | sed 's/^...//'
-    ); then
-    printf " [ERROR] Failed to collect modified files" >&2
+  if ! _is_git_repo; then
+    msg_error "This command requires a git repository."
     return 1
-
   fi
+
+  mapfile -t files < <(
+    git status --porcelain | sed 's/^...//'
+  )
 
   if [ ${#files[@]} -eq 0 ]; then
-    printf "[ERROR] No files found to edit.\n" >&2
+    msg_error "No files found to open."
     return 1
 
   fi
 
-  printf "[INFO] Opening ${#files[@]} files in $EDITOR"
+  msg_info "Opening ${#files[@]} files in $EDITOR"
   "$EDITOR" "${files[@]}"
 
 }
