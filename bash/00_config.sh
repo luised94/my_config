@@ -23,6 +23,7 @@ MC_REQUIRED_PROGS=(
     "git"
     "tmux"
     "nvim"
+    "vim"
     "fzf"
     "tput"
 )
@@ -35,15 +36,6 @@ MC_DEFAULT_EDITORS=(
 MC_SHELL_OPTIONS=(
     "histappend"
     "checkwinsize"
-)
-
-MC_FUNCTION_FILES=(
-    "logging_utils.sh"
-    "file_operations.sh"
-    "vim_helpers.sh"
-    "view_files_in_browser.sh"
-    "git_automations.sh"
-    "directory_tree.sh"
 )
 
 MC_ADDITIONAL_PATHS=(

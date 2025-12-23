@@ -1,8 +1,56 @@
 #!/bin/bash
-# vim_helpers.sh
+# ------------------------------------------------------------------------------
+# TITLE      : MC Vim Utilities (10_vim_utils.sh)
+# PURPOSE    : Clean, procedural utilities for file management.
+# DEPENDENCIES: 03_message.sh, sourced by bashrc.
+# DATE: 2025-12-23
+# ------------------------------------------------------------------------------
+
+# --- Manual Troubleshooting Helper ---
+_mc_vim_utils_health() {
+    local status=0
+
+    # 1. Check Messaging Engine (The only dependency we MUST check with printf)
+    if [[ "$(type -t msg_info)" != "function" ]]; then
+        printf "[CRITICAL] MC Messaging engine (msg_info) not found. Check 03_message.sh\n" >&2
+        status=1
+    fi
+
+    # 2. Check Global Config Variables
+    # Using ${var+x} to check if defined, regardless of value
+    if [[ -z ${MC_EXCLUDE_DIRS+x} ]]; then
+        printf "[ERROR] MC_EXCLUDE_DIRS is not defined. Check 00_config.sh\n" >&2
+        status=1
+    fi
+
+    if [[ -z ${MC_EXCLUDE_FILES+x} ]]; then
+        printf "[ERROR] MC_EXCLUDE_FILES is not defined. Check 00_config.sh\n" >&2
+        status=1
+    fi
+
+    # 3. Check System Variables
+    if [[ -z "$EDITOR" ]]; then
+        printf "[ERROR] EDITOR variable is not set.\n" >&2
+        status=1
+    fi
+
+    if ! command -v "$EDITOR" &>/dev/null; then
+        printf "[ERROR] EDITOR '%s' not found or not executable.\n" "$EDITOR" >&2
+        status=1
+
+    fi
+
+    # 4. Check git availability.
+    if ! command -v git >/dev/null 2>&1; then
+        printf "[ERROR] Git command not found in PATH.\n"
+        status=1
+
+    fi
+
+    return $status
+}
 
 vimall() {
-
 
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     printf "=== Current Configuration ===\n"
@@ -50,11 +98,6 @@ EOF
   fi
 
   # Validate EDITOR is executable
-  if ! command -v "$EDITOR" &>/dev/null; then
-      printf "[ERROR] EDITOR '%s' not found or not executable.\n" "$EDITOR" >&2
-      return 1
-
-  fi
 
   # Use module-level arrays, or minimal fallback if somehow undefined
   local exclude_dirs=("${MC_EXCLUDE_DIRS[@]}")
