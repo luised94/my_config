@@ -62,6 +62,7 @@ MC_WSL_DEPS=(
 
 # Browsers are not in $PATH by default, so we use absolute paths.
 MC_DEFAULT_BROWSERS=(
+    "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
     "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
     "/mnt/c/Program Files/Mozilla Firefox/firefox.exe"
     "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
@@ -91,7 +92,7 @@ MC_ADDITIONAL_PATHS=(
 )
 
 MC_ENV_VARS=(
-    "BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
+    #"BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
     "GIT_EDITOR=nvim"
     "MANPAGER=nvim +Man!"
     "R_HOME=/usr/local/bin/R"

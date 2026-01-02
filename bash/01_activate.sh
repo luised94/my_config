@@ -38,6 +38,7 @@ for editor in "${MC_DEFAULT_EDITORS[@]}"; do
 
 done
 
+# Set the default browser (exes from WINDOWS).
 for browser in "${MC_DEFAULT_BROWSERS[@]}"; do
   if command -v "$browser" >/dev/null 2>&1; then
     BROWSER="$browser"
@@ -75,3 +76,4 @@ export HISTFILESIZE="$MC_HISTFILESIZE"
 export HISTSIZE="$MC_HISTSIZE"
 export PATH
 export PS1="$MC_PS1"
+export VISUAL="$editor"

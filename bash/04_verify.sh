@@ -52,17 +52,87 @@ _mc_perform_checks() {
             error_count=$((error_count + 1))
         fi
     done
+    #
+    # --- Check 2: Dynamic Environment Variables ---
+    # Ensures that if EDITOR/BROWSER are set, they point to valid binaries.
+    for var in "EDITOR" "BROWSER" "VISUAL"; do
+        local val="${!var}" # Indirect expansion
+        if [[ -n "$val" ]]; then
+             # Handle paths with spaces (common in BROWSER) by checking existence first if it looks like a path
+             if [[ "$val" == /* ]]; then
+                if [[ ! -e "$val" ]]; then
+                    msg_error "Variable \$$var path not found: $val"
+                    error_count=$((error_count + 1))
+                fi
+             else
+                if ! command -v "$val" >/dev/null 2>&1; then
+                    msg_error "Variable \$$var binary missing: $val"
+                    error_count=$((error_count + 1))
+                fi
+             fi
+        fi
+    done
 
-    # --- Check 2: WSL Paths ---
+    # --- Check 3: Symlink Validation ---
+    # Check 3: Symlink Validation
+    for link_pair in "${MC_SYMLINKS[@]}"; do
+        local src="${link_pair%%:*}"
+        local dst="${link_pair#*:}"
+
+        # A. Check existence (Always Error if missing)
+        if [[ ! -L "$dst" ]]; then
+            msg_error "Symlink missing: $dst"
+            error_count=$((error_count + 1))
+            continue
+        fi
+
+        # B. Check Target
+        local actual_src
+        actual_src=$(readlink -f "$dst")
+
+        if [[ "$actual_src" != "$src" ]]; then
+            # ARE WE IN A WORKTREE?
+            # If the expected source contains our worktree path, but the actual link 
+            # points to the MAIN repo, that is actually OKAY/EXPECTED.
+            # Heuristic: If we are in a worktree, we shouldn't fail global symlinks
+            if [[ "$MC_REPO_ROOT" != "$HOME/personal_repos/my_config" ]]; then
+                 msg_warn "Symlink mismatch (Worktree Context): $dst points to $actual_src"
+                 # Do NOT increment error_count here. It's a warning.
+            else
+                 # We are in main repo, so it MUST match.
+                 msg_error "Symlink mismatch: $dst -> $actual_src (Expected: $src)"
+                 error_count=$((error_count + 1))
+            fi
+        fi
+    done
+
+    # --- Check 4: WSL Dependencies ---
     # Only run if we are in a WSL environment
     if [[ -n "$WSL_DISTRO_NAME" ]]; then
         if [[ ! -d "$MC_DROPBOX_PATH" ]]; then
             msg_error "Dropbox path is invalid: $MC_DROPBOX_PATH"
             error_count=$((error_count + 1))
         fi
+
+        for item in "${MC_WSL_DEPS[@]}"; do
+            if [[ "$item" == /* ]]; then
+                # It's an absolute path (e.g., Windows Browser or executable in Program Files dir)
+                if [[ ! -e "$item" ]]; then
+                    msg_error "WSL Path missing: $item"
+                    error_count=$((error_count + 1))
+                fi
+            else
+                # It's a command (e.g., wslpath)
+                if ! command -v "$item" >/dev/null 2>&1; then
+                    msg_error "WSL Command missing: $item"
+                    error_count=$((error_count + 1))
+                fi
+            fi
+        done
+
     fi
 
-    # --- Check 3: Finalize ---
+    # --- Check 5: Finalize ---
     if [[ "$error_count" -eq 0 ]]; then
         # Everything passed, update the timestamp
         touch "$target_cache_file"
