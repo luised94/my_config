@@ -19,18 +19,72 @@ MC_PS1='\u@\h:\w\$ '
 MC_DROPBOX_SUBPATH="MIT Dropbox/Luis Martinez"
 
 # Arrays for Shell Management
+# --- Required Binaries ---
+# NOTE:
+#  Editors (nvim, vim), browsers and wsl/windows binaries are NOT listed here because they are handled
+# dynamically by MC_DEFAULT_EDITORS, MC_DEFAULT_BROWSERS in 01_activate.sh.
+# WSL_DEPS are verified in 04_verify.sh.
 MC_REQUIRED_PROGS=(
+    # Core Utilities
     "git"
-    "tmux"
-    "nvim"
-    "vim"
+    "curl"
+    "wget"
     "fzf"
     "tput"
+    #"ripgrep"
+    #"jq"
+
+    # Languages & Runtimes
+    #"python3"
+    #"uv"
+    #"node"
+    #"npm"
+    #"R"
+
+    # Compiled Language Toolchain
+    #"gcc"
+    #"make"
+    #"cmake"
 )
 
-MC_DEFAULT_EDITORS=(
-    "nvim"
-    "vim"
+MC_DEFAULT_EDITORS=("nvim" "vim" "nano" "vi")
+
+# --- WSL Specific Dependencies ---
+# WSL Specific Dependencies (Binaries or Absolute Paths)
+# Only checked if running inside WSL.
+# system32 binaries already added to path automatically.
+MC_WSL_DEPS=(
+    "cmd.exe"
+    "powershell.exe"
+    "wslpath"
+    "clip.exe"
+)
+
+# Browsers are not in $PATH by default, so we use absolute paths.
+MC_DEFAULT_BROWSERS=(
+    "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    "/mnt/c/Program Files/Mozilla Firefox/firefox.exe"
+    "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
+    "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+)
+
+# --- Symlink Management ---
+# Format: "Source_Path:Target_Path"
+# Used by 04_verify.sh to validate and 00_bootstrap.sh (future) to create.
+# NOTE: Use $HOME instead of ~ to ensure safe expansion.
+MC_SYMLINKS=(
+    # Bash Configuration
+    "$HOME/personal_repos/my_config/:$HOME/.bashrc"
+
+    # Neovim Configuration
+    # TODO: Verify source path below matches your repo structure
+    "$MC_ROOT/configs/nvim:$HOME/.config/nvim"
+)
+
+# Symlinks (Format: "Source:Target")
+MC_SYMLINKS=(
+    #"$MC_ROOT/configs/gitconfig:$HOME/.gitconfig"
+    #"$MC_ROOT/configs/tmux.conf:$HOME/.tmux.conf"
 )
 
 MC_SHELL_OPTIONS=(
