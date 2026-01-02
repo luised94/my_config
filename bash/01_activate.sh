@@ -38,6 +38,15 @@ for editor in "${MC_DEFAULT_EDITORS[@]}"; do
 
 done
 
+for browser in "${MC_DEFAULT_BROWSERS[@]}"; do
+  if command -v "$browser" >/dev/null 2>&1; then
+    BROWSER="$browser"
+    break
+
+  fi
+
+done
+
 # Allow less to open compressed files as text.
 [[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
 
@@ -58,10 +67,11 @@ if [[ -d ~/.bash_completion.d ]]; then
     unset _comp_file
 fi
 
-# Apply Individual Preferences
-export PATH
+# Apply and export Individual Preferences (available in subshells)
+export BROWSER
 export EDITOR
 export HISTCONTROL="$MC_HISTCONTROL"
-export HISTSIZE="$MC_HISTSIZE"
 export HISTFILESIZE="$MC_HISTFILESIZE"
+export HISTSIZE="$MC_HISTSIZE"
+export PATH
 export PS1="$MC_PS1"
