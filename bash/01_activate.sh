@@ -3,7 +3,7 @@
 # PURPOSE    : Processes and applies configuration arrays defined in 00_mc_config.sh.
 # CONTEXT    : Sourced by .bashrc as part of the MC Framework initialization.
 # DEPENDS    : 00_mc_config.sh (Must be sourced first)
-# USAGE      : source "$MC_ROOT/core/01_activate.sh"
+# USAGE      : source "$MC_ROOT/bash/01_activate.sh"
 # DATE       : 2025-12-22
 # ------------------------------------------------------------------------------
 

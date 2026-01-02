@@ -74,17 +74,11 @@ MC_DEFAULT_BROWSERS=(
 # NOTE: Use $HOME instead of ~ to ensure safe expansion.
 MC_SYMLINKS=(
     # Bash Configuration
-    "$HOME/personal_repos/my_config/:$HOME/.bashrc"
+    "$MC_ROOT/dotfiles/bashrc.sh:$HOME/.bashrc"
 
     # Neovim Configuration
     # TODO: Verify source path below matches your repo structure
-    "$MC_ROOT/configs/nvim:$HOME/.config/nvim"
-)
-
-# Symlinks (Format: "Source:Target")
-MC_SYMLINKS=(
-    #"$MC_ROOT/configs/gitconfig:$HOME/.gitconfig"
-    #"$MC_ROOT/configs/tmux.conf:$HOME/.tmux.conf"
+    "$MC_ROOT/nvim:$HOME/.config/nvim"
 )
 
 MC_SHELL_OPTIONS=(

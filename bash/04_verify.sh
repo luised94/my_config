@@ -7,7 +7,7 @@ mc_verify() {
     # 1. Setup Variables
     local cache_dir="$HOME/.cache/mc"
     local cache_file="$cache_dir/verify_success"
-    local config_file="$MC_ROOT/00_config.sh"
+    local config_file="$MC_ROOT/bash/00_config.sh"
     local force_check="false"
 
     # Check for force flag
