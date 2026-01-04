@@ -8,7 +8,7 @@
 # rebase_branches_on_main
 # rebase_branches_on_main <branch_in_repo>
 rebase_worktrees_on_main() {
-  
+
   # --- basic preflight check --- may convert to simple function.
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'ERROR: not inside a git repository (cwd: %s)\n' "$(pwd)" >&2
