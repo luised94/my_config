@@ -2,7 +2,7 @@
 # FUNCTION   : view_files
 # PURPOSE    : Browse files in batches using system browser (WSL).
 # USAGE      : view_files [-t type] [-x exclude] [-b batch] [-d depth] [directory]
-# DEPENDS    : MC_BROWSER (from 00_config.sh), wslpath
+# DEPENDS    : BROWSER (from 00_config.sh), wslpath
 # RETURNS    : 0 on success, 1 on error
 # ------------------------------------------------------------------------------
 view_files() {
@@ -52,9 +52,9 @@ view_files() {
     return 1
   fi
 
-  if [[ ! -f "$MC_BROWSER" ]]; then
-    msg_error "Browser not configured or missing: ${MC_BROWSER:-<unset>}"
-    msg_info "Set MC_BROWSER in 00_config.sh"
+  if [[ ! -f "$BROWSER" ]]; then
+    msg_error "Browser not configured or missing: ${BROWSER:-<unset>}"
+    msg_info "Set BROWSER in 00_config.sh"
     return 1
   fi
 
@@ -96,7 +96,7 @@ view_files() {
 
     for (( i = 0; i < batch_size && index < file_count; i++, index++ )); do
       windows_path="$(wslpath -w "${files[index]}")"
-      "$MC_BROWSER" "$windows_path" &
+      "$BROWSER" "$windows_path" &
       sleep 0.3
     done
 
