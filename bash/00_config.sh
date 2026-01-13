@@ -107,7 +107,7 @@ MC_ALIASES=(
     # --- Languages ---
     "R=R --no-save"
     # --- WSL/Windows ---
-    "cdwin=cd \"\$DROPBOX_PATH\""
+    "cdwin=cd \"\$MC_DROPBOX_PATH\""
     "explorer=explorer.exe ."
     # --- Git ---
     "ga=git add"
