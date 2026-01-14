@@ -1,107 +1,123 @@
 #!/bin/bash
-# setup_tmux_sessions.sh
-# Create tmux sessions for directories in REPOSITORIES_ROOT.
-# Each directory is assumed to be a worktree for a particular repository.
-# The session has a defined structure and can be modified.
-# for names to appear complete: set-option -g status-left-length 60
+# ------------------------------------------------------------------------------
+# SCRIPT     : tmux_setup_worktree_sessions.sh
+# PURPOSE    : Create tmux sessions for git worktree directories.
+# USAGE      : ./tmux_setup_worktree_sessions.sh [-r root] [-h]
+# NOTES      : Skips main repos (dirs without "-"), existing sessions, non-git dirs
+#              Session naming: repo-branch becomes repo>branch
+# ------------------------------------------------------------------------------
 
-# Prerequisites
-# Requires tmux
-echo "========== Start: ${BASH_SOURCE[0]} =========="
-if ! command -v tmux >/dev/null 2>&1; then
-  echo "Tmux is not installed" >&2
-  return 1
+# --- Help ---
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  printf "Usage: %s [-r root] [-h]\n\n" "${0##*/}"
+  printf "Create tmux sessions for git worktree directories.\n\n"
+  printf "Options:\n"
+  printf "  -r ROOT   Repository root directory (default: \$HOME/personal_repos)\n"
+  printf "  -h        Show this help message\n\n"
+  printf "Notes:\n"
+  printf "  - Skips directories without '-' (assumed to be main repos)\n"
+  printf "  - Skips directories that already have tmux sessions\n"
+  printf "  - Skips non-git directories\n"
+  printf "  - Session name: repo-branch becomes repo>branch\n"
+  exit 0
 fi
 
-REPOSITORIES_ROOT="$HOME/personal_repos"
+# --- MC framework check ---
+if ! declare -f _msg >/dev/null 2>&1; then
+  echo "[WARN] MC framework not loaded, using basic output" >&2
+  msg_info()  { echo "[INFO]  $*"; }
+  msg_warn()  { echo "[WARN]  $*" >&2; }
+  msg_error() { echo "[ERROR] $*" >&2; }
+fi
 
-# Define repos to ignore manually
-# Refer to my_config/docs/scripts_tmux.qmd | ## 2025-08-05 ### Session 2
-# Set manually in the array or find the repos in the root directory to ignore.
-#IGNORE_REPOS=("explorations" "lab_utils" "my_config" "exercises")
+# --- Configuration ---
+REPOS_ROOT="${MC_REPOS_ROOT:-$HOME/personal_repos}"
+
+# --- Parse options ---
+OPTIND=1
+while getopts ":r:" opt; do
+  case $opt in
+    r) REPOS_ROOT="$OPTARG" ;;
+    :) msg_error "Option -$OPTARG requires an argument"; exit 1 ;;
+    \?) msg_error "Invalid option: -$OPTARG"; exit 1 ;;
+  esac
+done
+
+# --- Prerequisites ---
+if ! command -v tmux >/dev/null 2>&1; then
+  msg_error "tmux is not installed"
+  exit 1
+fi
+
+if [[ ! -d "$REPOS_ROOT" ]]; then
+  msg_error "Repository root does not exist: $REPOS_ROOT"
+  exit 1
+fi
+
+# --- Find main repos to ignore (directories without "-") ---
 mapfile -t IGNORE_REPOS < <(
-  find "$REPOSITORIES_ROOT" -maxdepth 1 -mindepth 1 -type d |
-  grep -v "-" |
-  awk -F'/' '{print $NF}'
+  find "$REPOS_ROOT" -maxdepth 1 -mindepth 1 -type d |
+  grep -v -- "-" |
+  xargs -I{} basename {}
 )
 
+msg_info "Repository root: $REPOS_ROOT"
+msg_info "Ignoring ${#IGNORE_REPOS[@]} main repo(s)"
 
-echo "--- Script parameters ---"
-echo "REPOSITORIES_ROOT: ${REPOSITORIES_ROOT}"
-echo "Ignore repos: "
-printf '%s\n' "${IGNORE_REPOS[@]}"
-echo "-------------------------"
+# --- Collect directories ---
+shopt -s nullglob
+REPO_PATHS=("$REPOS_ROOT"/*/)
+shopt -u nullglob
 
-# In your loop
+if (( ${#REPO_PATHS[@]} == 0 )); then
+  msg_warn "No directories found in $REPOS_ROOT"
+  exit 0
+fi
+
+# --- Process each directory ---
 SUCCESS_COUNT=0
-IGNORE_COUNT=0
+SKIP_COUNT=0
 DUPLICATE_COUNT=0
 TOTAL_COUNT=0
 
-if [[ ! -d $REPOSITORIES_ROOT ]]; then
-
-  printf '[ERROR] Repository location does not exist: %s\n' "$REPOSITORIES_ROOT" >&2
-  return 1
-
-fi
-
-shopt -s nullglob dotglob
-repo_paths=( "$REPOSITORIES_ROOT"/*/ )
-if (( ${#repo_paths[@]} == 0 )); then
-
-  printf 'No repositories found under %s\n' "$REPOSITORIES_ROOT" >&2
-  return 0
-
-fi
-
-for repo_path in "${repo_paths[@]}"; do
+for repo_path in "${REPO_PATHS[@]}"; do
+  repo_path="${repo_path%/}"
+  repo_name="$(basename "$repo_path")"
+  session_name="${repo_name/-/>}"
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
-  basename_path=$(basename "$repo_path")
-  repo_path=${repo_path%/}
-  session_name=$( echo $basename_path | sed 's/-/>/' )
-  echo
-  echo "--------------------------------------"
-  echo "Repository name: $basename_path"
-  echo "Repository path: $repo_path"
-  echo "Tmux session name: $session_name"
-  echo "--------------------------------------"
 
-  # Ignore repos: mostly meant for skipping main repos
-  # Using printf and grep for exact matching
-  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$basename_path"; then
-    IGNORE_COUNT=$((IGNORE_COUNT + 1))
-    echo "Repo \"$basename_path\" is in IGNORE_REPOS. Skipping..."
+  # Skip main repos
+  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$repo_name"; then
+    SKIP_COUNT=$((SKIP_COUNT + 1))
     continue
   fi
 
+  # Skip existing sessions
   if tmux has-session -t "$session_name" 2>/dev/null; then
     DUPLICATE_COUNT=$((DUPLICATE_COUNT + 1))
-    echo "Session \"$session_name\" already exists, skipping"
     continue
   fi
 
-  # Check directory is a repository
+  # Warn and skip non-git directories
   if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
-    echo "Skipping \"$basename_path\" (not a git repository)"
+    msg_warn "Not a git repo: $repo_name"
+    SKIP_COUNT=$((SKIP_COUNT + 1))
     continue
   fi
 
-
-  # Tmux session creation logic
+  # Create session with 3 windows
   tmux new-session -d -s "$session_name" -c "$repo_path"
   tmux rename-window -t "$session_name:0" 'editing'
   tmux new-window -t "$session_name:1" -n 'dev' -c "$repo_path"
   tmux new-window -t "$session_name:2" -n 'docs' -c "$repo_path"
-  #echo "tmux split-window -v -t "$session_name:2" -c "$repo_path""
 
+  msg_info "Created: $session_name"
   SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-
 done
 
-echo
-echo "Summary: $SUCCESS_COUNT/$TOTAL_COUNT repositories processed successfully"
-echo "IGNORED: $IGNORE_COUNT/$TOTAL_COUNT repos ignored"
-echo "DUPLICATES: $DUPLICATE_COUNT/$TOTAL_COUNT repos were duplicates"
-#[[ $SUCCESS_COUNT -eq $TOTAL_COUNT ]]
+# --- Summary ---
+msg_info "Complete: $SUCCESS_COUNT created, $DUPLICATE_COUNT existing, $SKIP_COUNT skipped (of $TOTAL_COUNT)"
 
-echo "========== End: ${BASH_SOURCE[0]} =========="
+if (( SUCCESS_COUNT == 0 && DUPLICATE_COUNT > 0 )); then
+  msg_warn "No new sessions created - all worktrees already have sessions"
+fi
