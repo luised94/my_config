@@ -175,5 +175,8 @@ else
     _MC_COLOR_ERROR='' _MC_COLOR_WARN='' _MC_COLOR_INFO='' _MC_COLOR_DEBUG=''
 fi
 
-export _MC_OS_TYPE
-export _MC_WSL_DISTRO
+# ------------------------------------------------------------------------------
+# Exports for subshells and scripts
+# ------------------------------------------------------------------------------
+export MC_ROOT MC_REPOS_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO
+export _MC_COLOR_RESET _MC_COLOR_ERROR _MC_COLOR_WARN _MC_COLOR_INFO _MC_COLOR_DEBUG

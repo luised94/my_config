@@ -71,3 +71,5 @@ msg_error() { _msg "ERROR" 1 "$_MC_COLOR_ERROR" "$@"; }
 msg_warn()  { _msg "WARN" 2 "$_MC_COLOR_WARN"  "$@"; }
 msg_info()  { _msg "INFO" 3 "$_MC_COLOR_INFO"  "$@"; }
 msg_debug() { _msg "DEBUG" 4 "$_MC_COLOR_DEBUG" "$@"; }
+
+#export -f _msg msg_info msg_warn msg_error msg_debug

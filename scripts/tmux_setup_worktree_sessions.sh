@@ -23,11 +23,16 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 # --- MC framework check ---
+MC_ROOT="${MC_ROOT:-$HOME/personal_repos/my_config}"
 if ! declare -f _msg >/dev/null 2>&1; then
-  echo "[WARN] MC framework not loaded, using basic output" >&2
-  msg_info()  { echo "[INFO]  $*"; }
-  msg_warn()  { echo "[WARN]  $*" >&2; }
-  msg_error() { echo "[ERROR] $*" >&2; }
+  if [[ -f "$MC_ROOT/bash/03_message.sh" ]]; then
+    source "$MC_ROOT/bash/03_message.sh"
+  else
+    echo "[WARN] MC framework (and message.sh file) not found, using basic output" >&2
+    msg_info()  { echo "[INFO]  $*"; }
+    msg_warn()  { echo "[WARN]  $*" >&2; }
+    msg_error() { echo "[ERROR] $*" >&2; }
+  fi
 fi
 
 # --- Configuration ---
@@ -61,6 +66,7 @@ mapfile -t IGNORE_REPOS < <(
   xargs -I{} basename {}
 )
 
+msg_info "MC root: $MC_ROOT"
 msg_info "Repository root: $REPOS_ROOT"
 msg_info "Ignoring ${#IGNORE_REPOS[@]} main repo(s)"
 
