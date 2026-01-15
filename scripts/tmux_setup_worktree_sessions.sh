@@ -39,10 +39,12 @@ fi
 REPOS_ROOT="${MC_REPOS_ROOT:-$HOME/personal_repos}"
 
 # --- Parse options ---
+INCLUDE_MAIN=false
 OPTIND=1
-while getopts ":r:" opt; do
+while getopts ":r:a" opt; do
   case $opt in
     r) REPOS_ROOT="$OPTARG" ;;
+    a) INCLUDE_MAIN=true ;;
     :) msg_error "Option -$OPTARG requires an argument"; exit 1 ;;
     \?) msg_error "Invalid option: -$OPTARG"; exit 1 ;;
   esac
@@ -60,11 +62,15 @@ if [[ ! -d "$REPOS_ROOT" ]]; then
 fi
 
 # --- Find main repos to ignore (directories without "-") ---
-mapfile -t IGNORE_REPOS < <(
-  find "$REPOS_ROOT" -maxdepth 1 -mindepth 1 -type d |
-  grep -v -- "-" |
-  xargs -I{} basename {}
-)
+# Unless -a option is enabled.
+IGNORE_REPOS=()
+if [[ "$INCLUDE_MAIN" == false ]]; then
+  mapfile -t IGNORE_REPOS < <(
+    find "$REPOS_ROOT" -maxdepth 1 -mindepth 1 -type d |
+    grep -v -- "-" |
+    xargs -I{} basename {}
+  )
+fi
 
 msg_info "MC root: $MC_ROOT"
 msg_info "Repository root: $REPOS_ROOT"
@@ -93,7 +99,8 @@ for repo_path in "${REPO_PATHS[@]}"; do
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
 
   # Skip main repos
-  if printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$repo_name"; then
+  if [[ ${#IGNORE_REPOS[@]} -gt 0 ]] && \
+    printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$repo_name"; then
     SKIP_COUNT=$((SKIP_COUNT + 1))
     continue
   fi
