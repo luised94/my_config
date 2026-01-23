@@ -66,6 +66,7 @@ var planned = 0;
 var currentYieldMs = CONFIG.BASE_YIELD_MS;
 var consecutiveFailures = 0;
 var aborted = false;
+var itemsSinceLastGC = 0;
 
 // 3. HELPERS
 var debugLog = (msg) => { if (CONFIG.ENABLE_DEBUG_LOGS) Zotero.debug(msg); };
@@ -252,10 +253,14 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
         }
         
         // Garbage collection hint to reduce memory pressure
-        if (CONFIG.GC_EVERY > 0 && timing.processedCount % CONFIG.GC_EVERY === 0 && timing.processedCount > 0) {
-            if (tryForceGC()) {
-                timing.gcCount++;
-                debugLog(`[BBT Refresh] GC forced at ${timing.processedCount} items`);
+        if (CONFIG.GC_EVERY > 0) {
+            itemsSinceLastGC += items.length;
+            if (itemsSinceLastGC >= CONFIG.GC_EVERY) {
+                if (tryForceGC()) {
+                    timing.gcCount++;
+                    debugLog(`[BBT Refresh] GC forced at ${timing.processedCount} items`);
+                }
+                itemsSinceLastGC = 0;
             }
         }
         
