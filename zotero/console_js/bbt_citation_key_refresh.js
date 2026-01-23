@@ -31,7 +31,8 @@ var CONFIG = {
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
     MAX_CHANGED_RETURN: 5,      // Limit captured changes in result
     START_INDEX: 0,             // Resume from this index after crash
-    CHECKPOINT_EVERY: 500       // Log checkpoint for resume every N items
+    CHECKPOINT_EVERY: 500,      // Log checkpoint for resume every N items
+    MAX_CONSECUTIVE_FAILURES: 10  // Abort if this many items fail in a row
 };
 
 // 2. STATE
@@ -54,6 +55,8 @@ var failed = [];
 var changed = [];
 var planned = 0;
 var currentYieldMs = CONFIG.BASE_YIELD_MS;
+var consecutiveFailures = 0;
+var aborted = false;
 
 // 3. HELPERS
 var debugLog = (msg) => { if (CONFIG.ENABLE_DEBUG_LOGS) Zotero.debug(msg); };
@@ -146,6 +149,7 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchStart = Date.now();
     
     if (Zotero.isShuttingDown) break;
+    if (aborted) break;
     
     try {
         var loadStart = Date.now();
@@ -181,6 +185,8 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                 }
                 timing.keyRefresh += Date.now() - refreshStart;
                 
+                consecutiveFailures = 0;  // Reset on success
+                
                 if (CONFIG.CAPTURE_CHANGES && changed.length < CONFIG.MAX_CHANGED_RETURN) {
                     var afterKey = Zotero.BetterBibTeX.KeyManager.get(item.id)?.citationKey ?? null;
                     if (beforeKey !== afterKey) {
@@ -197,6 +203,9 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                 timing.processedCount++;
                 
             } catch (itemErr) {
+                consecutiveFailures++;
+                timing.failedCount++;
+                
                 if (itemErr.message?.startsWith('Timeout after')) {
                     timing.timeoutCount++;
                     failed.push({ itemID: item.id, error: itemErr.message });
@@ -205,7 +214,12 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                     failed.push({ itemID: item.id, error: itemErr.message });
                     debugLog(`[BBT Refresh] Item ${item.id} failed: ${itemErr.message}`);
                 }
-                timing.failedCount++;
+                
+                if (consecutiveFailures >= CONFIG.MAX_CONSECUTIVE_FAILURES) {
+                    Zotero.debug(`[BBT Refresh] ABORT: ${consecutiveFailures} consecutive failures. Last index: ${i}`);
+                    aborted = true;
+                    break;
+                }
             }
         }
         
@@ -251,6 +265,7 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
 timing.total = Date.now() - timing.scriptStart;
 
 var summary = {
+    status: aborted ? 'ABORTED' : 'COMPLETE',
     processed: timing.processedCount,
     planned: planned,
     failed: timing.failedCount,
@@ -282,6 +297,6 @@ if (CONFIG.CAPTURE_CHANGES) {
     summary.changed = changed;
 }
 
-Zotero.debug(`[BBT Refresh] Complete. ${timing.processedCount}/${planned} in ${summary.totalSeconds}s (${summary.rates.itemsPerSecond} items/sec)`);
+Zotero.debug(`[BBT Refresh] ${summary.status}. ${timing.processedCount}/${planned} in ${summary.totalSeconds}s (${summary.rates.itemsPerSecond} items/sec)`);
 
 return summary;
