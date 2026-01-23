@@ -81,8 +81,10 @@ var withTimeout = (promise, ms, label) => {
 
 var yieldToEventLoop = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+var gcAvailable = typeof Components !== 'undefined' && typeof Components.utils?.forceGC === 'function';
+
 var tryForceGC = () => {
-    if (typeof Components !== 'undefined' && typeof Components.utils?.forceGC === 'function') {
+    if (gcAvailable) {
         try { 
             Components.utils.forceGC(); 
             return true;
@@ -92,8 +94,6 @@ var tryForceGC = () => {
     }
     return false;
 };
-
-var gcAvailable = typeof Components !== 'undefined' && typeof Components.utils?.forceGC === 'function';
 
 // 4. ASSERTIONS
 var assertStart = Date.now();
