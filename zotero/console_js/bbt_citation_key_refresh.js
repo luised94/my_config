@@ -155,17 +155,24 @@ if (itemIDs.length > CONFIG.HARD_CAP) {
 
 timing.sqlCheck = Date.now() - sqlStart;
 
-// 7. APPLY RUN LIMIT
+// 7. APPLY RUN LIMITS
+// START_INDEX: skip first N items from full list
+// MAX_TO_PROCESS: limit how many to process after START_INDEX
+if (CONFIG.START_INDEX > 0) {
+    if (CONFIG.START_INDEX >= itemIDs.length) {
+        throw new Error(`START_INDEX (${CONFIG.START_INDEX}) exceeds library size (${itemIDs.length})`);
+    }
+    itemIDs = itemIDs.slice(CONFIG.START_INDEX);
+    Zotero.debug(`[BBT Refresh] Resuming from index ${CONFIG.START_INDEX}, ${itemIDs.length} items remaining`);
+}
+
 planned = (CONFIG.MAX_TO_PROCESS == null) ? itemIDs.length : Math.min(CONFIG.MAX_TO_PROCESS, itemIDs.length);
 itemIDs = itemIDs.slice(0, planned);
 
 Zotero.debug(`[BBT Refresh] Assertions passed. Processing ${planned}/${sqlCount} items in batches of ${CONFIG.BATCH_SIZE}.`);
-if (CONFIG.START_INDEX > 0) {
-    Zotero.debug(`[BBT Refresh] Resuming from index ${CONFIG.START_INDEX}`);
-}
 
 // 8. MAIN LOOP
-for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
+for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchIds = itemIDs.slice(i, i + CONFIG.BATCH_SIZE);
     var batchNum = Math.floor(i / CONFIG.BATCH_SIZE) + 1;
     var batchStart = Date.now();
