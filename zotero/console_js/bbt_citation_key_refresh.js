@@ -1,7 +1,7 @@
 // =============================================================================
 // ZOTERO BETTER BIBTEX CITATION KEY REFRESH
 // =============================================================================
-// Version: 2.0
+// Version: 2.1
 // Purpose: Refresh BBT citation keys for all regular items in library
 // Usage:   Tools > Developer > Run JavaScript (Zotero 7)
 //
@@ -31,8 +31,9 @@ var CONFIG = {
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
     USE_TRANSACTION_WRAPPER: true,  // Wrap updates in executeTransaction
     BASE_YIELD_MS: 100,         // Starting delay between batches
-    MAX_YIELD_MS: 5000,         // Cap for adaptive backoff
+    MAX_YIELD_MS: 10000,        // Cap for adaptive backoff (increased for heavy loads)
     SLOW_BATCH_MS: 1000,        // Batch duration that triggers backoff
+    GC_EVERY: 2000,             // Force garbage collection every N items (0 to disable)
     ENABLE_DEBUG_LOGS: false,   // Verbose logging
     LOG_EVERY: 500,             // Progress interval when debug enabled
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
@@ -55,7 +56,8 @@ var timing = {
     processedCount: 0,
     failedCount: 0,
     timeoutCount: 0,
-    backoffCount: 0
+    backoffCount: 0,
+    gcCount: 0
 };
 
 var failed = [];
@@ -78,6 +80,18 @@ var withTimeout = (promise, ms, label) => {
 };
 
 var yieldToEventLoop = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+var tryForceGC = () => {
+    if (typeof Components !== 'undefined' && Components.utils?.forceGC) {
+        try { 
+            Components.utils.forceGC(); 
+            return true;
+        } catch (e) { 
+            return false; 
+        }
+    }
+    return false;
+};
 
 // 4. ASSERTIONS
 var assertStart = Date.now();
@@ -235,6 +249,14 @@ for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
             Zotero.debug(`[BBT Refresh] CHECKPOINT: processed=${timing.processedCount}, nextIndex=${i + CONFIG.BATCH_SIZE}, failed=${timing.failedCount}`);
         }
         
+        // Garbage collection hint to reduce memory pressure
+        if (CONFIG.GC_EVERY > 0 && timing.processedCount % CONFIG.GC_EVERY === 0 && timing.processedCount > 0) {
+            if (tryForceGC()) {
+                timing.gcCount++;
+                debugLog(`[BBT Refresh] GC forced at ${timing.processedCount} items`);
+            }
+        }
+        
         if (CONFIG.ENABLE_DEBUG_LOGS && timing.processedCount % CONFIG.LOG_EVERY === 0) {
             debugLog(`[BBT Refresh] Progress: ${timing.processedCount}/${planned}`);
         }
@@ -294,7 +316,8 @@ var summary = {
     throttling: {
         startYieldMs: CONFIG.BASE_YIELD_MS,
         finalYieldMs: Math.round(currentYieldMs),
-        backoffEvents: timing.backoffCount
+        backoffEvents: timing.backoffCount,
+        gcEvents: timing.gcCount
     },
     failedBatches: failed.length > 0 ? failed : 'None'
 };
