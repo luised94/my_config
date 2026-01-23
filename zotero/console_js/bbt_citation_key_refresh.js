@@ -1,3 +1,4 @@
+
 // =============================================================================
 // ZOTERO BETTER BIBTEX CITATION KEY REFRESH
 // =============================================================================
@@ -18,11 +19,12 @@
 // 1. CONFIGURATION
 var CONFIG = {
     HARD_CAP: 70000,            // Safety limit - abort if library exceeds this
-    MAX_TO_PROCESS: 10000,      // null for full run, N for first N items
+    MAX_TO_PROCESS: 1000,       // Subset validation - increase after stable runs
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
+    ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
     ENABLE_DEBUG_LOGS: false,   // Verbose logging
-    LOG_EVERY: 250,             // Progress interval when debug enabled
+    LOG_EVERY: 500,             // Progress interval when debug enabled
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
     MAX_CHANGED_RETURN: 5       // Limit captured changes in result
 };
@@ -37,7 +39,8 @@ var timing = {
     keyRefresh: 0,
     batchCount: 0,
     processedCount: 0,
-    failedCount: 0
+    failedCount: 0,
+    timeoutCount: 0
 };
 
 var failed = [];
@@ -46,6 +49,15 @@ var planned = 0;
 
 // 3. HELPERS
 var debugLog = (msg) => { if (CONFIG.ENABLE_DEBUG_LOGS) Zotero.debug(msg); };
+
+var withTimeout = (promise, ms, label) => {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error(`Timeout after ${ms}ms: ${label}`)), ms)
+        )
+    ]);
+};
 
 // 4. ASSERTIONS
 var assertStart = Date.now();
@@ -130,7 +142,11 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                 }
                 
                 var refreshStart = Date.now();
-                await Zotero.BetterBibTeX.KeyManager.update(item);
+                await withTimeout(
+                    Zotero.BetterBibTeX.KeyManager.update(item),
+                    CONFIG.ITEM_TIMEOUT_MS,
+                    `item ${item.id}`
+                );
                 timing.keyRefresh += Date.now() - refreshStart;
                 
                 if (CONFIG.CAPTURE_CHANGES && changed.length < CONFIG.MAX_CHANGED_RETURN) {
@@ -149,9 +165,15 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                 timing.processedCount++;
                 
             } catch (itemErr) {
-                failed.push({ itemID: item.id, error: itemErr.message });
+                if (itemErr.message?.startsWith('Timeout after')) {
+                    timing.timeoutCount++;
+                    failed.push({ itemID: item.id, error: itemErr.message });
+                    Zotero.debug(`[BBT Refresh] TIMEOUT: Item ${item.id} exceeded ${CONFIG.ITEM_TIMEOUT_MS}ms`);
+                } else {
+                    failed.push({ itemID: item.id, error: itemErr.message });
+                    debugLog(`[BBT Refresh] Item ${item.id} failed: ${itemErr.message}`);
+                }
                 timing.failedCount++;
-                debugLog(`[BBT Refresh] Item ${item.id} failed: ${itemErr.message}`);
             }
         }
         
@@ -177,6 +199,7 @@ var summary = {
     processed: timing.processedCount,
     planned: planned,
     failed: timing.failedCount,
+    timeouts: timing.timeoutCount,
     batches: timing.batchCount,
     totalSeconds: (timing.total / 1000).toFixed(1),
     breakdown: {
