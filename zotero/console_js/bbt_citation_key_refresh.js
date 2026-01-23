@@ -18,7 +18,7 @@
 // 1. CONFIGURATION
 var CONFIG = {
     HARD_CAP: 70000,            // Safety limit - abort if library exceeds this
-    MAX_TO_PROCESS: 1000,       // Subset validation - increase after stable runs
+    MAX_TO_PROCESS: 100,       // Subset validation - increase after stable runs
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
@@ -222,7 +222,7 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
         // Batch was slow - back off
         currentYieldMs = Math.min(currentYieldMs * 1.5, CONFIG.MAX_YIELD_MS);
         timing.backoffCount++;
-        debugLog(`[BBT Refresh] Backoff: batch took ${batchDuration}ms, yield now ${Math.round(currentYieldMs)}ms`);
+        Zotero.debug(`[BBT Refresh] Backoff: batch ${batchNum} took ${batchDuration}ms, yield now ${Math.round(currentYieldMs)}ms`);
     } else if (batchDuration < 200 && currentYieldMs > CONFIG.BASE_YIELD_MS) {
         // Batch was fast and we're above base - recover slowly
         currentYieldMs = Math.max(currentYieldMs * 0.9, CONFIG.BASE_YIELD_MS);
@@ -230,7 +230,11 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     // Else: batch was moderate or we're at base - hold steady
     
     timing.totalYieldMs += currentYieldMs;
+    
+    // Canary logging - diagnose freezes
+    debugLog(`[BBT Refresh] Batch ${batchNum} done (${batchDuration}ms). Yielding ${Math.round(currentYieldMs)}ms...`);
     await yieldToEventLoop(currentYieldMs);
+    debugLog(`[BBT Refresh] Batch ${batchNum} yield complete. Continuing...`);
 }
 
 // 9. SUMMARY
