@@ -51,7 +51,7 @@ var timing = {
 var failed = [];
 var changed = [];
 var planned = 0;
-var currentYieldMs = 0;  // Set after config validation
+var currentYieldMs = CONFIG.BASE_YIELD_MS;
 
 // 3. HELPERS
 var debugLog = (msg) => { if (CONFIG.ENABLE_DEBUG_LOGS) Zotero.debug(msg); };
@@ -133,6 +133,8 @@ itemIDs = itemIDs.slice(0, planned);
 Zotero.debug(`[BBT Refresh] Assertions passed. Processing ${planned}/${sqlCount} items in batches of ${CONFIG.BATCH_SIZE}.`);
 
 // 8. MAIN LOOP
+Zotero.debug(`[BBT Refresh] Current yield before loop: ${currentYieldMs}ms`);
+
 for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchIds = itemIDs.slice(i, i + CONFIG.BATCH_SIZE);
     var batchNum = Math.floor(i / CONFIG.BATCH_SIZE) + 1;
@@ -217,12 +219,15 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     // Adaptive throttling
     var batchDuration = Date.now() - batchStart;
     if (batchDuration > CONFIG.SLOW_BATCH_MS) {
+        // Batch was slow - back off
         currentYieldMs = Math.min(currentYieldMs * 1.5, CONFIG.MAX_YIELD_MS);
         timing.backoffCount++;
         debugLog(`[BBT Refresh] Backoff: batch took ${batchDuration}ms, yield now ${Math.round(currentYieldMs)}ms`);
     } else if (batchDuration < 200 && currentYieldMs > CONFIG.BASE_YIELD_MS) {
+        // Batch was fast and we're above base - recover slowly
         currentYieldMs = Math.max(currentYieldMs * 0.9, CONFIG.BASE_YIELD_MS);
     }
+    // Else: batch was moderate or we're at base - hold steady
     
     timing.totalYieldMs += currentYieldMs;
     await yieldToEventLoop(currentYieldMs);
