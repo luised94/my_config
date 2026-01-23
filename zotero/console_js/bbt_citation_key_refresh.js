@@ -18,7 +18,7 @@
 // 1. CONFIGURATION
 var CONFIG = {
     HARD_CAP: 70000,            // Safety limit - abort if library exceeds this
-    MAX_TO_PROCESS: 100,       // Subset validation - increase after stable runs
+    MAX_TO_PROCESS: 1000,       // Subset validation - increase after stable runs
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
@@ -29,7 +29,9 @@ var CONFIG = {
     ENABLE_DEBUG_LOGS: false,   // Verbose logging
     LOG_EVERY: 500,             // Progress interval when debug enabled
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
-    MAX_CHANGED_RETURN: 5       // Limit captured changes in result
+    MAX_CHANGED_RETURN: 5,      // Limit captured changes in result
+    START_INDEX: 0,             // Resume from this index after crash
+    CHECKPOINT_EVERY: 500       // Log checkpoint for resume every N items
 };
 
 // 2. STATE
@@ -131,11 +133,14 @@ planned = (CONFIG.MAX_TO_PROCESS == null) ? itemIDs.length : Math.min(CONFIG.MAX
 itemIDs = itemIDs.slice(0, planned);
 
 Zotero.debug(`[BBT Refresh] Assertions passed. Processing ${planned}/${sqlCount} items in batches of ${CONFIG.BATCH_SIZE}.`);
+if (CONFIG.START_INDEX > 0) {
+    Zotero.debug(`[BBT Refresh] Resuming from index ${CONFIG.START_INDEX}`);
+}
 
 // 8. MAIN LOOP
 Zotero.debug(`[BBT Refresh] Current yield before loop: ${currentYieldMs}ms`);
 
-for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
+for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchIds = itemIDs.slice(i, i + CONFIG.BATCH_SIZE);
     var batchNum = Math.floor(i / CONFIG.BATCH_SIZE) + 1;
     var batchStart = Date.now();
@@ -205,6 +210,11 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
         }
         
         timing.batchCount++;
+        
+        // Checkpoint logging for crash recovery
+        if (timing.processedCount % CONFIG.CHECKPOINT_EVERY === 0 && timing.processedCount > 0) {
+            Zotero.debug(`[BBT Refresh] CHECKPOINT: processed=${timing.processedCount}, nextIndex=${i + CONFIG.BATCH_SIZE}, failed=${timing.failedCount}`);
+        }
         
         if (CONFIG.ENABLE_DEBUG_LOGS && timing.processedCount % CONFIG.LOG_EVERY === 0) {
             debugLog(`[BBT Refresh] Progress: ${timing.processedCount}/${planned}`);
