@@ -23,6 +23,9 @@ var CONFIG = {
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
     USE_TRANSACTION_WRAPPER: true,  // Wrap updates in executeTransaction
+    BASE_YIELD_MS: 100,         // Starting delay between batches
+    MAX_YIELD_MS: 5000,         // Cap for adaptive backoff
+    SLOW_BATCH_MS: 1000,        // Batch duration that triggers backoff
     ENABLE_DEBUG_LOGS: false,   // Verbose logging
     LOG_EVERY: 500,             // Progress interval when debug enabled
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
@@ -37,15 +40,18 @@ var timing = {
     sqlCheck: 0,
     itemLoad: 0,
     keyRefresh: 0,
+    totalYieldMs: 0,
     batchCount: 0,
     processedCount: 0,
     failedCount: 0,
-    timeoutCount: 0
+    timeoutCount: 0,
+    backoffCount: 0
 };
 
 var failed = [];
 var changed = [];
 var planned = 0;
+var currentYieldMs = 0;  // Set after config validation
 
 // 3. HELPERS
 var debugLog = (msg) => { if (CONFIG.ENABLE_DEBUG_LOGS) Zotero.debug(msg); };
@@ -58,6 +64,8 @@ var withTimeout = (promise, ms, label) => {
         )
     ]);
 };
+
+var yieldToEventLoop = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // 4. ASSERTIONS
 var assertStart = Date.now();
@@ -128,6 +136,7 @@ Zotero.debug(`[BBT Refresh] Assertions passed. Processing ${planned}/${sqlCount}
 for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchIds = itemIDs.slice(i, i + CONFIG.BATCH_SIZE);
     var batchNum = Math.floor(i / CONFIG.BATCH_SIZE) + 1;
+    var batchStart = Date.now();
     
     if (Zotero.isShuttingDown) break;
     
@@ -205,7 +214,18 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
         Zotero.debug(`[BBT Refresh] Batch ${batchNum} failed: ${batchErr.message}`);
     }
     
-    await Zotero.Promise.delay(CONFIG.YIELD_MS);
+    // Adaptive throttling
+    var batchDuration = Date.now() - batchStart;
+    if (batchDuration > CONFIG.SLOW_BATCH_MS) {
+        currentYieldMs = Math.min(currentYieldMs * 1.5, CONFIG.MAX_YIELD_MS);
+        timing.backoffCount++;
+        debugLog(`[BBT Refresh] Backoff: batch took ${batchDuration}ms, yield now ${Math.round(currentYieldMs)}ms`);
+    } else if (batchDuration < 200 && currentYieldMs > CONFIG.BASE_YIELD_MS) {
+        currentYieldMs = Math.max(currentYieldMs * 0.9, CONFIG.BASE_YIELD_MS);
+    }
+    
+    timing.totalYieldMs += currentYieldMs;
+    await yieldToEventLoop(currentYieldMs);
 }
 
 // 9. SUMMARY
@@ -224,11 +244,16 @@ var summary = {
         sqlCheckMs: timing.sqlCheck,
         itemLoadMs: timing.itemLoad,
         keyRefreshMs: timing.keyRefresh,
-        delayMs: CONFIG.YIELD_MS * timing.batchCount
+        totalYieldMs: Math.round(timing.totalYieldMs)
     },
     rates: {
         itemsPerSecond: (timing.processedCount / (timing.total / 1000)).toFixed(1),
         avgRefreshMs: timing.processedCount > 0 ? (timing.keyRefresh / timing.processedCount).toFixed(2) : 0
+    },
+    throttling: {
+        startYieldMs: CONFIG.BASE_YIELD_MS,
+        finalYieldMs: Math.round(currentYieldMs),
+        backoffEvents: timing.backoffCount
     },
     failedBatches: failed.length > 0 ? failed : 'None'
 };
