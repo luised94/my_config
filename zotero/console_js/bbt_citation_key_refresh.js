@@ -1,24 +1,31 @@
 // =============================================================================
 // ZOTERO BETTER BIBTEX CITATION KEY REFRESH
 // =============================================================================
-// Version: 1.3
+// Version: 2.0
 // Purpose: Refresh BBT citation keys for all regular items in library
 // Usage:   Tools > Developer > Run JavaScript (Zotero 7)
 //
 // Features:
-//   - Batched processing to avoid UI freezes
-//   - Pre-flight validation (API checks, count cross-check)
-//   - Optional change capture (before/after keys)
-//   - Timing instrumentation for performance analysis
-//   - Continues on individual item failures
+//   - Batched processing with adaptive throttling
+//   - Per-item timeout guard (prevents infinite hangs)
+//   - Transaction wrapper for DB safety
+//   - Checkpoint logging for crash recovery (use START_INDEX to resume)
+//   - Consecutive failure abort (detects unhealthy state)
+//   - Canary logging for freeze diagnosis (enable ENABLE_DEBUG_LOGS)
 //
-// Output:  Returns summary object with timing breakdown and any failures
+// Validation protocol:
+//   1. Run with MAX_TO_PROCESS: 1000, verify stable
+//   2. Increase to 5000, verify stable
+//   3. Increase to 10000, verify stable
+//   4. Set to null for full library run
+//
+// Output:  Returns summary object with timing, throttling stats, and failures
 // =============================================================================
 
 // 1. CONFIGURATION
 var CONFIG = {
     HARD_CAP: 70000,            // Safety limit - abort if library exceeds this
-    MAX_TO_PROCESS: 1000,       // Subset validation - increase after stable runs
+    MAX_TO_PROCESS: 1000,       // Start with 1000, increase after stable: 5000  10000  null (full)
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
@@ -268,6 +275,8 @@ var summary = {
     status: aborted ? 'ABORTED' : 'COMPLETE',
     processed: timing.processedCount,
     planned: planned,
+    libraryTotal: sqlCount,
+    coverage: ((planned / sqlCount) * 100).toFixed(1) + '%',
     failed: timing.failedCount,
     timeouts: timing.timeoutCount,
     batches: timing.batchCount,
