@@ -148,8 +148,6 @@ if (CONFIG.START_INDEX > 0) {
 }
 
 // 8. MAIN LOOP
-Zotero.debug(`[BBT Refresh] Current yield before loop: ${currentYieldMs}ms`);
-
 for (let i = CONFIG.START_INDEX; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
     var batchIds = itemIDs.slice(i, i + CONFIG.BATCH_SIZE);
     var batchNum = Math.floor(i / CONFIG.BATCH_SIZE) + 1;
@@ -306,6 +304,6 @@ if (CONFIG.CAPTURE_CHANGES) {
     summary.changed = changed;
 }
 
-Zotero.debug(`[BBT Refresh] ${summary.status}. ${timing.processedCount}/${planned} in ${summary.totalSeconds}s (${summary.rates.itemsPerSecond} items/sec)`);
+Zotero.debug(`[BBT Refresh] ${summary.status}. ${timing.processedCount}/${planned} (${summary.coverage} of library) in ${summary.totalSeconds}s`);
 
 return summary;
