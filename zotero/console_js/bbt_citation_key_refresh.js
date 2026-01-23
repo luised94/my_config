@@ -1,4 +1,3 @@
-
 // =============================================================================
 // ZOTERO BETTER BIBTEX CITATION KEY REFRESH
 // =============================================================================
@@ -23,6 +22,7 @@ var CONFIG = {
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
+    USE_TRANSACTION_WRAPPER: true,  // Wrap updates in executeTransaction
     ENABLE_DEBUG_LOGS: false,   // Verbose logging
     LOG_EVERY: 500,             // Progress interval when debug enabled
     CAPTURE_CHANGES: false,     // Track before/after keys (slower)
@@ -74,6 +74,10 @@ if (CONFIG.CAPTURE_CHANGES && typeof Zotero.BetterBibTeX.KeyManager.get !== "fun
 }
 
 timing.assertions = Date.now() - assertStart;
+
+if (CONFIG.USE_TRANSACTION_WRAPPER && typeof Zotero.DB.executeTransaction !== "function") {
+    throw new Error("Zotero.DB.executeTransaction not available");
+}
 
 // 5. SEARCH REGULAR ITEMS
 var searchStart = Date.now();
@@ -142,11 +146,23 @@ for (let i = 0; i < itemIDs.length; i += CONFIG.BATCH_SIZE) {
                 }
                 
                 var refreshStart = Date.now();
-                await withTimeout(
-                    Zotero.BetterBibTeX.KeyManager.update(item),
-                    CONFIG.ITEM_TIMEOUT_MS,
-                    `item ${item.id}`
-                );
+                var updateFn = async () => {
+                    await Zotero.BetterBibTeX.KeyManager.update(item);
+                };
+                
+                if (CONFIG.USE_TRANSACTION_WRAPPER) {
+                    await withTimeout(
+                        Zotero.DB.executeTransaction(updateFn),
+                        CONFIG.ITEM_TIMEOUT_MS,
+                        `item ${item.id}`
+                    );
+                } else {
+                    await withTimeout(
+                        updateFn(),
+                        CONFIG.ITEM_TIMEOUT_MS,
+                        `item ${item.id}`
+                    );
+                }
                 timing.keyRefresh += Date.now() - refreshStart;
                 
                 if (CONFIG.CAPTURE_CHANGES && changed.length < CONFIG.MAX_CHANGED_RETURN) {
