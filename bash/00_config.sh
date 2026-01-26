@@ -2,8 +2,8 @@
 # ==============================================================================
 # File: 00_config.sh
 # Project: my_config
-# Description: High-performance, modular shell environment configuration.
-# ==============================================================================
+# Description: Modular shell environment configuration.
+#  Loads files in MC_ROOT/bash/ that start with two digits. All other files ignored. ==============================================================================
 
 # ------------------------------------------------------------------------------
 # [MC_01_USER_PREFS]: Static lists and manual settings
@@ -96,7 +96,7 @@ MC_ENV_VARS=(
     "GIT_EDITOR=nvim"
     "MANPAGER=nvim +Man!"
     "R_HOME=/usr/local/bin/R"
-    "R_LIBS_USER=/opt/R/library/"
+    "R_LIBS_USER=/opt/R/library"
 )
 
 MC_ALIASES=(
@@ -178,7 +178,8 @@ fi
 # ------------------------------------------------------------------------------
 # [MC_99_EXTENSIONS]: Extensions configurations
 # ------------------------------------------------------------------------------
-MC_EXTENSIONS_DIR="$HOME/.config/mc_extensions/"
+MC_EXTENSIONS_DIR="$HOME/.config/mc_extensions"
+_MC_SKIP_EXTENSIONS=()
 _MC_SKIPPED_EXTENSIONS=()
 _MC_LOADED_EXTENSIONS=()
 _MC_FAILED_EXTENSIONS=()
