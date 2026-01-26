@@ -55,13 +55,16 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
   # Source directory entry point
   elif [[ -d "$extension" ]]; then
     for candidate in "${extension##*/}.sh" "init.sh" "main.sh"; do
-      if [[ -f "$extension/$candidate" ]]; then
-        if source "$extension" 2>/dev/null; then
-          _MC_LOADED_EXTENSIONS+=("$extension")
+      entry_point="$extension/$candidate"
+      if [[ -f $entry_point ]]; then
+        if source "$entry_point" 2>/dev/null; then
+          _MC_LOADED_EXTENSIONS+=("$entry_point")
           break
+
         else
           msg_error "Failed to source: ${extension##*/}"
-          _MC_FAILED_EXTENSIONS+=("$extension")
+          _MC_FAILED_EXTENSIONS+=("$entry_point")
+
         fi
 
       fi
@@ -71,5 +74,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
   else
     msg_debug "Skipping ${extension##*/}: not a file or directory"
     _MC_FAILED_EXTENSIONS+=("$extension")
+
   fi
+
 done
