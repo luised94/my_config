@@ -176,6 +176,14 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# [MC_99_EXTENSIONS]: Extensions configurations
+# ------------------------------------------------------------------------------
+MC_EXTENSIONS_DIR="$HOME/.config/mc_extensions/"
+_MC_SKIPPED_EXTENSIONS=()
+_MC_LOADED_EXTENSIONS=()
+_MC_FAILED_EXTENSIONS=()
+
+# ------------------------------------------------------------------------------
 # Exports for subshells and scripts
 # ------------------------------------------------------------------------------
 export MC_ROOT MC_REPOS_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO
