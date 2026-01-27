@@ -1,12 +1,13 @@
 // =============================================================================
 // ZOTERO BETTER BIBTEX BATCH EXPORT
 // =============================================================================
-// Version: 2.6
+// Version: 2.7
 // Purpose: Export large Zotero libraries to BibTeX via Better BibTeX
 // Usage:   Tools > Developer > Run JavaScript (Zotero 7)
 // 
 // Features:
 //   - Batched processing to avoid UI freezes
+//   - True event loop yield for UI responsiveness
 //   - Pre-flight validation (item count, write permissions)
 //   - Entry count verification after export
 //   - Detailed timing breakdown and failure tracking
@@ -47,7 +48,10 @@ var timing = {
 
 var failedBatches = [];
 
-// 4. PRE-FLIGHT ASSERTIONS
+// 4. HELPERS
+var yieldToEventLoop = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 5. PRE-FLIGHT ASSERTIONS
 var preflightStart = Date.now();
 Zotero.debug("[Export] Running pre-flight assertions...");
 
@@ -81,7 +85,7 @@ if (idsFromSearch.length > CONFIG.LIMIT) {
 
 timing.preflight = Date.now() - preflightStart;
 
-// 5. DATA SLICING
+// 6. DATA SLICING
 var allIds = idsFromSearch.sort((a, b) => a - b);
 
 if (CONFIG.MAX_RUN > 0) {
@@ -89,7 +93,7 @@ if (CONFIG.MAX_RUN > 0) {
     allIds = allIds.slice(0, CONFIG.MAX_RUN);
 }
 
-// 6. MAIN LOOP
+// 7. MAIN LOOP
 var modeLabel = CONFIG.DRY_RUN ? '[DRY RUN] ' : '';
 Zotero.debug(`[Export] ${modeLabel}Pre-flight passed. Processing ${allIds.length} items in batches of ${CONFIG.BATCH_SIZE}.`);
 
@@ -116,7 +120,7 @@ for (let i = 0; i < allIds.length; i += CONFIG.BATCH_SIZE) {
             timing.processedCount += batchIds.length;
             timing.batchCount++;
             Zotero.debug(`[Export] ${modeLabel}Batch ${batchNum}: ${timing.processedCount}/${allIds.length}`);
-            await Zotero.Promise.delay(CONFIG.DELAY_MS);
+            await yieldToEventLoop(CONFIG.DELAY_MS);
             continue;
         }
         
@@ -168,10 +172,10 @@ for (let i = 0; i < allIds.length; i += CONFIG.BATCH_SIZE) {
         Zotero.debug(`[Export] Batch ${batchNum} failed: ${e.message}`);
     }
     
-    await Zotero.Promise.delay(CONFIG.DELAY_MS);
+    await yieldToEventLoop(CONFIG.DELAY_MS);
 }
 
-// 7. CLEANUP
+// 8. CLEANUP
 if (await IOUtils.exists(tempPath)) {
     try {
         await IOUtils.remove(tempPath);
@@ -181,7 +185,7 @@ if (await IOUtils.exists(tempPath)) {
     }
 }
 
-// 8. VERIFICATION
+// 9. VERIFICATION
 var verifyStart = Date.now();
 var verification = { status: 'SKIPPED (DRY RUN)' };
 
@@ -218,7 +222,7 @@ if (!CONFIG.DRY_RUN) {
 
 timing.verification = Date.now() - verifyStart;
 
-// 9. SUMMARY
+// 10. SUMMARY
 timing.total = Date.now() - timing.scriptStart;
 
 var summary = {
