@@ -86,7 +86,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
 
   # Source file
   if [[ -f "$extension" && "$extension" == *.sh ]]; then
-    if source "$extension" 2>/dev/null; then
+    if source "$extension"; then
       _MC_LOADED_EXTENSIONS+=("$extension")
     else
       msg_error "Failed to source: ${extension##*/}"
@@ -98,7 +98,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
     for candidate in "${extension##*/}.sh" "init.sh" "main.sh"; do
       entry_point="$extension/$candidate"
       if [[ -f $entry_point ]]; then
-        if source "$entry_point" 2>/dev/null; then
+        if source "$entry_point"; then
           _MC_LOADED_EXTENSIONS+=("$entry_point")
           break
 
