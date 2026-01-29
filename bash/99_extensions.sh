@@ -84,6 +84,13 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
     continue
   fi
 
+  # Check for broken symlink
+  if [[ -L "$extension" && ! -e "$extension" ]]; then
+    msg_error "Broken symlink: ${extension##*/}  $(readlink "$extension")"
+    _MC_FAILED_EXTENSIONS+=("$extension")
+    continue
+  fi
+
   # Source file
   if [[ -f "$extension" && "$extension" == *.sh ]]; then
     if source "$extension"; then
