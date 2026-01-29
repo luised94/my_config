@@ -145,6 +145,30 @@ _mc_perform_checks() {
         msg_warn "Verification found $error_count issues."
     fi
 }
+mc_reload() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    printf "Usage: mc_reload
+Reload the MC bash environment by re-sourcing bashrc.
+"
+    return 0
+  fi
+
+  local bashrc="$MC_ROOT/dotfiles/bashrc.sh"
+  if [[ ! -f "$bashrc" ]]; then
+    msg_error "bashrc not found: $bashrc"
+    return 1
+  fi
+
+  # Reset tracking arrays
+  _MC_LOADED_EXTENSIONS=()
+  _MC_SKIPPED_EXTENSIONS=()
+  _MC_FAILED_EXTENSIONS=()
+
+  source "$bashrc" && msg_info "MC environment reloaded"
+
+  # Deduplicate PATH
+  PATH=$(printf "%s" "$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++' | sed 's/:$//')
+}
 
 # --- Auto-Run on Source ---
 # This executes the function immediately after defining it.
