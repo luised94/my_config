@@ -106,8 +106,9 @@ Examples:
 
     # Validate extension format
     if [[ -f "$source_abs" ]]; then
-      if [[ "$source_abs" != *.sh ]]; then
-        msg_error "File must end in .sh: $path"
+      local ext="${source_abs##*.}"
+      if [[ ! " ${MC_EXTENSION_TYPES_ALLOWED[*]} " == *" $ext "* ]]; then
+        msg_error "File type not allowed: .$ext (allowed: ${MC_EXTENSION_TYPES_ALLOWED[*]})"
         has_errors=true
         continue
       fi
@@ -147,7 +148,7 @@ Examples:
 
     # Create symlink
     if ln -s "$source_abs" "$dest"; then
-      msg_info "Linked: $name  $source_abs"
+      msg_info "Linked: $name -> $source_abs"
     else
       msg_error "Failed to create symlink: $name"
       has_errors=true
@@ -193,7 +194,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
 
   # Check for broken symlink
   if [[ -L "$extension" && ! -e "$extension" ]]; then
-    msg_error "Broken symlink: ${extension##*/}  $(readlink "$extension")"
+    msg_error "Broken symlink: ${extension##*/} -> $(readlink "$extension")"
     _MC_FAILED_EXTENSIONS+=("$extension")
     continue
   fi

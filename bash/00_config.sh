@@ -179,6 +179,7 @@ fi
 # [MC_99_EXTENSIONS]: Extensions configurations
 # ------------------------------------------------------------------------------
 MC_EXTENSIONS_DIR="$HOME/.config/mc_extensions"
+MC_EXTENSION_TYPES_ALLOWED=("sh" "lua")
 _MC_SKIP_EXTENSIONS=()
 _MC_SKIPPED_EXTENSIONS=()
 _MC_LOADED_EXTENSIONS=()
