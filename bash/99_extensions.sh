@@ -85,7 +85,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
   fi
 
   # Source file
-  if [[ -f "$extension" ]]; then
+  if [[ -f "$extension" && "$extension" == *.sh ]]; then
     if source "$extension" 2>/dev/null; then
       _MC_LOADED_EXTENSIONS+=("$extension")
     else
@@ -111,11 +111,13 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
       fi
     done
 
-  # Neither file nor directory
-  else
-    msg_debug "Skipping ${extension##*/}: not a file or directory"
-    _MC_FAILED_EXTENSIONS+=("$extension")
-
   fi
+  ## Neither bash file nor directory
+  #else
+
+  #  msg_debug "Skipping ${extension##*/}: not a file or directory"
+  #  _MC_FAILED_EXTENSIONS+=("$extension")
+
+  #fi
 
 done
