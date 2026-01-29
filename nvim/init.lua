@@ -119,6 +119,42 @@ require("lazy").setup({
 })
 
 -- Plugins are loaded in the lazy-bootstrap file.
+-- Extension loader for mc_extensions
+-- Add to end of init.lua after lazy.nvim setup
+
+local extensions_dir = os.getenv("MC_EXTENSIONS_DIR")
+
+if extensions_dir == nil then
+    extensions_dir = string.format("%s/.config/mc_extensions", os.getenv("HOME"))
+end
+
+local dir_exists = vim.fn.isdirectory(extensions_dir) == 1
+
+if not dir_exists then
+    local message = string.format("Extension loader: directory not found: %s", extensions_dir)
+    vim.notify(message, vim.log.levels.WARN)
+    return
+end
+
+local glob_pattern = string.format("%s/*.lua", extensions_dir)
+local match_all = false
+local return_list = true
+local lua_files = vim.fn.glob(glob_pattern, match_all, return_list)
+
+local file_count = #lua_files
+
+if file_count == 0 then
+    return
+end
+
+for _, filepath in ipairs(lua_files) do
+    local load_success, error_message = pcall(dofile, filepath)
+    if not load_success then
+        local warning = string.format("Extension loader: failed to load %s\n%s", filepath, error_message)
+        vim.notify(warning, vim.log.levels.WARN)
+    end
+end
+
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 -- end
