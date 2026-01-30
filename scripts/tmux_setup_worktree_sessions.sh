@@ -98,15 +98,21 @@ for repo_path in "${REPO_PATHS[@]}"; do
   session_name="${repo_name/-/>}"
   TOTAL_COUNT=$((TOTAL_COUNT + 1))
 
+  msg_debug $repo_path
+  msg_debug $repo_name
+  msg_debug $session_name
+
   # Skip main repos
   if [[ ${#IGNORE_REPOS[@]} -gt 0 ]] && \
     printf '%s\n' "${IGNORE_REPOS[@]}" | grep -qxF "$repo_name"; then
+    msg_debug "$repo_path in IGNORE_REPOS."
     SKIP_COUNT=$((SKIP_COUNT + 1))
     continue
   fi
 
   # Skip existing sessions
-  if tmux has-session -t "$session_name" 2>/dev/null; then
+  if tmux list-sessions -F '#S' 2>/dev/null | grep -qxF "$session_name"; then
+    msg_debug "$repo_path is duplicated."
     DUPLICATE_COUNT=$((DUPLICATE_COUNT + 1))
     continue
   fi
