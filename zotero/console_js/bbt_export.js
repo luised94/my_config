@@ -23,7 +23,7 @@ var CONFIG = {
     LIMIT: 110000,          // Safety limit - abort if library exceeds this
     MAX_RUN: 0,             // 0 = all items, N = first N items only
     DRY_RUN: false,         // true = preflight + load only, skip export/write
-    MASTER_NAME: 'full_library_export.bib',
+    MASTER_NAME: 'zotero_library.bib',
     TEMP_NAME: 'batch_tmp.bib',
     TRANSLATOR_ID: 'f895aa0d-f28e-47fe-b247-2ea77c6ed583',  // Better BibLaTeX
 
