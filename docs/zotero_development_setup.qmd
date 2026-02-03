@@ -65,17 +65,23 @@ This an important plugin to circumvent storage issues.
 
 ### BetterBibtex
 Citation Key Formula: auth.fold + year + title.lower.skipwords().select(1,1)
-Brief rational:
-Using auth and year is very simple and how I am accostumed to refer to citations. However, when there is a duplicate, it just appends a letter and is not very memorable and relative to addition data. Adding the first letter of the title does not add too much text but adds a bit of context. Does add overhead to the bib file if exporting.
+ > Using auth and year is very simple and how I am accostumed to refer to citations. However, when there is a duplicate, it just appends a letter and is not very memorable and relative to addition data. Adding the first letter of the title does not add too much text but adds a bit of context. Does add overhead to the bib file if exporting.
+
 Enable citation key search and force citation key to plain text.
 Enable ignore upper/lowercase when comparing for uniqueness.
 Keep keys unique across all libraries.
 Set postfixed keys.
 Enable BibLatex extended name and extract JSTOR from URL into eprint fields.
+Fields to export:
+ > abstract,url, urldate, annotation, langid, shorttitle, shortjournal, eprint, eprinttype, eprintclass, issn, isbn, pubstate, pagetotal, entrysubtype, version, pmcid, origdate, year, namea, nameatype, editora, editoratype, editortype, type, edition, issue, journalsubtitle, volumes, howpublished, eissn, collaboration, bookauthor, translator, eventtitle, institution, organization, series, abstract, file, annote, note
+ > Create a smaller bib export for other tools that mostly just need citation key. (zotero/console_js/bbt_export.js)
+
 Leave others as default.
 Refresh keys if necessary.
 
-Reference: https://claude.ai/chat/44a9fa22-1018-4515-909e-9e2ab3a87105
+Reference: 
+- https://claude.ai/chat/44a9fa22-1018-4515-909e-9e2ab3a87105
+- https://www.perplexity.ai/search/can-i-export-tags-in-zotero-by-4kXk9SszTam_FlHQponwow
 ### Better Notes
 - Basic: Enable 'take over opening note' and 'take over exporting notes'
 - Note Editor: Enable show note linkes in outline, magic key to show command palette, use enhanced markdown paste.
