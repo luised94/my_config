@@ -78,21 +78,22 @@ _vimall_usage() {
   cat <<EOF
 Usage: vimall [OPTIONS]
 
-Opens files in tree, sorted by time, respecting MC_EXCLUDE arrays.
+Opens files in tree, sorted by modification time, respecting MC_EXCLUDE arrays.
 
 Options:
+  -d, --dir DIR    Directory to search (default: .)
   -f, --force      Skip confirmation prompt
   -h, --help       Show this help message
-  -d, --dir DIR    Directory to search (default: .)
 
-Environment variables:
-  MC_VIMALL_FILE_LIMIT  Configured Limit (${MC_VIMALL_FILE_LIMIT:-150})
-  EDITOR                Current Editor (${EDITOR})
-  Exclusion criteria: See MC_EXCLUDE_DIRS and MC_EXCLUDE_FILES
+Environment:
+  MC_VIMALL_FILE_LIMIT  Confirmation threshold (${MC_VIMALL_FILE_LIMIT:-150})
+  EDITOR                ${EDITOR:-<unset>}
 EOF
 }
 
 vimall() {
+
+  # --- Preconditions (fail fast, before any work) ---
   if [[ -z "$EDITOR" ]]; then
     msg_error "EDITOR is not set"
     return 1
@@ -103,36 +104,22 @@ vimall() {
     return 1
   fi
 
+  # --- Argument parsing ---
   local -r file_limit=${MC_VIMALL_FILE_LIMIT:-150}
   local force=0
   local target_dir="."
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h|--help)
-        _vimall_usage
-        return 0
-        ;;
-      -f|--force)
-        force=1
-        shift
-        ;;
+      -h|--help)    _vimall_usage; return 0 ;;
+      -f|--force)   force=1; shift ;;
       -d|--dir)
-        if [[ -z "$2" || "$2" == -* ]]; then
-          msg_error "-d requires argument"
-          return 1
-        fi
+        [[ -z "$2" || "$2" == -* ]] && { msg_error "-d requires argument"; return 1; }
         target_dir="$2"
         shift 2
         ;;
-      -*)
-        msg_error "Unknown option: $1"
-        return 1
-        ;;
-      *)
-        msg_error "Unexpected argument: $1"
-        return 1
-        ;;
+      -*)           msg_error "Unknown option: $1"; return 1 ;;
+      *)            msg_error "Unexpected argument: $1"; return 1 ;;
     esac
   done
 
@@ -141,6 +128,7 @@ vimall() {
     return 1
   fi
 
+  # --- Core logic ---
   local -a find_excludes files
   mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
 
@@ -153,13 +141,13 @@ vimall() {
   local -r count=${#files[@]}
 
   if [[ $count -eq 0 ]]; then
-    msg_error "No files found to open."
+    msg_error "No files found."
     return 1
 
   fi
 
   if [[ $count -gt $file_limit ]] && [[ $force -eq 0 ]]; then
-    msg_warn "Found ${#files[@]} files. Open all? (y/N)"
+    msg_warn "Found $count files. Open all? (y/N)"
     read -r confirm
     if [[ $confirm != [yY] ]]; then
       msg_info "Operation cancelled by user."
@@ -169,7 +157,7 @@ vimall() {
 
   fi
 
-  msg_info "Opening ${#files[@]} files in $EDITOR..."
+  msg_info "Opening $count files in $EDITOR..."
   "$EDITOR" "${files[@]}"
 
 }
