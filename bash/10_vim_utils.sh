@@ -83,6 +83,7 @@ Opens files in tree, sorted by time, respecting MC_EXCLUDE arrays.
 Options:
   -f, --force      Skip confirmation prompt
   -h, --help       Show this help message
+  -d, --dir DIR    Directory to search (default: .)
 
 Environment variables:
   MC_VIMALL_FILE_LIMIT  Configured Limit (${MC_VIMALL_FILE_LIMIT:-150})
@@ -93,6 +94,10 @@ EOF
 
 vimall() {
 
+  local file_limit=${MC_VIMALL_FILE_LIMIT:-150}
+  local force=0
+  local target_dir="."
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
@@ -102,6 +107,14 @@ vimall() {
       -f|--force)
         force=1
         shift
+        ;;
+      -d|--dir)
+        if [[ -z "$2" || "$2" == -* ]]; then
+          msg_error "-d requires argument"
+          return 1
+        fi
+        target_dir="$2"
+        shift 2
         ;;
       -*)
         msg_error "Unknown option: $1"
@@ -114,10 +127,15 @@ vimall() {
     esac
   done
 
+  if [[ ! -d "$target_dir" ]]; then
+    msg_error "Not a directory: $target_dir"
+    return 1
+  fi
+
   mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
 
   mapfile -t files < <(
-    find . \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
+    find "$target_dir" \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
     cut -d' ' -f2- | \
     tr -d '\r'
