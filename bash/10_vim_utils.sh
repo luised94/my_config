@@ -103,7 +103,7 @@ vimall() {
     return 1
   fi
 
-  local file_limit=${MC_VIMALL_FILE_LIMIT:-150}
+  local -r file_limit=${MC_VIMALL_FILE_LIMIT:-150}
   local force=0
   local target_dir="."
 
@@ -141,6 +141,7 @@ vimall() {
     return 1
   fi
 
+  local -a find_excludes files
   mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
 
   mapfile -t files < <(
@@ -149,15 +150,15 @@ vimall() {
     cut -d' ' -f2-
   )
 
-  local number_of_files=${#files[@]}
+  local -r count=${#files[@]}
 
-  if [[ $number_of_files -eq 0 ]]; then
+  if [[ $count -eq 0 ]]; then
     msg_error "No files found to open."
     return 1
 
   fi
 
-  if [[ $number_of_files -gt $file_limit ]] && [[ $force -eq 0 ]]; then
+  if [[ $count -gt $file_limit ]] && [[ $force -eq 0 ]]; then
     msg_warn "Found ${#files[@]} files. Open all? (y/N)"
     read -r confirm
     if [[ $confirm != [yY] ]]; then
