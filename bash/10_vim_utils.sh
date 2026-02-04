@@ -93,6 +93,15 @@ EOF
 }
 
 vimall() {
+  if [[ -z "$EDITOR" ]]; then
+    msg_error "EDITOR is not set"
+    return 1
+  fi
+
+  if ! declare -f _mc_vim_get_exclude_args &>/dev/null; then
+    msg_error "Missing dependency: _mc_vim_get_exclude_args"
+    return 1
+  fi
 
   local file_limit=${MC_VIMALL_FILE_LIMIT:-150}
   local force=0
