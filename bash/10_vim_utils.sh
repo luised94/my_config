@@ -146,14 +146,12 @@ vimall() {
   mapfile -t files < <(
     find "$target_dir" \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
-    cut -d' ' -f2- | \
-    tr -d '\r'
+    cut -d' ' -f2-
   )
 
   local number_of_files=${#files[@]}
-  msg_debug "Files found: $number_of_files"
 
-  if [ $number_of_files -eq 0 ]; then
+  if [[ $number_of_files -eq 0 ]]; then
     msg_error "No files found to open."
     return 1
 
