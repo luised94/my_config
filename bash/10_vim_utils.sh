@@ -135,7 +135,8 @@ vimall() {
   mapfile -t files < <(
     find "$target_dir" \( "${find_excludes[@]}" \) -prune -o -type f -printf '%T@ %p\n' 2>/dev/null |
     sort -rn | \
-    cut -d' ' -f2-
+    cut -d' ' -f2- | \
+    tr -d '\r' # keep for wsl/windows compatibility.
   )
 
   local -r count=${#files[@]}
