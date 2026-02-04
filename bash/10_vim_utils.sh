@@ -93,19 +93,26 @@ EOF
 
 vimall() {
 
-  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-    _vimall_usage
-    return 0
-  fi
-
-  local find_args=()
-  local force=0
-  local file_limit=${MC_VIMALL_FILE_LIMIT:-150} # How many files will trigger confirmation?
-
-  if [[ "$1" == "-f" ]] || [[ "$1" == "--force" ]]; then
-    force=1
-    shift
-  fi
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        _vimall_usage
+        return 0
+        ;;
+      -f|--force)
+        force=1
+        shift
+        ;;
+      -*)
+        msg_error "Unknown option: $1"
+        return 1
+        ;;
+      *)
+        msg_error "Unexpected argument: $1"
+        return 1
+        ;;
+    esac
+  done
 
   mapfile -t find_excludes < <(_mc_vim_get_exclude_args)
 
