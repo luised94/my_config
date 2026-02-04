@@ -74,18 +74,27 @@ _mc_vim_get_exclude_args() {
     fi
 }
 
+_vimall_usage() {
+  cat <<EOF
+Usage: vimall [OPTIONS]
+
+Opens files in tree, sorted by time, respecting MC_EXCLUDE arrays.
+
+Options:
+  -f, --force      Skip confirmation prompt
+  -h, --help       Show this help message
+
+Environment variables:
+  MC_VIMALL_FILE_LIMIT  Configured Limit (${MC_VIMALL_FILE_LIMIT:-150})
+  EDITOR                Current Editor (${EDITOR})
+  Exclusion criteria: See MC_EXCLUDE_DIRS and MC_EXCLUDE_FILES
+EOF
+}
+
 vimall() {
 
   if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-    printf "Usage: vimall [OPTIONS]\n"
-    printf "Opens files in tree, sorted by time, respecting MC_EXCLUDE arrays.\n\n"
-    printf "Options:\n"
-    printf "%s\n" "-f, --force    Skip confirmation prompt"
-    printf "%s\n" "-h, --help     Show help message"
-    printf "Environment variables:\n"
-    printf "  Configured Limit: %s\n" "${MC_VIMALL_FILE_LIMIT:-150}"
-    printf "  Current Editor   : %s\n" "${EDITOR}"
-    printf "  Exclusion criteria: See MC_EXCLUDE_DIRS and MC_EXCLUDE_FILES\n"
+    _vimall_usage
     return 0
   fi
 
