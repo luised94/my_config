@@ -128,6 +128,8 @@ MC_ALIASES=(
     "ngda=nvim < <(git diff HEAD)"
     "ngdc=nvim < <(git diff --cached)"
     "nglc=git diff-tree --no-commit-id --name-only -r -z HEAD | xargs -0 nvim"
+    # MC Aliases
+    "vaf=vimall -f"
     # --- Scripts & Lab ---
     "setup_tmux=~/personal_repos/my_config/scripts/tmux_setup_worktree_sessions.sh"
     "edit_bmc_configs=nvim ~/data/*Bel/documentation/*_bmc_config.R"
