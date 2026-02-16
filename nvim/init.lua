@@ -261,10 +261,18 @@ local function run_current_file()
     -- Store new terminal state
     vim.g.persistent_runner_term_buf_id = term_buf_id
     vim.g.persistent_runner_term_chan_id = term_chan_id
-  end
 
-  -- Send command to terminal
-  fn.chansend(term_chan_id, command .. "\n")
+    -- Notify user that terminal is initializing
+    vim.notify("Terminal created - initializing shell", vim.log.levels.INFO)
+
+    -- Delay command send to allow shell initialization (bashrc loading)
+    vim.defer_fn(function()
+      fn.chansend(term_chan_id, command .. "\n")
+    end, 300)
+  else
+    -- Terminal already exists and ready - send command immediately
+    fn.chansend(term_chan_id, command .. "\n")
+  end
 end
 
 -- Set up keybinding
