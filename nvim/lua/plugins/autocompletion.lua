@@ -1,5 +1,5 @@
-return {
 
+return {
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
@@ -7,6 +7,7 @@ return {
       -- Snippet Engine & its associated nvim-cmp source
       {
         'L3MON4D3/LuaSnip',
+        version = "v2.*",
         build = 'make install_jsregexp',
           -- Build Step is needed for regex support in snippets.
           -- This step is not supported in many windows environments.
@@ -24,7 +25,6 @@ return {
       'hrsh7th/cmp-buffer',
       'onsails/lspkind-nvim',
       'jmbuhr/cmp-pandoc-references', -- For quarto and markdown
-      'jalvesaq/cmp-nvim-r', -- For R
       'saadparwaiz1/cmp_luasnip',
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-path',
@@ -38,7 +38,6 @@ return {
       local luasnip = require 'luasnip'
       local lspkind = require 'lspkind'
       luasnip.config.setup {}
-
       cmp.setup {
         snippet = {
           expand = function(args)
@@ -46,7 +45,6 @@ return {
           end,
         },
         completion = { completeopt = 'menu,menuone,noinsert' },
-
         -- For an understanding of why these mappings were
         -- chosen, you will need to read `:help ins-completion`
         mapping = cmp.mapping.preset.insert {
@@ -59,7 +57,6 @@ return {
                         behavior = cmp.ConfirmBehavior.Replace,
                         select = true, }, -- Accept ([y]es) the completion. This will expand snippets if the LSP sent a snippet.
           ['<C-Space>'] = cmp.mapping.complete {}, -- Manually trigger a completion from nvim-cmp
-
           -- Moved to the right or left of the expansion in the snippet.
           ['<C-l>'] = cmp.mapping(function()
             if luasnip.expand_or_locally_jumpable() then
@@ -71,9 +68,8 @@ return {
               luasnip.jump(-1)
             end
           end, { 'i', 's' }),
-
           -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
-          --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
+          --    [https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps](https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps)
         },
         sources = {
           { name = 'nvim_lsp' },
@@ -81,7 +77,6 @@ return {
           { name = 'luasnip' },
           { name = 'path' },
           { name = 'pandoc_references' },
-          { name = 'cmp_nvim_r' },
           { name = 'otter' }, -- for code chunks in quarto
           { name = 'nvim_lsp_signature_help' },
         },
@@ -96,7 +91,6 @@ return {
                             buffer = '[Buffer]',
                             path = '[Path]',
                             pandoc_references = '[Ref]',
-                            cmp_nvim_r = '[R]',
                             otter = '[otter]',
                         }
                     })
@@ -121,24 +115,15 @@ return {
                 sources = {
                     { name = "buffer" }
                 }
-
             })
       -- Load snippets from snippets directory
       require('luasnip.loaders.from_vscode').lazy_load()
       require('luasnip.loaders.from_vscode').lazy_load { paths = { vim.fn.stdpath 'config' .. '/snippets' } }
-
       -- Extend filetypes
       luasnip.filetype_extend('quarto', { 'markdown' })
       luasnip.filetype_extend('rmarkdown', { 'markdown' })
-
-      -- Setup cmp specifically for R
-        require('cmp_nvim_r').setup({
-                filetypes = {'r', 'rmd', 'quarto'},
-                doc_width = 58
-            })
-
-            -- Setup for bash files
-            cmp.setup.filetype({ 'sh', 'bash' }, {
+      -- Setup for bash files
+      cmp.setup.filetype({ 'sh', 'bash' }, {
                 sources = cmp.config.sources({
                         { name = 'nvim_lsp' },
                         { name = 'luasnip' },
