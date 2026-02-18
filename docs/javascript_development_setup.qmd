@@ -8,7 +8,20 @@ date: 2025-06-16
 Setup the basic components of a development environment for the programming language, javascript/typescript.
 
 ## Instructions
+### Install nvm
+Skip node if you use nvm.
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+# confirm node -v
+```
 ### Download node
+Use package manager.
+```bash
+sudo apt update
+sudo apt install -y nodejs npm
+```
+
 Download from the [nodejs](https://nodejs.org/en/download) website.
 ```{bash}
 # If you previously installed into the home directory
