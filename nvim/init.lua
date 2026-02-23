@@ -50,7 +50,26 @@ vim.cmd("filetype plugin indent on")
 vim.cmd("syntax on")
 
 -- === KEYMAPS ===
-require('core.keymaps')
+local keymap = vim.keymap
+
+---@class KeymapSpec
+---@field mode string
+---@field lhs string
+---@field rhs string|function
+---@field opts table
+
+---@type KeymapSpec[]
+local KEYMAPS = {
+    { mode = "n", lhs = "<Esc>",      rhs = "<cmd>nohlsearch<CR>",          opts = { desc = "editor: clear search highlight" } },
+    { mode = "n", lhs = "[d",         rhs = vim.diagnostic.goto_prev,        opts = { desc = "diagnostic: go to previous" } },
+    { mode = "n", lhs = "]d",         rhs = vim.diagnostic.goto_next,        opts = { desc = "diagnostic: go to next" } },
+    { mode = "n", lhs = "<leader>e",  rhs = vim.diagnostic.open_float,       opts = { desc = "diagnostic: show errors" } },
+    { mode = "n", lhs = "<leader>q",  rhs = vim.diagnostic.setloclist,       opts = { desc = "diagnostic: open quickfix list" } },
+}
+
+for _, km in ipairs(KEYMAPS) do
+    keymap.set(km.mode, km.lhs, km.rhs, km.opts)
+end
 
 -- === CLIPBOARD ===
 require('core.clipboard')
