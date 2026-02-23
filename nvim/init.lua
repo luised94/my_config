@@ -1,55 +1,89 @@
+-- === GLOBALS ===
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 vim.g.have_nerd_font = false
-vim.o.termguicolors = true
-require('core.options')
+
+-- === OPTIONS ===
+---@class OptionSpec
+---@field key string
+---@field value any
+
+---@type OptionSpec[]
+local OPTIONS = {
+    { key = "hlsearch",       value = true },        -- moved from keymaps.lua
+    { key = "number",         value = true },
+    { key = "relativenumber", value = true },
+    { key = "autoindent",     value = true },
+    { key = "breakindent",    value = true },
+    { key = "wrap",           value = true },
+    { key = "showbreak",      value = "|" },
+    { key = "linebreak",      value = true },
+    { key = "tabstop",        value = 2 },
+    { key = "shiftwidth",     value = 2 },
+    { key = "expandtab",      value = true },
+    { key = "smarttab",       value = true },
+    { key = "ignorecase",     value = true },
+    { key = "smartcase",      value = true },
+    { key = "signcolumn",     value = "yes" },
+    { key = "updatetime",     value = 250 },
+    { key = "timeoutlen",     value = 1000 },
+    { key = "splitright",     value = true },
+    { key = "splitbelow",     value = true },
+    { key = "list",           value = true },
+    { key = "listchars", value = { tab = "> ", trail = "-", nbsp = "?" } },
+    { key = "inccommand",     value = "split" },
+    { key = "cursorline",     value = true },
+    { key = "cursorlineopt",  value = "number" },
+    { key = "scrolloff",      value = 10 },
+    { key = "clipboard",      value = "unnamedplus" },
+    { key = "mouse",          value = "a" },
+    { key = "showmode",       value = false },
+    { key = "termguicolors",  value = true },
+}
+
+for _, opt in ipairs(OPTIONS) do
+    vim.opt[opt.key] = opt.value
+end
+
+vim.opt.fillchars:append({ eob = " " })
+vim.cmd("filetype plugin indent on")
+vim.cmd("syntax on")
+
+-- === KEYMAPS ===
 require('core.keymaps')
+
+-- === CLIPBOARD ===
 require('core.clipboard')
+
+-- === UTILITIES ===
 require('core.search_quickfix')
 
--- Highlight when yanking (copying) text
---  Try it with `yap` in normal mode
---  See `:help vim.highlight.on_yank()`
+-- === AUTOCMDS ===
 vim.api.nvim_create_autocmd('TextYankPost', {
-  desc = 'Highlight when yanking (copying) text',
-  group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
-  callback = function()
-    vim.highlight.on_yank()
-  end,
+    desc = 'Highlight when yanking (copying) text',
+    group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
+    callback = function()
+        vim.highlight.on_yank()
+    end,
 })
 
--- Yank entire file and remove
+-- === COMMANDS ===
 vim.api.nvim_create_user_command('YankClean', function()
-    -- Go to top of document
     vim.cmd('normal! gg')
-    -- Yank entire document
     vim.cmd('normal! ggyG')
-    -- Clean yanked text
-    -- Remove newlines only, space only lines and trailing spaces.
     local yanked_text = vim.fn.getreg('"')
     local cleaned_text = yanked_text:gsub('\n%s*\n', '\n')
                                     :gsub('%s+$', '')
                                     :gsub('^%s+', '')
-
-    -- Replace register with cleaned text
     vim.fn.setreg('"', cleaned_text)
 end, {})
 
--- WORKAROUND: Fix for Neovim runtime syntax file bug
--- Issue: Built-in quarto.vim and rmd.vim syntax files have a circular dependency
--- that causes "Cannot redefine function IncludeLanguage: It is in use" error
--- Root cause: quarto.vim includes rmd.vim, which tries to redefine a function
--- while it's executing, creating a recursive loading conflict
--- Solution: Treat .qmd files as markdown instead of using problematic syntax files
--- Note: quarto-nvim plugin still provides LSP, code execution, and other features
--- This only affects syntax highlighting, and markdown highlighting works well for .qmd
 vim.filetype.add({
     extension = {
         qmd = "markdown",
         quarto = "markdown",
     },
 })
-
 --[[
 local function is_on_cluster()
   # Run print(vim.fn.hostname()) in linux cluster to set the variable appropriately.,
