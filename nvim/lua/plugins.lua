@@ -62,6 +62,7 @@ local SNIPPET_FILETYPE_EXTENDS = {
 ---@field context boolean
 ---@field context_fallback boolean
 ---@field wrap boolean
+---@type BibtexConfig
 local BIBTEX_CONFIG = {
     depth                  = 1,
     global_files           = { '~/mylibrary.bib' },
@@ -401,7 +402,9 @@ return {
             end
             capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = true
 
+            ---@type string[]
             local lua_library_files = api.nvim_get_runtime_file('', true)
+            ---@type string[]
             local lua_plugin_paths  = {}
             local resource_path     = get_quarto_resource_path()
             if resource_path ~= nil then
@@ -453,6 +456,7 @@ return {
 
             require('mason').setup()
 
+            ---@type string[]
             local ensure_installed = vim.tbl_keys(LSP_SERVERS)
             require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
 
