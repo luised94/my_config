@@ -1,11 +1,15 @@
 -- === GLOBALS ===
-vim.g.mapleader = " "
+vim.g.mapleader    = " "
 vim.g.maplocalleader = "\\"
 vim.g.have_nerd_font = false
 
+local api    = vim.api
+local fn     = vim.fn
+local keymap = vim.keymap
+
 -- === OPTIONS ===
 ---@class OptionSpec
----@field key string
+---@field key   string
 ---@field value any
 
 ---@type OptionSpec[]
@@ -30,7 +34,7 @@ local OPTIONS = {
     { key = "splitright",     value = true },
     { key = "splitbelow",     value = true },
     { key = "list",           value = true },
-    { key = "listchars", value = { tab = "> ", trail = "-", nbsp = "?" } },
+    { key = "listchars",      value = { tab = "> ", trail = "-", nbsp = "?" } },
     { key = "inccommand",     value = "split" },
     { key = "cursorline",     value = true },
     { key = "cursorlineopt",  value = "number" },
@@ -50,21 +54,19 @@ vim.cmd("filetype plugin indent on")
 vim.cmd("syntax on")
 
 -- === KEYMAPS ===
-local keymap = vim.keymap
-
 ---@class KeymapSpec
 ---@field mode string
----@field lhs string
----@field rhs string|function
+---@field lhs  string
+---@field rhs  string|function
 ---@field opts table
 
 ---@type KeymapSpec[]
 local KEYMAPS = {
-    { mode = "n", lhs = "<Esc>",      rhs = "<cmd>nohlsearch<CR>",          opts = { desc = "editor: clear search highlight" } },
-    { mode = "n", lhs = "[d",         rhs = vim.diagnostic.goto_prev,        opts = { desc = "diagnostic: go to previous" } },
-    { mode = "n", lhs = "]d",         rhs = vim.diagnostic.goto_next,        opts = { desc = "diagnostic: go to next" } },
-    { mode = "n", lhs = "<leader>e",  rhs = vim.diagnostic.open_float,       opts = { desc = "diagnostic: show errors" } },
-    { mode = "n", lhs = "<leader>q",  rhs = vim.diagnostic.setloclist,       opts = { desc = "diagnostic: open quickfix list" } },
+    { mode = "n", lhs = "<Esc>",     rhs = "<cmd>nohlsearch<CR>",    opts = { desc = "editor: clear search highlight" } },
+    { mode = "n", lhs = "[d",        rhs = vim.diagnostic.goto_prev, opts = { desc = "diagnostic: go to previous" } },
+    { mode = "n", lhs = "]d",        rhs = vim.diagnostic.goto_next, opts = { desc = "diagnostic: go to next" } },
+    { mode = "n", lhs = "<leader>e", rhs = vim.diagnostic.open_float, opts = { desc = "diagnostic: show errors" } },
+    { mode = "n", lhs = "<leader>q", rhs = vim.diagnostic.setloclist, opts = { desc = "diagnostic: open quickfix list" } },
 }
 
 for _, km in ipairs(KEYMAPS) do
@@ -72,11 +74,11 @@ for _, km in ipairs(KEYMAPS) do
 end
 
 -- === CLIPBOARD ===
-if vim.fn.has('wsl') == 1 then
+if fn.has('wsl') == 1 then
     ---@class ClipboardConfig
-    ---@field name string
-    ---@field copy table<string, string>
-    ---@field paste table<string, string>
+    ---@field name          string
+    ---@field copy          table<string, string>
+    ---@field paste         table<string, string>
     ---@field cache_enabled integer
 
     ---@type ClipboardConfig
@@ -92,18 +94,16 @@ if vim.fn.has('wsl') == 1 then
         },
         cache_enabled = 0,
     }
-
     vim.g.clipboard = CLIPBOARD_CONFIG
 end
 
 -- === UTILITIES ===
-local api = vim.api
 
 ---@class SearchQFWindow
----@field width integer
----@field height integer
+---@field width   integer
+---@field height  integer
 ---@field padding integer
----@field blend integer
+---@field blend   integer
 
 ---@class SearchQFConfig
 ---@field window SearchQFWindow
@@ -134,7 +134,7 @@ local function reset_quickfix_list()
 end
 
 ---@class UserLocation
----@field winnr integer
+---@field winnr  integer
 ---@field buffer integer
 ---@field cursor integer[]
 
@@ -155,10 +155,10 @@ local function restore_user_location(location)
     if api.nvim_win_is_valid(location.winnr) then
         api.nvim_set_current_win(location.winnr)
     end
-    local line_count = api.nvim_buf_line_count(location.buffer)
+    local line_count  = api.nvim_buf_line_count(location.buffer)
     local cursor_line = math.min(location.cursor[1], line_count)
-    local line_text = api.nvim_buf_get_lines(location.buffer, cursor_line - 1, cursor_line, false)[1]
-    local cursor_col = math.min(location.cursor[2], line_text ~= nil and #line_text or 0)
+    local line_text   = api.nvim_buf_get_lines(location.buffer, cursor_line - 1, cursor_line, false)[1]
+    local cursor_col  = math.min(location.cursor[2], line_text ~= nil and #line_text or 0)
     api.nvim_set_current_buf(location.buffer)
     api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
 end
@@ -169,7 +169,7 @@ local function search_buffers(search_string)
     reset_quickfix_list()
     vim.cmd(string.format([[
         silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
-    ]], vim.fn.escape(search_string, '/')))
+    ]], fn.escape(search_string, '/')))
 end
 
 ---@return boolean, integer|nil
@@ -185,7 +185,7 @@ end
 
 ---@return nil
 local function close_quickfix_if_empty()
-    local qf_list = vim.fn.getqflist({ size = 0 })
+    local qf_list = fn.getqflist({ size = 0 })
     if qf_list.size == 0 then
         local qf_open, qf_win = is_quickfix_open()
         if qf_open and qf_win ~= nil then
@@ -203,16 +203,19 @@ local function close_quickfix_if_empty()
 end
 
 ---@param search_string string
----@param floating boolean
+---@param floating      boolean
 ---@return nil
 local function search_and_show(search_string, floating)
     if not validate_search(search_string) then return end
     local user_location = save_user_location()
     local ok, result = pcall(function()
         search_buffers(search_string)
-        if vim.fn.getqflist({ size = 0 }).size == 0 then
+        if fn.getqflist({ size = 0 }).size == 0 then
             restore_user_location(user_location)
-            vim.notify(string.format("[search_qf] no matches found for: %s", search_string), vim.log.levels.WARN)
+            vim.notify(
+                string.format("[search_qf] no matches found for: %s", search_string),
+                vim.log.levels.WARN
+            )
             close_quickfix_if_empty()
             return
         end
@@ -235,17 +238,20 @@ local function search_and_show(search_string, floating)
     end)
     if not ok then
         restore_user_location(user_location)
-        vim.notify(string.format("[search_qf] search failed: %s", tostring(result)), vim.log.levels.ERROR)
+        vim.notify(
+            string.format("[search_qf] search failed: %s", tostring(result)),
+            vim.log.levels.ERROR
+        )
     end
 end
 
 api.nvim_create_user_command('SearchQF', function(opts)
-    local args = opts.fargs
-    local floating = false
+    local args        = opts.fargs
+    local floating    = false
     local search_term = ""
     if #args > 0 then
         if args[1] == "float" then
-            floating = true
+            floating    = true
             search_term = table.concat(args, " ", 2)
         else
             search_term = table.concat(args, " ")
@@ -253,7 +259,7 @@ api.nvim_create_user_command('SearchQF', function(opts)
     end
     search_and_show(search_term, floating)
 end, {
-    nargs = "+",
+    nargs    = "+",
     complete = function(_, _, _)
         return { "float" }
     end,
@@ -266,7 +272,7 @@ local terminal_buffer_id = nil
 local terminal_channel_id = nil
 
 ---@class TerminalStateConstants
----@field COLD string
+---@field COLD  string
 ---@field STALE string
 ---@field READY string
 
@@ -311,7 +317,7 @@ local function get_terminal_state()
 end
 
 ---@param channel_id integer
----@param command string
+---@param command    string
 ---@return nil
 local function send_to_terminal(channel_id, command)
     local ok, err = pcall(fn.chansend, channel_id, command .. "\n")
@@ -398,60 +404,53 @@ keymap.set("n", "<leader>r", run_current_file, {
 })
 
 -- === AUTOCMDS ===
-vim.api.nvim_create_autocmd('TextYankPost', {
-    desc = 'Highlight when yanking (copying) text',
-    group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
+api.nvim_create_autocmd('TextYankPost', {
+    desc     = 'Highlight when yanking (copying) text',
+    group    = api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function()
         vim.highlight.on_yank()
     end,
 })
 
 -- === COMMANDS ===
-vim.api.nvim_create_user_command('YankClean', function()
+api.nvim_create_user_command('YankClean', function()
     vim.cmd('normal! gg')
     vim.cmd('normal! ggyG')
-    local yanked_text = vim.fn.getreg('"')
+    local yanked_text  = fn.getreg('"')
     local cleaned_text = yanked_text:gsub('\n%s*\n', '\n')
                                     :gsub('%s+$', '')
                                     :gsub('^%s+', '')
-    vim.fn.setreg('"', cleaned_text)
+    fn.setreg('"', cleaned_text)
 end, {})
 
 vim.filetype.add({
     extension = {
-        qmd = "markdown",
+        qmd    = "markdown",
         quarto = "markdown",
     },
 })
---[[
-local function is_on_cluster()
-  # Run print(vim.fn.hostname()) in linux cluster to set the variable appropriately.,
-  return os.getenv("CLUSTER_ENV") == true or vim.fn.hostname():match("cluster") ~= nil
-end 
---]]
--- Uncomment after enabling is_on_cluster
--- if not is_on_cluster() then
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+
+-- === LAZY BOOTSTRAP ===
+---@type string
+local lazypath = fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
     local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-    local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+    local out = fn.system({
+        "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath,
+    })
     if vim.v.shell_error ~= 0 then
-        vim.api.nvim_echo({
+        api.nvim_echo({
             { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
-            { out, "WarningMsg" },
-            { "\nPress any ket to exit..." },
+            { out,                             "WarningMsg" },
+            { "\nPress any key to exit..." },
         }, true, {})
-        vim.fn.getchar()
+        fn.getchar()
         os.exit(1)
     end
 end
 vim.opt.rtp:prepend(lazypath)
 
--- Load plugins in directory, that I can separate into functionality
--- Plugins are in the lua/plugins directory as lua file. The lua files must be return a table of tables. Each table element has to have the configuration for the given plugin I have separated them in terms of their functionality.
--- They are separated by plugin and should be self-contained for the most part. Only the breaking_bad_habits.lua  has two plugins but they serve the same purpose and dont have complicated setups.
---This loads all lua files in the plugins directory.
-
+-- === PLUGINS ===
 local DISABLED_BUILTIN_PLUGINS = {
     "gzip",
     "matchit",
@@ -465,63 +464,43 @@ local DISABLED_BUILTIN_PLUGINS = {
 
 require("lazy").setup(require("plugins"), {
     performance = {
-        rtp = {
-            disabled_plugins = DISABLED_BUILTIN_PLUGINS,
-        },
+        rtp = { disabled_plugins = DISABLED_BUILTIN_PLUGINS },
     },
     install = {
-        missing = true,
+        missing    = true,
         colorscheme = { "habamax" },
     },
     checker = {
         enabled = true,
-        notify = false,
+        notify  = false,
     },
-    change_detection = {
-        notify = false,
-    },
-    ui = {
-        border = "rounded",
-    },
+    change_detection = { notify = false },
+    ui               = { border = "rounded" },
 })
 
--- Plugins are loaded in the lazy-bootstrap file.
--- Extension loader for mc_extensions
--- Add to end of init.lua after lazy.nvim setup
+-- === EXTENSIONS ===
+---@type string
+local extensions_dir = os.getenv("MC_EXTENSIONS_DIR") or
+    string.format("%s/.config/mc_extensions", os.getenv("HOME"))
 
-local extensions_dir = os.getenv("MC_EXTENSIONS_DIR")
+if fn.isdirectory(extensions_dir) ~= 1 then
+    vim.notify(
+        string.format("[extensions] directory not found: %s", extensions_dir),
+        vim.log.levels.WARN
+    )
+else
+    ---@type string[]
+    local lua_files = fn.glob(string.format("%s/*.lua", extensions_dir), false, true)
 
-if extensions_dir == nil then
-    extensions_dir = string.format("%s/.config/mc_extensions", os.getenv("HOME"))
-end
-
-local dir_exists = vim.fn.isdirectory(extensions_dir) == 1
-
-if not dir_exists then
-    local message = string.format("Extension loader: directory not found: %s", extensions_dir)
-    vim.notify(message, vim.log.levels.WARN)
-    return
-end
-
-local glob_pattern = string.format("%s/*.lua", extensions_dir)
-local match_all = false
-local return_list = true
-local lua_files = vim.fn.glob(glob_pattern, match_all, return_list)
-
-local file_count = #lua_files
-
-if file_count == 0 then
-    return
-end
-
-for _, filepath in ipairs(lua_files) do
-    local load_success, error_message = pcall(dofile, filepath)
-    if not load_success then
-        local warning = string.format("Extension loader: failed to load %s\n%s", filepath, error_message)
-        vim.notify(warning, vim.log.levels.WARN)
+    for _, filepath in ipairs(lua_files) do
+        local ok, err = pcall(dofile, filepath)
+        if not ok then
+            vim.notify(
+                string.format("[extensions] failed to load %s: %s", filepath, err),
+                vim.log.levels.WARN
+            )
+        end
     end
 end
 
--- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
--- end
