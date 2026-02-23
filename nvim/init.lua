@@ -97,7 +97,167 @@ if vim.fn.has('wsl') == 1 then
 end
 
 -- === UTILITIES ===
-require('core.search_quickfix')
+local api = vim.api
+
+---@class SearchQFWindow
+---@field width integer
+---@field height integer
+---@field padding integer
+---@field blend integer
+
+---@class SearchQFConfig
+---@field window SearchQFWindow
+
+---@type SearchQFConfig
+local SEARCH_QF_CONFIG = {
+    window = {
+        width   = 80,
+        height  = 20,
+        padding = 2,
+        blend   = 10,
+    },
+}
+
+---@param search_string string
+---@return boolean
+local function validate_search(search_string)
+    if search_string == nil or search_string == "" then
+        vim.notify("[search_qf] search string cannot be empty", vim.log.levels.ERROR)
+        return false
+    end
+    return true
+end
+
+---@return nil
+local function reset_quickfix_list()
+    vim.cmd("silent! call setqflist([])")
+end
+
+---@class UserLocation
+---@field winnr integer
+---@field buffer integer
+---@field cursor integer[]
+
+---@return UserLocation
+local function save_user_location()
+    return {
+        winnr  = api.nvim_get_current_win(),
+        buffer = api.nvim_get_current_buf(),
+        cursor = api.nvim_win_get_cursor(0),
+    }
+end
+
+---@param location UserLocation
+---@return nil
+local function restore_user_location(location)
+    if location == nil or location.buffer == nil or location.cursor == nil then return end
+    if not api.nvim_buf_is_valid(location.buffer) then return end
+    if api.nvim_win_is_valid(location.winnr) then
+        api.nvim_set_current_win(location.winnr)
+    end
+    local line_count = api.nvim_buf_line_count(location.buffer)
+    local cursor_line = math.min(location.cursor[1], line_count)
+    local line_text = api.nvim_buf_get_lines(location.buffer, cursor_line - 1, cursor_line, false)[1]
+    local cursor_col = math.min(location.cursor[2], line_text ~= nil and #line_text or 0)
+    api.nvim_set_current_buf(location.buffer)
+    api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
+end
+
+---@param search_string string
+---@return nil
+local function search_buffers(search_string)
+    reset_quickfix_list()
+    vim.cmd(string.format([[
+        silent! bufdo if filereadable(expand('%%:p')) | vimgrepadd /%s/ %% | endif
+    ]], vim.fn.escape(search_string, '/')))
+end
+
+---@return boolean, integer|nil
+local function is_quickfix_open()
+    for _, win in ipairs(api.nvim_list_wins()) do
+        local buf = api.nvim_win_get_buf(win)
+        if vim.bo[buf].buftype == 'quickfix' then
+            return true, win
+        end
+    end
+    return false, nil
+end
+
+---@return nil
+local function close_quickfix_if_empty()
+    local qf_list = vim.fn.getqflist({ size = 0 })
+    if qf_list.size == 0 then
+        local qf_open, qf_win = is_quickfix_open()
+        if qf_open and qf_win ~= nil then
+            if #api.nvim_tabpage_list_wins(0) == 1 then
+                for _, buf in ipairs(api.nvim_list_bufs()) do
+                    if api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == '' then
+                        api.nvim_set_current_buf(buf)
+                        break
+                    end
+                end
+            end
+            vim.cmd('cclose')
+        end
+    end
+end
+
+---@param search_string string
+---@param floating boolean
+---@return nil
+local function search_and_show(search_string, floating)
+    if not validate_search(search_string) then return end
+    local user_location = save_user_location()
+    local ok, result = pcall(function()
+        search_buffers(search_string)
+        if vim.fn.getqflist({ size = 0 }).size == 0 then
+            restore_user_location(user_location)
+            vim.notify(string.format("[search_qf] no matches found for: %s", search_string), vim.log.levels.WARN)
+            close_quickfix_if_empty()
+            return
+        end
+        if floating then
+            vim.notify("[search_qf] floating window is currently disabled", vim.log.levels.INFO)
+            restore_user_location(user_location)
+        else
+            local qf_open, qf_win = is_quickfix_open()
+            if qf_open and qf_win ~= nil and api.nvim_win_is_valid(qf_win) then
+                local current_win = api.nvim_get_current_win()
+                api.nvim_set_current_win(qf_win)
+                vim.cmd('cbottom')
+                api.nvim_set_current_win(current_win)
+            else
+                vim.cmd('botright copen')
+            end
+            restore_user_location(user_location)
+        end
+        close_quickfix_if_empty()
+    end)
+    if not ok then
+        restore_user_location(user_location)
+        vim.notify(string.format("[search_qf] search failed: %s", tostring(result)), vim.log.levels.ERROR)
+    end
+end
+
+api.nvim_create_user_command('SearchQF', function(opts)
+    local args = opts.fargs
+    local floating = false
+    local search_term = ""
+    if #args > 0 then
+        if args[1] == "float" then
+            floating = true
+            search_term = table.concat(args, " ", 2)
+        else
+            search_term = table.concat(args, " ")
+        end
+    end
+    search_and_show(search_term, floating)
+end, {
+    nargs = "+",
+    complete = function(_, _, _)
+        return { "float" }
+    end,
+})
 
 -- === AUTOCMDS ===
 vim.api.nvim_create_autocmd('TextYankPost', {
