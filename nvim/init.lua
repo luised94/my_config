@@ -10,7 +10,7 @@ vim.g.have_nerd_font = false
 
 ---@type OptionSpec[]
 local OPTIONS = {
-    { key = "hlsearch",       value = true },        -- moved from keymaps.lua
+    { key = "hlsearch",       value = true },
     { key = "number",         value = true },
     { key = "relativenumber", value = true },
     { key = "autoindent",     value = true },
@@ -325,10 +325,7 @@ local DISABLED_BUILTIN_PLUGINS = {
     "zipPlugin",
 }
 
-require("lazy").setup({
-    spec = {
-        { import = "plugins" },
-    },
+require("lazy").setup(require("plugins"), {
     performance = {
         rtp = {
             disabled_plugins = DISABLED_BUILTIN_PLUGINS,
