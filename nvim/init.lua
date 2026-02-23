@@ -72,7 +72,29 @@ for _, km in ipairs(KEYMAPS) do
 end
 
 -- === CLIPBOARD ===
-require('core.clipboard')
+if vim.fn.has('wsl') == 1 then
+    ---@class ClipboardConfig
+    ---@field name string
+    ---@field copy table<string, string>
+    ---@field paste table<string, string>
+    ---@field cache_enabled integer
+
+    ---@type ClipboardConfig
+    local CLIPBOARD_CONFIG = {
+        name = 'WslClipboard',
+        copy = {
+            ['+'] = 'clip.exe',
+            ['*'] = 'clip.exe',
+        },
+        paste = {
+            ['+'] = 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+            ['*'] = 'powershell.exe -c [Console]::Out.Write($(Get-Clipboard -Raw).tostring().replace("`r", ""))',
+        },
+        cache_enabled = 0,
+    }
+
+    vim.g.clipboard = CLIPBOARD_CONFIG
+end
 
 -- === UTILITIES ===
 require('core.search_quickfix')
