@@ -259,6 +259,144 @@ end, {
     end,
 })
 
+---@type integer|nil
+local terminal_buffer_id = nil
+
+---@type integer|nil
+local terminal_channel_id = nil
+
+---@class TerminalStateConstants
+---@field COLD string
+---@field STALE string
+---@field READY string
+
+---@type TerminalStateConstants
+local TERMINAL_STATE = {
+    COLD  = "cold",
+    STALE = "stale",
+    READY = "ready",
+}
+
+---@class RunnerSpec
+---@field command    string
+---@field executable string
+
+---@type table<string, RunnerSpec>
+local RUNNER_SPECS = {
+    python = { command = "uv run %s",                                  executable = "uv" },
+    r      = { command = "Rscript --vanilla %s",                       executable = "Rscript" },
+    c      = { command = "gcc -Wall -Wextra %s -o /tmp/%s && /tmp/%s", executable = "gcc" },
+    lua    = { command = "lua %s",                                     executable = "lua" },
+    sh     = { command = "bash %s",                                    executable = "bash" },
+}
+
+---@type table<string, RunnerSpec>
+local RUNNERS = {}
+for filetype, spec in pairs(RUNNER_SPECS) do
+    if fn.executable(spec.executable) == 1 then
+        RUNNERS[filetype] = spec
+    else
+        vim.notify(
+            string.format("[runner] %s unavailable: %s not found in PATH", filetype, spec.executable),
+            vim.log.levels.WARN
+        )
+    end
+end
+
+---@return string
+local function get_terminal_state()
+    if terminal_buffer_id == nil then return TERMINAL_STATE.COLD end
+    if not api.nvim_buf_is_valid(terminal_buffer_id) then return TERMINAL_STATE.STALE end
+    return TERMINAL_STATE.READY
+end
+
+---@param channel_id integer
+---@param command string
+---@return nil
+local function send_to_terminal(channel_id, command)
+    local ok, err = pcall(fn.chansend, channel_id, command .. "\n")
+    if not ok then
+        vim.notify(
+            string.format("[runner] failed to send command: %s", tostring(err)),
+            vim.log.levels.ERROR
+        )
+    end
+end
+
+---@param filetype string
+---@param filepath string
+---@return string|nil
+local function resolve_command(filetype, filepath)
+    local spec = RUNNERS[filetype]
+    if spec == nil then return nil end
+    if filetype == "c" and fn.filereadable("Makefile") == 1 then
+        return "make && ./a.out"
+    end
+    if filetype == "c" then
+        local basename = fn.fnamemodify(filepath, ":t:r")
+        return string.format(spec.command, filepath, basename, basename)
+    end
+    return string.format(spec.command, filepath)
+end
+
+---@return nil
+local function run_current_file()
+    local current_filetype = vim.bo.filetype
+    local current_filepath = fn.expand("%:p")
+
+    if RUNNERS[current_filetype] == nil then
+        vim.notify(
+            string.format("[runner] no runner configured for filetype: %s", current_filetype),
+            vim.log.levels.WARN
+        )
+        return
+    end
+
+    if vim.bo.modified then
+        vim.cmd("write")
+    end
+
+    local command = resolve_command(current_filetype, current_filepath)
+    if command == nil then return end
+
+    local state = get_terminal_state()
+
+    if state == TERMINAL_STATE.STALE then
+        terminal_buffer_id  = nil
+        terminal_channel_id = nil
+    end
+
+    if terminal_buffer_id == nil then
+        local origin_window = api.nvim_get_current_win()
+        vim.cmd("split")
+        vim.cmd("terminal")
+        terminal_buffer_id  = api.nvim_get_current_buf()
+        terminal_channel_id = vim.bo[terminal_buffer_id].channel
+        vim.bo[terminal_buffer_id].bufhidden = "wipe"
+        api.nvim_buf_set_keymap(
+            terminal_buffer_id, "t", "<Esc><Esc>", "<C-\\><C-n>:close<CR>",
+            { noremap = true, silent = true }
+        )
+        api.nvim_set_current_win(origin_window)
+        vim.notify("[runner] terminal created - initializing shell", vim.log.levels.INFO)
+        vim.defer_fn(function()
+            if terminal_channel_id ~= nil then
+                send_to_terminal(terminal_channel_id, command)
+            end
+        end, 300)
+    else
+        if terminal_channel_id ~= nil then
+            send_to_terminal(terminal_channel_id, command)
+        end
+    end
+end
+
+keymap.set("n", "<leader>r", run_current_file, {
+    noremap = true,
+    silent  = true,
+    desc    = "runner: run current file",
+})
+
 -- === AUTOCMDS ===
 vim.api.nvim_create_autocmd('TextYankPost', {
     desc = 'Highlight when yanking (copying) text',
@@ -384,132 +522,6 @@ for _, filepath in ipairs(lua_files) do
     end
 end
 
--- Persistent terminal runner for executing current file with single keystroke
--- Maintains one reusable terminal buffer per Neovim session
--- Supports Python, R, C, Lua, and shell scripts
-
-local api = vim.api
-local fn = vim.fn
-local keymap = vim.keymap
-
--- Build runner table, dropping any with missing executables
-local base_runners = {
-  python = { command = "uv run %s", executable = "uv" },
-  r = { command = "Rscript --vanilla %s", executable = "Rscript" },
-  c = { command = "gcc -Wall -Wextra %s -o /tmp/%s && /tmp/%s", executable = "gcc" },
-  lua = { command = "lua %s", executable = "lua" },
-  sh = { command = "bash %s", executable = "bash" },
-}
-
-local RUNNERS = {}
-for filetype, config in pairs(base_runners) do
-  if fn.executable(config.executable) == 1 then
-    RUNNERS[filetype] = config
-  else
-    local message = string.format(
-      "Runner for %s unavailable: %s not found in PATH",
-      filetype,
-      config.executable
-    )
-    vim.notify(message, vim.log.levels.WARN)
-  end
-end
-
----Execute current file in persistent terminal buffer
----@return nil
-local function run_current_file()
-  local current_filetype = vim.bo.filetype
-  local current_filepath = fn.expand("%:p")
-
-  -- Check if filetype has runner support
-  if RUNNERS[current_filetype] == nil then
-    local message = string.format("No runner configured for filetype: %s", current_filetype)
-    vim.notify(message, vim.log.levels.WARN)
-    return
-  end
-
-  -- Auto-save if buffer modified
-  if vim.bo.modified then
-    vim.cmd("write")
-  end
-
-  -- Resolve command string for this filetype
-  local command
-  if current_filetype == "c" and fn.filereadable("Makefile") == 1 then
-    -- C with Makefile uses make workflow
-    command = "make && ./a.out"
-  else
-    -- Standard case: substitute filepath into command template
-    local config = RUNNERS[current_filetype]
-    if current_filetype == "c" then
-      local basename = fn.fnamemodify(current_filepath, ":t:r")
-      command = string.format(config.command, current_filepath, basename, basename)
-    else
-      command = string.format(config.command, current_filepath)
-    end
-  end
-
-  -- Get current terminal state
-  local term_buf_id = vim.g.persistent_runner_term_buf_id
-  local term_chan_id = vim.g.persistent_runner_term_chan_id
-
-  -- Check if terminal is stale (buffer was wiped)
-  if term_buf_id ~= nil and not api.nvim_buf_is_valid(term_buf_id) then
-    -- Stale -> Cold: reset state
-    vim.g.persistent_runner_term_buf_id = nil
-    vim.g.persistent_runner_term_chan_id = nil
-    term_buf_id = nil
-    term_chan_id = nil
-  end
-
-  -- Create terminal if in Cold state
-  if term_buf_id == nil then
-    local origin_window = api.nvim_get_current_win()
-
-    vim.cmd("split")
-    vim.cmd("terminal")
-
-    term_buf_id = api.nvim_get_current_buf()
-    term_chan_id = vim.bo[term_buf_id].channel
-
-    -- Configure buffer to wipe when hidden
-    vim.bo[term_buf_id].bufhidden = "wipe"
-
-    -- Buffer-local <Esc><Esc> exits terminal and closes split
-    api.nvim_buf_set_keymap(
-      term_buf_id,
-      "t",
-      "<Esc><Esc>",
-      "<C-\\><C-n>:close<CR>",
-      { noremap = true, silent = true }
-    )
-
-    -- Return focus to original window
-    api.nvim_set_current_win(origin_window)
-
-    -- Store new terminal state
-    vim.g.persistent_runner_term_buf_id = term_buf_id
-    vim.g.persistent_runner_term_chan_id = term_chan_id
-
-    -- Notify user that terminal is initializing
-    vim.notify("Terminal created - initializing shell", vim.log.levels.INFO)
-
-    -- Delay command send to allow shell initialization (bashrc loading)
-    vim.defer_fn(function()
-      fn.chansend(term_chan_id, command .. "\n")
-    end, 300)
-  else
-    -- Terminal already exists and ready - send command immediately
-    fn.chansend(term_chan_id, command .. "\n")
-  end
-end
-
--- Set up keybinding
-keymap.set("n", "<leader>r", run_current_file, {
-  noremap = true,
-  silent = true,
-  desc = "Run current file in persistent terminal"
-})
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 -- end
