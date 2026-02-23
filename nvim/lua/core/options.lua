@@ -1,3 +1,4 @@
+vim.opt.hlsearch = true
 -- [[ Setting options ]]
 -- :help vim.opt OR :help option-list
 -- Also see :help '<vim-option>' to see entry for a particular option
