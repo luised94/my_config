@@ -178,68 +178,76 @@ return {
     -- -------------------------------------------------------------------------
     -- Treesitter
     -- -------------------------------------------------------------------------
+    -- treesitter spec - remove textobjects from opts, keep everything else
     {
-        'nvim-treesitter/nvim-treesitter',
-        build = ':TSUpdate',
-        dependencies = {
-            { 'nvim-treesitter/nvim-treesitter-textobjects' },
-        },
-        opts = {
+        "nvim-treesitter/nvim-treesitter",
+        branch = "main",
+        build  = ":TSUpdate",
+        opts   = {
             ensure_installed = TREESITTER_LANGUAGES,
-            auto_install = true,
+            auto_install     = true,
             highlight = {
                 enable = true,
-                additional_vim_regex_highlighting = { 'ruby' },
+                additional_vim_regex_highlighting = { "ruby" },
             },
             indent = {
-                enable = true,
-                disable = { 'ruby' },
+                enable  = true,
+                disable = { "ruby" },
             },
             incremental_selection = {
-                enable = true,
+                enable  = true,
                 keymaps = {
-                    init_selection    = 'gnn',
-                    node_incremental  = 'grn',
-                    scope_incremental = 'grc',
-                    node_decremental  = 'grm',
-                },
-            },
-            textobjects = {
-                select = {
-                    enable    = true,
-                    lookahead = true,
-                    keymaps = {
-                        ['af'] = '@function.outer',
-                        ['if'] = '@function.inner',
-                        ['ac'] = '@class.outer',
-                        ['ic'] = '@class.inner',
-                    },
-                },
-                move = {
-                    enable     = true,
-                    set_jumps  = true,
-                    goto_next_start = {
-                        [']m'] = '@function.outer',
-                        [']]'] = '@class.inner',
-                    },
-                    goto_next_end = {
-                        [']m'] = '@function.outer',  -- NOTE: duplicates goto_next_start key
-                        [']]'] = '@class.outer',     -- NOTE: duplicates goto_next_start key
-                    },
-                    goto_previous_start = {
-                        ['[m'] = '@function.outer',
-                        ['[['] = '@class.inner',
-                    },
-                    goto_previous_end = {
-                        ['[M'] = '@function.outer',
-                        ['[]'] = '@class.outer',
-                    },
+                    init_selection    = "gnn",
+                    node_incremental  = "grn",
+                    scope_incremental = "grc",
+                    node_decremental  = "grm",
                 },
             },
         },
         config = function(_, opts)
-            ---@diagnostic disable-next-line: missing-fields
-            require('nvim-treesitter.configs').setup(opts)
+            require("nvim-treesitter").setup(opts)
+        end,
+    },
+
+    -- textobjects as its own top-level spec
+    {
+        "nvim-treesitter/nvim-treesitter-textobjects",
+        branch       = "main",
+        dependencies = { "nvim-treesitter/nvim-treesitter" },
+        opts = {
+            select = {
+                enable    = true,
+                lookahead = true,
+                keymaps   = {
+                    ["af"] = "@function.outer",
+                    ["if"] = "@function.inner",
+                    ["ac"] = "@class.outer",
+                    ["ic"] = "@class.inner",
+                },
+            },
+            move = {
+                enable    = true,
+                set_jumps = true,
+                goto_next_start = {
+                    ["]m"] = "@function.outer",
+                    ["]]"] = "@class.inner",
+                },
+                goto_next_end = {
+                    ["]M"] = "@function.outer",
+                    ["]["] = "@class.outer",
+                },
+                goto_previous_start = {
+                    ["[m"] = "@function.outer",
+                    ["[["] = "@class.inner",
+                },
+                goto_previous_end = {
+                    ["[M"] = "@function.outer",
+                    ["[]"] = "@class.outer",
+                },
+            },
+        },
+        config = function(_, opts)
+            require("nvim-treesitter-textobjects").setup(opts)
         end,
     },
 
