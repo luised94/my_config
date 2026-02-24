@@ -1,4 +1,5 @@
 -- === GLOBALS ===
+---@diagnostic disable: undefined-global
 vim.g.mapleader    = " "
 vim.g.maplocalleader = "\\"
 vim.g.have_nerd_font = false
@@ -98,25 +99,6 @@ if fn.has('wsl') == 1 then
 end
 
 -- === UTILITIES ===
-
----@class SearchQFWindow
----@field width   integer
----@field height  integer
----@field padding integer
----@field blend   integer
-
----@class SearchQFConfig
----@field window SearchQFWindow
-
----@type SearchQFConfig
-local SEARCH_QF_CONFIG = {
-    window = {
-        width   = 80,
-        height  = 20,
-        padding = 2,
-        blend   = 10,
-    },
-}
 
 ---@param search_string string
 ---@return boolean
@@ -480,7 +462,7 @@ require("lazy").setup(require("plugins"), {
 
 -- === EXTENSIONS ===
 ---@type string
-local extensions_dir = os.getenv("MC_EXTENSIONS_DIR")
+local extensions_dir = os.getenv("MC_EXTENSIONS_DIR") or ""
 if type(extensions_dir) ~= "string" or extensions_dir == "" then
     extensions_dir = string.format("%s/.config/mc_extensions", os.getenv("HOME"))
 end

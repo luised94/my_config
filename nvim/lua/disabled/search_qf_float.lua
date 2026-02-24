@@ -2,6 +2,24 @@
 -- To re-enable: move create_floating_window into the UTILITIES section of init.lua
 -- and wire it into search_and_show when floating == true
 -- Depends on: SEARCH_QF_CONFIG.window (width, height, padding, blend)
+---@class SearchQFWindow
+---@field width   integer
+---@field height  integer
+---@field padding integer
+---@field blend   integer
+
+---@class SearchQFConfig
+---@field window SearchQFWindow
+
+---@type SearchQFConfig
+local SEARCH_QF_CONFIG = {
+    window = {
+        width   = 80,
+        height  = 20,
+        padding = 2,
+        blend   = 10,
+    },
+}
 
 ---@param config SearchQFConfig
 ---@return integer, integer

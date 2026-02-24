@@ -1,4 +1,5 @@
 -- lua/plugins.lua
+---@diagnostic disable: undefined-global
 local api    = vim.api
 local fn     = vim.fn
 local keymap = vim.keymap
