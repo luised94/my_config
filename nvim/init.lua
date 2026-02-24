@@ -480,45 +480,73 @@ require("lazy").setup(require("plugins"), {
 
 -- === EXTENSIONS ===
 ---@type string
-local extensions_dir = os.getenv("MC_EXTENSIONS_DIR") or
-    string.format("%s/.config/mc_extensions", os.getenv("HOME"))
+local extensions_dir = os.getenv("MC_EXTENSIONS_DIR")
+if type(extensions_dir) ~= "string" or extensions_dir == "" then
+    extensions_dir = string.format("%s/.config/mc_extensions", os.getenv("HOME"))
+end
 
 if fn.isdirectory(extensions_dir) ~= 1 then
     vim.notify(
         string.format("[extensions] directory not found: %s", extensions_dir),
         vim.log.levels.WARN
     )
-else
-    ---@type string[]
-    local lua_files = fn.glob(string.format("%s/*.lua", extensions_dir), false, true)
+    return
+end
 
-    for _, filepath in ipairs(lua_files) do
+---@type string[]
+local lua_files = fn.glob(string.format("%s/*.lua", extensions_dir), false, true)
 
-        local ok, result = pcall(require, module_name)
+for _, filepath in ipairs(lua_files) do
+    local filename = fn.fnamemodify(filepath, ":t")
+
+    -- PHASE 1: Compilation Phase (Data Parsing)
+    -- Translates the text file into an irreducible Lua chunk
+    local chunk, compile_err = loadfile(filepath)
+
+    if not chunk then
+        vim.notify(
+            string.format("[extensions] syntax error in %s:\n%s", filename, compile_err),
+            vim.log.levels.ERROR
+        )
+    else
+        -- PHASE 2: Execution Phase (Data Extraction)
+        -- Evaluates the compiled chunk to retrieve the DOD spec table
+        local ok, spec = pcall(chunk)
+
         if not ok then
             vim.notify(
-                string.format("[extensions] failed to load %s: %s", module_name, tostring(result)),
-                vim.log.levels.WARN
+                string.format("[extensions] runtime error evaluating %s:\n%s", filename, tostring(spec)),
+                vim.log.levels.ERROR
             )
-        elseif type(result) == "table" then
-            if result.keymaps ~= nil then
-                for _, km in ipairs(result.keymaps) do
-                    keymap.set(km[1], km[2], km[3], km[4])
+        elseif type(spec) == "table" then
+            -- PHASE 3: Application Phase (State Mutation)
+            -- Binds the data structures directly to the Neovim engine
+            if type(spec.keymaps) == "table" then
+                for _, km in ipairs(spec.keymaps) do
+                    vim.keymap.set(km[1], km[2], km[3], km[4])
                 end
             end
-            if result.autocmds ~= nil then
-                for _, ac in ipairs(result.autocmds) do
+
+            if type(spec.autocmds) == "table" then
+                for _, ac in ipairs(spec.autocmds) do
                     api.nvim_create_autocmd(ac.event, ac.opts)
                 end
             end
-            if result.commands ~= nil then
-                for _, cmd in ipairs(result.commands) do
+
+            if type(spec.commands) == "table" then
+                for _, cmd in ipairs(spec.commands) do
                     api.nvim_create_user_command(cmd.name, cmd.fn, cmd.opts)
                 end
             end
-            if result.setup ~= nil then
-                result.setup()
+
+            if type(spec.setup) == "function" then
+                spec.setup()
             end
+        else
+            vim.notify(
+                string.format("[extensions] file %s did not return a valid spec table", filename),
+                vim.log.levels.WARN
+            )
         end
     end
 end
