@@ -484,7 +484,6 @@ local extensions_dir = os.getenv("MC_EXTENSIONS_DIR")
 if type(extensions_dir) ~= "string" or extensions_dir == "" then
     extensions_dir = string.format("%s/.config/mc_extensions", os.getenv("HOME"))
 end
-
 if fn.isdirectory(extensions_dir) ~= 1 then
     vim.notify(
         string.format("[extensions] directory not found: %s", extensions_dir),
@@ -497,20 +496,15 @@ end
 local lua_files = fn.glob(string.format("%s/*.lua", extensions_dir), false, true)
 
 for _, filepath in ipairs(lua_files) do
-    local filename = fn.fnamemodify(filepath, ":t")
-
-    -- PHASE 1: Compilation Phase (Data Parsing)
-    -- Translates the text file into an irreducible Lua chunk
+    local filename       = fn.fnamemodify(filepath, ":t")
     local chunk, compile_err = loadfile(filepath)
 
-    if not chunk then
+    if chunk == nil then
         vim.notify(
             string.format("[extensions] syntax error in %s:\n%s", filename, compile_err),
             vim.log.levels.ERROR
         )
     else
-        -- PHASE 2: Execution Phase (Data Extraction)
-        -- Evaluates the compiled chunk to retrieve the DOD spec table
         local ok, spec = pcall(chunk)
 
         if not ok then
@@ -519,26 +513,21 @@ for _, filepath in ipairs(lua_files) do
                 vim.log.levels.ERROR
             )
         elseif type(spec) == "table" then
-            -- PHASE 3: Application Phase (State Mutation)
-            -- Binds the data structures directly to the Neovim engine
             if type(spec.keymaps) == "table" then
                 for _, km in ipairs(spec.keymaps) do
-                    vim.keymap.set(km[1], km[2], km[3], km[4])
+                    keymap.set(km[1], km[2], km[3], km[4])
                 end
             end
-
             if type(spec.autocmds) == "table" then
                 for _, ac in ipairs(spec.autocmds) do
                     api.nvim_create_autocmd(ac.event, ac.opts)
                 end
             end
-
             if type(spec.commands) == "table" then
                 for _, cmd in ipairs(spec.commands) do
                     api.nvim_create_user_command(cmd.name, cmd.fn, cmd.opts)
                 end
             end
-
             if type(spec.setup) == "function" then
                 spec.setup()
             end
@@ -551,4 +540,5 @@ for _, filepath in ipairs(lua_files) do
     end
 end
 
+-- vim: ts=2 sts=2 sw=2 et
 -- vim: ts=2 sts=2 sw=2 et
