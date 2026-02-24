@@ -75,23 +75,6 @@ local BIBTEX_CONFIG = {
 local TREESITTER_CONFIG = {
     ensure_installed = TREESITTER_LANGUAGES,
     auto_install     = true,
-    highlight = {
-        enable                            = true,
-        additional_vim_regex_highlighting = { 'ruby' },
-    },
-    indent = {
-        enable  = true,
-        disable = { 'ruby' },
-    },
-    incremental_selection = {
-        enable  = true,
-        keymaps = {
-            init_selection    = 'gnn',
-            node_incremental  = 'grn',
-            scope_incremental = 'grc',
-            node_decremental  = 'grm',
-        },
-    },
 }
 ---@type table
 local TEXTOBJECTS_CONFIG = {

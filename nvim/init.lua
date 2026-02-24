@@ -394,6 +394,13 @@ api.nvim_create_autocmd('TextYankPost', {
     end,
 })
 
+api.nvim_create_autocmd('FileType', {
+    group    = api.nvim_create_augroup('treesitter-highlight', { clear = true }),
+    callback = function()
+        pcall(vim.treesitter.start)
+    end,
+})
+
 -- === COMMANDS ===
 api.nvim_create_user_command('YankClean', function()
     vim.cmd('normal! gg')
