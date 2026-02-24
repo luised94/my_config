@@ -493,12 +493,32 @@ else
     local lua_files = fn.glob(string.format("%s/*.lua", extensions_dir), false, true)
 
     for _, filepath in ipairs(lua_files) do
-        local ok, err = pcall(dofile, filepath)
+
+        local ok, result = pcall(require, module_name)
         if not ok then
             vim.notify(
-                string.format("[extensions] failed to load %s: %s", filepath, err),
+                string.format("[extensions] failed to load %s: %s", module_name, tostring(result)),
                 vim.log.levels.WARN
             )
+        elseif type(result) == "table" then
+            if result.keymaps ~= nil then
+                for _, km in ipairs(result.keymaps) do
+                    keymap.set(km[1], km[2], km[3], km[4])
+                end
+            end
+            if result.autocmds ~= nil then
+                for _, ac in ipairs(result.autocmds) do
+                    api.nvim_create_autocmd(ac.event, ac.opts)
+                end
+            end
+            if result.commands ~= nil then
+                for _, cmd in ipairs(result.commands) do
+                    api.nvim_create_user_command(cmd.name, cmd.fn, cmd.opts)
+                end
+            end
+            if result.setup ~= nil then
+                result.setup()
+            end
         end
     end
 end
