@@ -137,8 +137,11 @@ They are the right place for personal tooling that builds on installed plugins
 
 **Location:** `$MC_EXTENSIONS_DIR` (default: `~/.config/mc_extensions/`)
 
-Each extension file is executed in isolation. To integrate with Neovim, the
-file must return a spec table. The loader reads the table and applies it.
+Each extension file is loaded by path using `loadfile` (not `require`). This
+means there is no `package.loaded` caching and no module-name dependency -
+the file path is all that matters. Each file executes fresh on every Neovim
+start. To integrate with Neovim, the file must return a spec table. The loader
+reads the table and applies it.
 
 ### Spec table contract
 
@@ -156,7 +159,8 @@ when not needed.
 
 ### Loader application
 
-The loader applies each field in order:
+Files are loaded by path via `loadfile`. If the file returns a table, the
+loader applies each field in order:
 
 ```
 keymaps   keymap.set(km[1], km[2], km[3], km[4])
@@ -176,7 +180,7 @@ If it fails to load, a WARN notification is shown and Neovim continues normally.
 
 -- === GUARDS ===
 -- Hard dependencies. Return nil on failure - loader handles it gracefully.
-if vim == nil then print("not running in neovim"); return end
+-- Note: vim is always present (loadfile executes inside the Neovim environment).
 
 local ok, some_plugin = pcall(require, "some.plugin")
 if not ok then
@@ -309,6 +313,12 @@ non-negotiable.
 - [ ] Every keymap has a `desc` in `"section: action"` format
 
 ---
+## Revert
+If something goes wrong, revert to before merge into main using git.
+```bash
+# git tag pre-phase5-merge
+git reset --hard pre-phase5-merge
+```
 
 ## Reference: Key Decisions
 
