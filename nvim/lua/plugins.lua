@@ -494,6 +494,12 @@ return {
             ---@param server_name string
             ---@return nil
             local function setup_lsp_server(server_name)
+                -- If the server_name from Mason isn't in our LSP_SERVERS list, ignore it!
+                -- This prevents formatters like 'stylua' from being launched as LSPs.
+                if not LSP_SERVERS[server_name] then
+                    return
+                end
+
                 local server = vim.tbl_deep_extend('force', {}, LSP_SERVERS[server_name] or {})
                 server.capabilities = vim.tbl_deep_extend(
                     'force', {}, capabilities, server.capabilities or {}

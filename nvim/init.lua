@@ -452,7 +452,7 @@ vim.opt.rtp:prepend(lazypath)
 
 -- === PLUGINS ===
 local DISABLED_BUILTIN_PLUGINS = {
-    "gzip",
+    --"gzip", # Some plugins require for autoinstallation.
     "matchit",
     "matchparen",
     "netrwPlugin",
