@@ -1,5 +1,4 @@
 -- === GLOBALS ===
----@diagnostic disable: undefined-global
 vim.g.mapleader    = " "
 vim.g.maplocalleader = "\\"
 vim.g.have_nerd_font = false
@@ -399,10 +398,10 @@ api.nvim_create_autocmd('TextYankPost', {
 -- use built-in vim.treesitter.start() via autocmd instead
 api.nvim_create_autocmd('FileType', {
     group    = api.nvim_create_augroup('treesitter-highlight', { clear = true }),
-    callback = function()
-        local ok, err = pcall(vim.treesitter.start)
-        if not ok and err and not err:match('no parser') then
-            vim.notify('Treesitter: ' .. err, vim.log.levels.WARN)
+    callback = function(args)
+        local installed = api.nvim_get_runtime_file('parser/' .. args.match .. '.*', false)
+        if #installed > 0 then
+            pcall(vim.treesitter.start)
         end
     end,
 })
