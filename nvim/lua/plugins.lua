@@ -10,48 +10,9 @@ local keymap = vim.keymap
 local TREESITTER_LANGUAGES = {
     'bash', 'c', 'html', 'lua', 'markdown', 'vim', 'r',
     'markdown_inline', 'yaml', 'vimdoc', 'css', 'dot',
-    'mermaid', 'python', 'latex',
+    'mermaid', 'python', 'latex', 'gitcommit', 'diff', 'git_rebase'
 }
----@class CompletionSource
----@field name string
----@field keyword_length integer|nil
----@field max_item_count integer|nil
----@type CompletionSource[]
-local COMPLETION_SOURCES = {
-    { name = 'nvim_lsp' },
-    { name = 'buffer',            keyword_length = 5, max_item_count = 5 },
-    { name = 'luasnip' },
-    { name = 'path' },
-    { name = 'pandoc_references' },
-    { name = 'otter' },
-    { name = 'nvim_lsp_signature_help' },
-}
----@class CompletionWindow
----@field documentation table
-local COMPLETION_WINDOW = {
-    documentation = { border = 'rounded' },
-}
----@class SnippetFiletypeExtend
----@field ft string
----@field extends string[]
----@type SnippetFiletypeExtend[]
-local SNIPPET_FILETYPE_EXTENDS = {
-    { ft = 'quarto',    extends = { 'markdown' } },
-    { ft = 'rmarkdown', extends = { 'markdown' } },
-}
----@class BibtexCustomFormat
----@field id string
----@field cite_maker string
----@class BibtexConfig
----@field depth integer
----@field global_files string[]
----@field search_keys string[]
----@field citation_format string
----@field citation_trim_firstname boolean
----@field citation_max_auth integer
----@field custom_formats BibtexCustomFormat[]
----@field format string
----@field context boolean
+
 ---@field context_fallback boolean
 ---@field wrap boolean
 ---@type BibtexConfig
