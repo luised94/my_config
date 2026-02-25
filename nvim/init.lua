@@ -394,10 +394,16 @@ api.nvim_create_autocmd('TextYankPost', {
     end,
 })
 
+
+-- main branch: highlighting not handled by nvim-treesitter
+-- use built-in vim.treesitter.start() via autocmd instead
 api.nvim_create_autocmd('FileType', {
     group    = api.nvim_create_augroup('treesitter-highlight', { clear = true }),
     callback = function()
-        pcall(vim.treesitter.start)
+        local ok, err = pcall(vim.treesitter.start)
+        if not ok and err and not err:match('no parser') then
+            vim.notify('Treesitter: ' .. err, vim.log.levels.WARN)
+        end
     end,
 })
 
