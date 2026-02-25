@@ -397,11 +397,14 @@ api.nvim_create_autocmd('TextYankPost', {
 -- main branch: highlighting not handled by nvim-treesitter
 -- use built-in vim.treesitter.start() via autocmd instead
 api.nvim_create_autocmd('FileType', {
-    group    = api.nvim_create_augroup('treesitter-highlight', { clear = true }),
+    group    = vim.api.nvim_create_augroup('treesitter-highlight', { clear = true }),
     callback = function(args)
-        local installed = api.nvim_get_runtime_file('parser/' .. args.match .. '.*', false)
-        if #installed > 0 then
-            pcall(vim.treesitter.start)
+        -- 1. Safely map the filetype to the correct parser name (e.g., 'tex' -> 'latex')
+        local lang = vim.treesitter.language.get_lang(args.match)
+
+        -- 2. If a valid mapping exists, attempt to start treesitter
+        if lang then
+            pcall(vim.treesitter.start, args.buf, lang)
         end
     end,
 })
@@ -534,5 +537,4 @@ for _, filepath in ipairs(lua_files) do
     end
 end
 
--- vim: ts=2 sts=2 sw=2 et
 -- vim: ts=2 sts=2 sw=2 et

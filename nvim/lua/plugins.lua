@@ -264,24 +264,12 @@ return {
         branch = 'main',
         build  = ':TSUpdate',
         config = function()
-            -- main branch: no auto_install/ensure_installed support
-            -- collect installed parsers from runtime path
-            local installed = {}
-            for _, path in ipairs(api.nvim_get_runtime_file('parser/*', true)) do
-                table.insert(installed, fn.fnamemodify(path, ':t:r'))
-            end
+            -- 1. Install missing parsers (automatically skips already installed ones)
+            require('nvim-treesitter').install(TREESITTER_LANGUAGES)
 
-            -- install any missing parsers
-            for _, lang in ipairs(TREESITTER_LANGUAGES) do
-                if not vim.tbl_contains(installed, lang) then
-                    vim.notify('Installing treesitter parser: ' .. lang, vim.log.levels.INFO)
-                    vim.cmd('TSInstall ' .. lang)
-                end
-            end
-
-            local ts = require('nvim-treesitter')
-            ts.setup(TREESITTER_CONFIG)
-
+            -- 2. Call setup only if you need to set a custom install directory
+            -- Otherwise, you can completely remove setup() 
+            require('nvim-treesitter').setup()
         end,
     },
     {
