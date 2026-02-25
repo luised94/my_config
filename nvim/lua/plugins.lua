@@ -13,9 +13,9 @@ local TREESITTER_LANGUAGES = {
     'mermaid', 'python', 'latex', 'gitcommit', 'diff', 'git_rebase'
 }
 
+---@type BibtexConfig
 ---@field context_fallback boolean
 ---@field wrap boolean
----@type BibtexConfig
 local BIBTEX_CONFIG = {
     depth                   = 1,
     global_files            = { '~/mylibrary.bib' },
@@ -120,6 +120,30 @@ local CMP_SH_SOURCES = {
     { name = 'buffer' },
     { name = 'path' },
 }
+---@class SnippetFiletypeExtend
+---@field ft      string
+---@field extends string[]
+
+---@type SnippetFiletypeExtend[]
+local SNIPPET_FILETYPE_EXTENDS = {
+    { ft = 'quarto', extends = { 'markdown' } },
+}
+
+---@class CmpSource
+---@field name string
+
+---@type CmpSource[]
+local COMPLETION_SOURCES = {
+    { name = 'nvim_lsp' },
+    { name = 'luasnip' },
+    { name = 'buffer' },
+    { name = 'path' },
+    { name = 'pandoc_references' },
+    { name = 'otter' },
+}
+---@type table
+local COMPLETION_WINDOW = {}
+
 ---@type table
 local QUARTO_CONFIG = {
     lspFeatures = {
