@@ -546,24 +546,6 @@ status_all_repos() {
 # ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
 # FLAGS      : --delete  - Actually delete branches (default is dry-run)
 # RETURNS    : 0 if successful, 1 otherwise
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# FUNCTION   : prune_merged_branches
-# PURPOSE    : Remove local branches fully merged into their repo's main branch.
-# USAGE      : prune_merged_branches [--delete] [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
-# FLAGS      : --delete  - Actually delete branches (default is dry-run)
-# RETURNS    : 0 if successful, 1 otherwise
-# NOTE       : Does not recurse into submodules. Worktree-linked branches and
-#              shared worktree repos are handled safely (see below).
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# FUNCTION   : prune_merged_branches
-# PURPOSE    : Remove local branches fully merged into their repo's main branch.
-# USAGE      : prune_merged_branches [--delete] [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
-# FLAGS      : --delete  - Actually delete branches (default is dry-run)
-# RETURNS    : 0 if successful, 1 otherwise
 # NOTE       : Does not recurse into submodules. Worktree-linked branches and
 #              shared worktree repos are handled safely (see below).
 # ------------------------------------------------------------------------------
@@ -759,4 +741,128 @@ prune_merged_branches() {
   fi
 
   return 0
+}
+
+# ------------------------------------------------------------------------------
+# FUNCTION   : stash_report
+# PURPOSE    : Report stash entries across all git repositories in a directory.
+# USAGE      : stash_report [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# RETURNS    : 0 if no stashes found, 1 if stashes exist
+# ------------------------------------------------------------------------------
+stash_report() {
+  # --- Help ---
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
+    printf "Report stash entries across all git repositories in a directory.\n\n"
+    printf "Arguments:\n"
+    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "Options:\n"
+    printf "  -h, --help  Show this help message\n"
+    return 0
+  fi
+
+  local repos_root="${1:-$HOME/personal_repos}"
+
+  # --- Validate directory ---
+  if [[ ! -d "$repos_root" ]]; then
+    msg_error "Repository root does not exist: $repos_root"
+    return 1
+  fi
+
+  # --- Collect repositories ---
+  shopt -s nullglob
+  local repo_paths=("$repos_root"/*/)
+  shopt -u nullglob
+
+  if (( ${#repo_paths[@]} == 0 )); then
+    msg_warn "No subdirectories found in $repos_root"
+    return 0
+  fi
+
+  # --- Deduplicate shared git directories (worktrees) ---
+  local -A seen_git_dirs=()
+
+  # --- Process each repository ---
+  local total_stashes=0
+  local repos_with_stashes=0
+  local auto_stash_count=0
+
+  for repo_path in "${repo_paths[@]}"; do
+    repo_path="${repo_path%/}"
+    local repo_name="$(basename "$repo_path")"
+
+    # Skip non-git directories
+    if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+      continue
+    fi
+
+    # Deduplicate worktrees
+    local git_dir
+    git_dir=$(git -C "$repo_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) \
+      || git_dir=$(git -C "$repo_path" rev-parse --git-dir 2>/dev/null)
+
+    if [[ -n "${seen_git_dirs[$git_dir]+x}" ]]; then
+      continue
+    fi
+    seen_git_dirs[$git_dir]="$repo_name"
+
+    # Resolve display name for worktree families
+    local display_name="$repo_name"
+    local main_wt_path
+    main_wt_path=$(git -C "$repo_path" worktree list --porcelain 2>/dev/null \
+      | awk 'NR==1 && /^worktree /{print $2}')
+    if [[ -n "$main_wt_path" && "$main_wt_path" != "$repo_path" ]]; then
+      display_name="$(basename "$main_wt_path") (via $repo_name)"
+    fi
+
+    # Read stash entries
+    local stash_entries
+    stash_entries=$(git -C "$repo_path" stash list 2>/dev/null)
+    [[ -z "$stash_entries" ]] && continue
+
+    local count
+    count=$(printf '%s\n' "$stash_entries" | wc -l)
+    count=$((count + 0))
+
+    repos_with_stashes=$((repos_with_stashes + 1))
+    total_stashes=$((total_stashes + count))
+
+    msg_info "$display_name - $count stash(es):"
+
+    while IFS= read -r entry; do
+      # entry format: stash@{N}: WIP on branch: <hash> <message>
+      #           or: stash@{N}: On branch: <message>
+      local stash_ref="${entry%%:*}"
+      local stash_rest="${entry#*: }"
+
+      # Extract age from stash ref
+      local stash_date
+      stash_date=$(git -C "$repo_path" log -1 --format="%ar" "$stash_ref" 2>/dev/null)
+
+      # Flag auto-stashes from pull_all_repos
+      local auto_flag=""
+      if [[ "$entry" == *"auto-stash before pull"* ]]; then
+        auto_flag=" [auto]"
+        auto_stash_count=$((auto_stash_count + 1))
+      fi
+
+      msg_info "  $stash_ref  ($stash_date)${auto_flag}"
+      msg_info "    $stash_rest"
+    done <<< "$stash_entries"
+  done
+
+  # --- Summary ---
+  printf "\n"
+  if (( total_stashes == 0 )); then
+    msg_info "No stashes found"
+    return 0
+  fi
+
+  msg_info "$total_stashes stash(es) across $repos_with_stashes repo(s)"
+  if (( auto_stash_count > 0 )); then
+    msg_warn "$auto_stash_count auto-stash(es) from pull_all_repos"
+  fi
+
+  return 1
 }
