@@ -259,6 +259,13 @@ pull_all_repos() {
 # ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
 # RETURNS    : 0 if all repos pushed successfully, 1 otherwise
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# FUNCTION   : push_all_repos
+# PURPOSE    : Push local commits for all git repositories in a directory.
+# USAGE      : push_all_repos [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# RETURNS    : 0 if all repos pushed successfully, 1 otherwise
+# ------------------------------------------------------------------------------
 push_all_repos() {
   # --- Help ---
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -370,7 +377,7 @@ push_all_repos() {
   # --- Early exit if nothing to push ---
   if (( ${#pushable_repos[@]} == 0 )); then
     msg_info "Nothing to push - all repos are up to date"
-    return (( ${#diverged_repos[@]} > 0 ))
+    (( ${#diverged_repos[@]} == 0 ))
   fi
 
   msg_info "Found ${#pushable_repos[@]} repo(s) with unpushed commits"
