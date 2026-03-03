@@ -407,3 +407,135 @@ push_all_repos() {
 
   (( fail_count == 0 && ${#diverged_repos[@]} == 0 ))
 }
+# ------------------------------------------------------------------------------
+# FUNCTION   : status_all_repos
+# PURPOSE    : Display a compact status overview for all git repos in a directory.
+# USAGE      : status_all_repos [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# RETURNS    : 0 if all repos are clean and synced, 1 otherwise
+# ------------------------------------------------------------------------------
+status_all_repos() {
+  # --- Help ---
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
+    printf "Display a compact status overview for all git repos in a directory.\n\n"
+    printf "Arguments:\n"
+    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "Options:\n"
+    printf "  -h, --help  Show this help message\n"
+    return 0
+  fi
+
+  local repos_root="${1:-$HOME/personal_repos}"
+
+  # --- Validate directory ---
+  if [[ ! -d "$repos_root" ]]; then
+    msg_error "Repository root does not exist: $repos_root"
+    return 1
+  fi
+
+  # --- Collect repositories ---
+  shopt -s nullglob
+  local repo_paths=("$repos_root"/*/)
+  shopt -u nullglob
+
+  if (( ${#repo_paths[@]} == 0 )); then
+    msg_warn "No subdirectories found in $repos_root"
+    return 0
+  fi
+
+  # --- Table header ---
+  printf "%-25s %-15s %-12s %-8s %-8s\n" "REPO" "BRANCH" "SYNC" "DIRTY" "STASH"
+  printf "%-25s %-15s %-12s %-8s %-8s\n" "----" "------" "----" "-----" "-----"
+
+  # --- Process each repository ---
+  local has_issues=false
+  local repo_name branch sync_status dirty_flag stash_count
+
+  for repo_path in "${repo_paths[@]}"; do
+    repo_path="${repo_path%/}"
+    repo_name="$(basename "$repo_path")"
+
+    # Skip non-git directories
+    if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+      msg_debug "Skipping $repo_name (not a git repository)"
+      continue
+    fi
+
+    # --- Branch ---
+    branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || branch="(detached)"
+
+    # --- Sync status ---
+    sync_status="-"
+    local remote="origin"
+    local tracking="${remote}/${branch}"
+    local remote_unavailable=false
+    local url
+    url=$(git -C "$repo_path" remote get-url "$remote" 2>/dev/null)
+
+    if [[ "$url" == /* || "$url" == file://* ]]; then
+      [[ ! -d "${url#file://}" ]] && remote_unavailable=true
+    fi
+
+    if [[ "$remote_unavailable" == true ]]; then
+      sync_status="no remote"
+      has_issues=true
+    elif [[ "$branch" == "(detached)" ]]; then
+      sync_status="detached"
+      has_issues=true
+    elif git -C "$repo_path" rev-parse --verify "$tracking" >/dev/null 2>&1; then
+      local ahead behind
+      ahead=$(git -C "$repo_path" rev-list --count "${tracking}..HEAD" 2>/dev/null) || ahead=0
+      behind=$(git -C "$repo_path" rev-list --count "HEAD..${tracking}" 2>/dev/null) || behind=0
+
+      if (( ahead > 0 && behind > 0 )); then
+        sync_status="diverged"
+        has_issues=true
+      elif (( ahead > 0 )); then
+        sync_status="+${ahead} ahead"
+        has_issues=true
+      elif (( behind > 0 )); then
+        sync_status="-${behind} behind"
+        has_issues=true
+      else
+        sync_status="synced"
+      fi
+    else
+      sync_status="no tracking"
+      has_issues=true
+    fi
+
+    # --- Dirty working tree ---
+    if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
+      dirty_flag="yes"
+      has_issues=true
+    else
+      dirty_flag="-"
+    fi
+
+    # --- Stash count ---
+    stash_count=$(git -C "$repo_path" stash list 2>/dev/null | wc -l)
+    stash_count=$((stash_count + 0))  # trim whitespace from wc
+    if (( stash_count > 0 )); then
+      has_issues=true
+    fi
+
+    # --- Print row ---
+    printf "%-25s %-15s %-12s %-8s %-8s\n" \
+      "$repo_name" \
+      "$branch" \
+      "$sync_status" \
+      "$dirty_flag" \
+      "${stash_count:-0}"
+  done
+
+  # --- Footer ---
+  printf "\n"
+  if [[ "$has_issues" == true ]]; then
+    msg_warn "Some repos need attention"
+  else
+    msg_info "All repos clean and synced"
+  fi
+
+  [[ "$has_issues" == false ]]
+}
