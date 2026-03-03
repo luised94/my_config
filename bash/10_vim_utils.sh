@@ -178,7 +178,7 @@ vimpattern() {
       return 1
   fi
 
-  if ! _is_git_repo; then
+  if ! _is_inside_git_repo; then
     msg_error "This command requires a git repository."
     return 1
   fi
@@ -205,7 +205,7 @@ vimconflict() {
     return 0
   fi
 
-  if ! _is_git_repo; then
+  if ! _is_inside_git_repo; then
     msg_error "This command requires a git repository."
     return 1
   fi
@@ -232,7 +232,7 @@ vimmodified() {
     return 0
   fi
 
-  if ! _is_git_repo; then
+  if ! _is_inside_git_repo; then
     msg_error "This command requires a git repository."
     return 1
   fi
@@ -325,7 +325,7 @@ vimdiff() {
         return 0
     fi
 
-    if ! _is_git_repo; then
+    if ! _is_inside_git_repo; then
         msg_error "This command requires a git repository."
         return 1
     fi

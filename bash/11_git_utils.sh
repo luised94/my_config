@@ -539,3 +539,168 @@ status_all_repos() {
 
   [[ "$has_issues" == false ]]
 }
+
+# ------------------------------------------------------------------------------
+# FUNCTION   : prune_merged_branches
+# PURPOSE    : Remove local branches fully merged into their repo's main branch.
+# USAGE      : prune_merged_branches [--delete] [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# FLAGS      : --delete  - Actually delete branches (default is dry-run)
+# RETURNS    : 0 if successful, 1 otherwise
+# ------------------------------------------------------------------------------
+#prune_merged_branches() {
+#  # --- Help ---
+#  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+#    printf "Usage: %s [--delete] [directory]\n\n" "${FUNCNAME[0]}"
+#    printf "Remove local branches fully merged into their repo's main branch.\n\n"
+#    printf "Arguments:\n"
+#    printf "  directory    Root containing repos (default: \$HOME/personal_repos)\n\n"
+#    printf "Options:\n"
+#    printf "  --delete     Actually delete branches (default is dry-run)\n"
+#    printf "  -h, --help   Show this help message\n"
+#    return 0
+#  fi
+#
+#  # --- Parse arguments ---
+#  local delete=false
+#  local repos_root=""
+#
+#  while (( $# > 0 )); do
+#    case "$1" in
+#      --delete) delete=true; shift ;;
+#      *)        repos_root="$1"; shift ;;
+#    esac
+#  done
+#
+#  repos_root="${repos_root:-$HOME/personal_repos}"
+#
+#  # --- Validate directory ---
+#  if [[ ! -d "$repos_root" ]]; then
+#    msg_error "Repository root does not exist: $repos_root"
+#    return 1
+#  fi
+#
+#  # --- Protected branch names (never pruned) ---
+#  local protected_branches=("main" "master" "develop")
+#
+#  # --- Collect repositories ---
+#  shopt -s nullglob
+#  local repo_paths=("$repos_root"/*/)
+#  shopt -u nullglob
+#
+#  if (( ${#repo_paths[@]} == 0 )); then
+#    msg_warn "No subdirectories found in $repos_root"
+#    return 0
+#  fi
+#
+#  if [[ "$delete" == false ]]; then
+#    msg_info "Dry-run mode - pass --delete to remove branches"
+#  fi
+#
+#  # --- Process each repository ---
+#  local total_prunable=0
+#  local total_deleted=0
+#  local total_worktree_skips=0
+#  local repo_name
+#
+#  for repo_path in "${repo_paths[@]}"; do
+#    repo_path="${repo_path%/}"
+#    repo_name="$(basename "$repo_path")"
+#
+#    # Skip non-git directories
+#    if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+#      msg_debug "Skipping $repo_name (not a git repository)"
+#      continue
+#    fi
+#
+#    # Determine the main branch for this repo
+#    local main_branch=""
+#    for candidate in main master; do
+#      if git -C "$repo_path" rev-parse --verify "$candidate" >/dev/null 2>&1; then
+#        main_branch="$candidate"
+#        break
+#      fi
+#    done
+#
+#    if [[ -z "$main_branch" ]]; then
+#      msg_debug "Skipping $repo_name (no main/master branch found)"
+#      continue
+#    fi
+#
+#    # Current branch (never prune)
+#    local current_branch
+#    current_branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
+#
+#    # Collect worktree branches for this repo
+#    local -a worktree_branches=()
+#    while IFS= read -r wt_line; do
+#      [[ -n "$wt_line" ]] && worktree_branches+=("$wt_line")
+#    done < <(git -C "$repo_path" worktree list --porcelain 2>/dev/null \
+#      | awk '/^branch refs\/heads\//{sub("refs/heads/", ""); print $2}')
+#
+#    # Find merged branches
+#    local -a prunable=()
+#    while IFS= read -r branch; do
+#      # Trim leading whitespace from git branch output
+#      branch="${branch#"${branch%%[![:space:]]*}"}"
+#      [[ -z "$branch" ]] && continue
+#
+#      # Skip protected branches
+#      local is_protected=false
+#      for p in "${protected_branches[@]}"; do
+#        [[ "$branch" == "$p" ]] && is_protected=true && break
+#      done
+#      [[ "$is_protected" == true ]] && continue
+#
+#      # Skip current branch
+#      [[ "$branch" == "$current_branch" ]] && continue
+#
+#      prunable+=("$branch")
+#    done < <(git -C "$repo_path" branch --merged "$main_branch" 2>/dev/null)
+#
+#    (( ${#prunable[@]} == 0 )) && continue
+#
+#    msg_info "$repo_name - ${#prunable[@]} merged branch(es):"
+#
+#    for branch in "${prunable[@]}"; do
+#      # Check if branch is tied to a worktree
+#      local is_worktree=false
+#      for wt in "${worktree_branches[@]}"; do
+#        [[ "$branch" == "$wt" ]] && is_worktree=true && break
+#      done
+#
+#      if [[ "$is_worktree" == true ]]; then
+#        msg_warn "  $branch (worktree - skipping)"
+#        total_worktree_skips=$((total_worktree_skips + 1))
+#        continue
+#      fi
+#
+#      if [[ "$delete" == true ]]; then
+#        if git -C "$repo_path" branch -d "$branch" >/dev/null 2>&1; then
+#          msg_info "  deleted: $branch"
+#          total_deleted=$((total_deleted + 1))
+#        else
+#          msg_error "  failed to delete: $branch"
+#        fi
+#      else
+#        msg_info "  $branch"
+#      fi
+#
+#      total_prunable=$((total_prunable + 1))
+#    done
+#  done
+#
+#  # --- Summary ---
+#  printf "\n"
+#  if [[ "$delete" == true ]]; then
+#    msg_info "Deleted $total_deleted branch(es)"
+#  else
+#    msg_info "Found $total_prunable prunable branch(es)"
+#  fi
+#
+#  if (( total_worktree_skips > 0 )); then
+#    msg_warn "$total_worktree_skips branch(es) skipped (linked to worktrees)"
+#  fi
+#
+#  return 0
+#}
