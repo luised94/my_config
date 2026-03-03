@@ -6,6 +6,7 @@ date: 2025-06-16
 # Overview
 
 Setup the basic components of a development environment for the programming language, javascript/typescript.
+Also required for some Mason packages (nvim setup.)
 
 ## Instructions
 ### Install nvm
@@ -13,6 +14,7 @@ Skip node if you use nvm.
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+nvm install --lts
 # confirm node -v
 ```
 ### Download node

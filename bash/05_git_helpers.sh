@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------------------
 
 # Check that user is in git repo.
-_is_git_repo() {
+_is_inside_git_repo() {
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         return 0
     else
