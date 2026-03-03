@@ -244,3 +244,114 @@ pull_all_repos() {
 
   (( success_count == total_count ))
 }
+
+# ------------------------------------------------------------------------------
+# FUNCTION   : push_all_repos
+# PURPOSE    : Push local commits for all git repositories in a directory.
+# USAGE      : push_all_repos [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# RETURNS    : 0 if all repos pushed successfully, 1 otherwise
+# ------------------------------------------------------------------------------
+push_all_repos() {
+  # --- Help ---
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
+    printf "Push local commits for all git repositories in a directory.\n\n"
+    printf "Arguments:\n"
+    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "Options:\n"
+    printf "  -h, --help  Show this help message\n"
+    return 0
+  fi
+
+  local repos_root="${1:-$HOME/personal_repos}"
+
+  # --- Validate directory ---
+  if [[ ! -d "$repos_root" ]]; then
+    msg_error "Repository root does not exist: $repos_root"
+    return 1
+  fi
+
+  # --- Collect repositories ---
+  shopt -s nullglob
+  local repo_paths=("$repos_root"/*/)
+  shopt -u nullglob
+
+  if (( ${#repo_paths[@]} == 0 )); then
+    msg_warn "No subdirectories found in $repos_root"
+    return 0
+  fi
+
+  # --- Identify repos with unpushed commits ---
+  local pushable_repos=()
+  local repo_name
+
+  for repo_path in "${repo_paths[@]}"; do
+    repo_path="${repo_path%/}"
+    repo_name="$(basename "$repo_path")"
+
+    # Skip non-git directories
+    if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
+      msg_debug "Skipping $repo_name (not a git repository)"
+      continue
+    fi
+
+    # Check if origin is available
+    local remote_unavailable=false
+    local remote="origin"
+    local url
+    url=$(git -C "$repo_path" remote get-url "$remote" 2>/dev/null)
+
+    if [[ "$url" == /* || "$url" == file://* ]]; then
+      [[ ! -d "${url#file://}" ]] && remote_unavailable=true
+    fi
+
+    if [[ "$remote_unavailable" == true ]]; then
+      msg_warn "Remote unavailable: $repo_name"
+      continue
+    fi
+
+    # Check for unpushed commits on the current branch
+    local branch
+    branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
+    local ahead
+    ahead=$(git -C "$repo_path" rev-list --count "${remote}/${branch}..HEAD" 2>/dev/null) || continue
+
+    if (( ahead > 0 )); then
+      pushable_repos+=("$repo_path")
+    fi
+  done
+
+  # --- Early exit if nothing to push ---
+  if (( ${#pushable_repos[@]} == 0 )); then
+    msg_info "Nothing to push - all repos are up to date"
+    return 0
+  fi
+
+  msg_info "Found ${#pushable_repos[@]} repo(s) with unpushed commits"
+
+  # --- Push each repository ---
+  local success_count=0
+  local fail_count=0
+  local total_count=${#pushable_repos[@]}
+
+  for repo_path in "${pushable_repos[@]}"; do
+    repo_name="$(basename "$repo_path")"
+    msg_info "Pushing: $repo_name"
+
+    if git -C "$repo_path" push; then
+      success_count=$((success_count + 1))
+    else
+      msg_error "Push failed for $repo_name"
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
+  # --- Summary ---
+  msg_info "Complete: $success_count/$total_count repos pushed"
+  if (( fail_count > 0 )); then
+    msg_warn "$fail_count repo(s) failed to push"
+  fi
+
+  (( fail_count == 0 ))
+}
