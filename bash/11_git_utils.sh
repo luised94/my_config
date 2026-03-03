@@ -202,8 +202,10 @@ pull_all_repos() {
     # Check if origin is available. Deals with repos with local origins (like a USB)
     remote_unavailable=false
     remote="origin"
+
+    remote_unavailable=false
     url=$(git -C "$repo_path" remote get-url "$remote" 2>/dev/null)
-    
+
     if [[ "$url" == /* || "$url" == file://* ]]; then
       [[ ! -d "${url#file://}" ]] && remote_unavailable=true
     fi
@@ -211,7 +213,6 @@ pull_all_repos() {
     if [[ "$remote_unavailable" == true ]]; then
       msg_warn "Remote unavailable: ${repo_path##*/}"
       continue
-
     fi
 
     msg_info "Pulling: $repo_name"
