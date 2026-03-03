@@ -557,6 +557,16 @@ status_all_repos() {
 # NOTE       : Does not recurse into submodules. Worktree-linked branches and
 #              shared worktree repos are handled safely (see below).
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# FUNCTION   : prune_merged_branches
+# PURPOSE    : Remove local branches fully merged into their repo's main branch.
+# USAGE      : prune_merged_branches [--delete] [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# FLAGS      : --delete  - Actually delete branches (default is dry-run)
+# RETURNS    : 0 if successful, 1 otherwise
+# NOTE       : Does not recurse into submodules. Worktree-linked branches and
+#              shared worktree repos are handled safely (see below).
+# ------------------------------------------------------------------------------
 prune_merged_branches() {
   # --- Help ---
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -633,9 +643,19 @@ prune_merged_branches() {
       || git_dir=$(git -C "$repo_path" rev-parse --git-dir 2>/dev/null)
 
     if [[ -n "${seen_git_dirs[$git_dir]+x}" ]]; then
-      msg_debug "Skipping $repo_name (shared git dir already processed via ${seen_git_dirs[$git_dir]})"
+      msg_debug "Skipping $repo_name (shared git dir, processed via ${seen_git_dirs[$git_dir]})"
       continue
     fi
+
+    # For worktree families, resolve the main worktree name for clearer output
+    local display_name="$repo_name"
+    local main_wt_path
+    main_wt_path=$(git -C "$repo_path" worktree list --porcelain 2>/dev/null \
+      | awk 'NR==1 && /^worktree /{print $2}')
+    if [[ -n "$main_wt_path" && "$main_wt_path" != "$repo_path" ]]; then
+      display_name="$(basename "$main_wt_path") (via $repo_name)"
+    fi
+
     seen_git_dirs[$git_dir]="$repo_name"
 
     # Determine the main branch for this repo
@@ -700,7 +720,7 @@ prune_merged_branches() {
 
     # Report worktree-protected branches
     if (( ${#worktree_skipped[@]} > 0 )); then
-      msg_info "$repo_name - ${#worktree_skipped[@]} worktree branch(es) protected:"
+      msg_info "$display_name - ${#worktree_skipped[@]} worktree branch(es) protected:"
       for branch in "${worktree_skipped[@]}"; do
         msg_debug "  $branch (worktree)"
       done
@@ -708,7 +728,7 @@ prune_merged_branches() {
 
     (( ${#prunable[@]} == 0 )) && continue
 
-    msg_info "$repo_name - ${#prunable[@]} merged branch(es):"
+    msg_info "$display_name - ${#prunable[@]} merged branch(es):"
 
     for branch in "${prunable[@]}"; do
       if [[ "$delete" == true ]]; then
