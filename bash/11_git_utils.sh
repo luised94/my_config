@@ -252,6 +252,13 @@ pull_all_repos() {
 # ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
 # RETURNS    : 0 if all repos pushed successfully, 1 otherwise
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# FUNCTION   : push_all_repos
+# PURPOSE    : Push local commits for all git repositories in a directory.
+# USAGE      : push_all_repos [directory]
+# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# RETURNS    : 0 if all repos pushed successfully, 1 otherwise
+# ------------------------------------------------------------------------------
 push_all_repos() {
   # --- Help ---
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -284,6 +291,8 @@ push_all_repos() {
 
   # --- Identify repos with unpushed commits ---
   local pushable_repos=()
+  local diverged_repos=()
+  local dirty_repos=()
   local repo_name
 
   for repo_path in "${repo_paths[@]}"; do
@@ -311,21 +320,57 @@ push_all_repos() {
       continue
     fi
 
-    # Check for unpushed commits on the current branch
+    # Warn about dirty working tree (staged or unstaged changes)
+    if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
+      dirty_repos+=("$repo_name")
+    elif [[ -n "$(git -C "$repo_path" diff --cached --name-only 2>/dev/null)" ]]; then
+      # diff-index catches both, but just in case: check staged explicitly
+      dirty_repos+=("$repo_name")
+    fi
+
+    # Determine current branch and its tracking ref
     local branch
     branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
-    local ahead
-    ahead=$(git -C "$repo_path" rev-list --count "${remote}/${branch}..HEAD" 2>/dev/null) || continue
+    local tracking="${remote}/${branch}"
 
-    if (( ahead > 0 )); then
+    # Skip if no remote tracking branch exists
+    if ! git -C "$repo_path" rev-parse --verify "$tracking" >/dev/null 2>&1; then
+      msg_debug "Skipping $repo_name (no tracking branch: $tracking)"
+      continue
+    fi
+
+    local ahead behind
+    ahead=$(git -C "$repo_path" rev-list --count "${tracking}..HEAD" 2>/dev/null) || continue
+    behind=$(git -C "$repo_path" rev-list --count "HEAD..${tracking}" 2>/dev/null) || continue
+
+    if (( ahead > 0 && behind > 0 )); then
+      # History has diverged - likely an amend or rebase
+      diverged_repos+=("$repo_name")
+    elif (( ahead > 0 )); then
       pushable_repos+=("$repo_path")
     fi
   done
 
+  # --- Report diverged repos (do NOT auto-force-push) ---
+  if (( ${#diverged_repos[@]} > 0 )); then
+    msg_warn "${#diverged_repos[@]} repo(s) have diverged history (amend/rebase?) - skipping:"
+    for name in "${diverged_repos[@]}"; do
+      msg_warn "  $name  (resolve manually with: git push --force-with-lease)"
+    done
+  fi
+
+  # --- Report dirty working trees ---
+  if (( ${#dirty_repos[@]} > 0 )); then
+    msg_warn "${#dirty_repos[@]} repo(s) have uncommitted changes (won't be pushed):"
+    for name in "${dirty_repos[@]}"; do
+      msg_warn "  $name"
+    done
+  fi
+
   # --- Early exit if nothing to push ---
   if (( ${#pushable_repos[@]} == 0 )); then
     msg_info "Nothing to push - all repos are up to date"
-    return 0
+    return (( ${#diverged_repos[@]} > 0 ))
   fi
 
   msg_info "Found ${#pushable_repos[@]} repo(s) with unpushed commits"
@@ -353,5 +398,5 @@ push_all_repos() {
     msg_warn "$fail_count repo(s) failed to push"
   fi
 
-  (( fail_count == 0 ))
+  (( fail_count == 0 && ${#diverged_repos[@]} == 0 ))
 }
