@@ -1,3 +1,52 @@
+# ==============================================================================
+# GIT REPOSITORY UTILITIES
+# ==============================================================================
+#
+# Batch operations for managing multiple git repositories under a single root
+# directory, with first-class support for worktrees.
+#
+# DIRECTORY LAYOUT
+#   $HOME/personal_repos/ (repos_root default.)
+#     reponame/                  Main worktree (holds the .git directory)
+#     reponame-branch_name/     Linked worktree (points back to main's .git)
+#     reponame-scope-branch/    Nested worktree naming is supported
+#
+# WORKTREE MODEL
+#   A main worktree and its linked worktrees share a single git directory.
+#   All branches, stashes, and refs exist once in the shared store. Functions
+#   that modify refs (prune, rebase) deduplicate via git-common-dir to avoid
+#   operating on the same git database multiple times.
+#
+# ASSUMPTIONS
+#   - All repos live as immediate subdirectories of the repos root (no nesting).
+#   - The remote is always named "origin".
+#   - Each repo has a primary branch named "main" or "master" (checked in that
+#     order). Both are protected from deletion alongside "develop".
+#   - Local-path remotes (USB, NAS) may be offline; functions detect and skip.
+#   - Submodules are not traversed. Operations apply to top-level repos only.
+#
+# CONVENTIONS
+#   - pull_all_repos auto-stashes with a tagged message ("auto-stash before
+#     pull <timestamp>") so stash_report can identify and flag them.
+#   - Pulls use --ff-only; diverged histories are never force-resolved.
+#   - Pushes use regular push; diverged histories are reported and skipped.
+#     Manual resolution with --force-with-lease is left to the user.
+#   - prune_merged_branches is dry-run by default; --delete is opt-in.
+#
+# DEPENDENCIES
+#   - git (2.36+ recommended for worktree list --porcelain and + prefix)
+#   - msg_info, msg_warn, msg_error, msg_debug helpers (defined elsewhere)
+#
+# FUNCTION ORDER (lifecycle: inspect -> sync -> create -> mutate -> destroy)
+#   status_all_repos        Read-only overview of all repos
+#   stash_report            Read-only stash inventory
+#   pull_all_repos          Fetch and fast-forward all repos
+#   push_all_repos          Push unpushed commits
+#   new_worktree            Create a linked worktree
+#   rebase_worktrees_on_main  Rebase worktree branches onto main
+#   prune_merged_branches   Delete fully-merged local branches
+# RELATED
+# ==============================================================================
 # ------------------------------------------------------------------------------
 # FUNCTION   : status_all_repos
 # PURPOSE    : Display a compact status overview for all git repos in a directory.
