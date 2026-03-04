@@ -8,6 +8,33 @@
 # Version: 2.0.0
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+usage() {
+  printf "Usage: %s [-u username] [-h]\n\n" "$(basename "$0")"
+  printf "Clone missing repos from a GitHub user account.\n\n"
+  printf "Options:\n"
+  printf "  -u username  GitHub username (default: luised94)\n"
+  printf "  -h, --help   Show this help message\n"
+  exit 0
+}
+# ------------------------------------------------------------------------------
+
+# --- Parse arguments ---
+USERNAME="luised94"
+
+while (( $# > 0 )); do
+  case "$1" in
+    -h|--help) usage ;;
+    -u)
+      [[ -z "${2:-}" ]] && { echo "Error: -u requires a username" >&2; exit 1; }
+      USERNAME="$2"; shift 2 ;;
+    *)
+      echo "Error: Unknown option: $1" >&2
+      echo "Run '$(basename "$0") -h' for usage." >&2
+      exit 1 ;;
+  esac
+done
+
 echo "========== Start: ${BASH_SOURCE[0]} =========="
 
 if ! command -v git >/dev/null 2>&1; then
@@ -21,9 +48,8 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
-USERNAME="luised94"
 # Set to "https" or "ssh"
-CLONE_PROTOCOL="https"
+CLONE_PROTOCOL="ssh"
 
 echo "--- Script parameters ---"
 echo "ROOT DIRECTORY: ${REPOSITORIES_ROOT}"
