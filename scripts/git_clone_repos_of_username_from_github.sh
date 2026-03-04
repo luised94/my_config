@@ -1,77 +1,108 @@
 #!/bin/bash
 # git_download_repos_from_username.sh
-# Download all repos from github using API.
-# Uses username and set root directory
+# Clone missing repos from a GitHub user account.
 # Does not access private repos. Must use API key for that.
-# Date: 2025-09-08
-# Version: 1.0.0
+# NOTE: GitHub API caps at 100 repos per page. If you exceed 100 repos,
+#       pagination via the Link response header is required.
+# Date: 2026-03-03
+# Version: 2.0.0
+set -euo pipefail
 
 echo "========== Start: ${BASH_SOURCE[0]} =========="
+
 if ! command -v git >/dev/null 2>&1; then
-  echo "Git is not installed" >&2
-  return 1
+  echo "Error: Git is not installed" >&2
+  exit 1
 fi
 
-REPOSITORIES_ROOT="$HOME/personal_repos/"
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is not installed (apt install jq / brew install jq)" >&2
+  exit 1
+fi
+
+REPOSITORIES_ROOT="$HOME/personal_repos"
 USERNAME="luised94"
+# Set to "https" or "ssh"
+CLONE_PROTOCOL="https"
 
 echo "--- Script parameters ---"
 echo "ROOT DIRECTORY: ${REPOSITORIES_ROOT}"
 echo "Username: ${USERNAME}"
+echo "Protocol: ${CLONE_PROTOCOL}"
 echo "-------------------------"
 
-# Use API. Think the output is JSON.
-# Can replace with jq
-mapfile -t git_repositories < <(
-  curl -s "https://api.github.com/users/$USERNAME/repos?per_page=100" |
-  grep "full_name" | awk -F'[/"]' '{print $5}'
-)
-# Couple with curl command to clone all the repos.
-#grep -o 'git@[^"]*' | \
-#xargs -L1 git clone
+# --- Fetch repo list from GitHub API ---
+api_response=$(curl -sf "https://api.github.com/users/$USERNAME/repos?per_page=100") || {
+  echo "Error: Failed to fetch repos from GitHub API (network issue or rate limit)" >&2
+  exit 1
+}
 
-# Search REPOSITORIES_ROOT for repos already present.
-# Filter results using '-', a unique string found in worktree names.
-# Take the name of the repo as the last part of the string divided by '/' separator
-mapfile -t repos_downloaded < <(
-  find "$REPOSITORIES_ROOT" -maxdepth 1 -mindepth 1 -type d |
-  grep -v "-" |
-  awk -F'/' '{print $NF}'
-)
+mapfile -t git_repositories < <(printf '%s' "$api_response" | jq -r '.[].name')
 
-echo "-------------------------"
-echo "Number of repos found: ${#git_repositories[@]}"
-echo "Repos found:"
-printf '%s\n' "${git_repositories[@]}"
-echo "-------------------------"
-echo "Number of repos already downloaded: ${#repos_downloaded[@]}"
-echo "Repos downloaded:"
-printf '%s\n' "${repos_downloaded[@]}"
-echo "-------------------------"
-
-# Exit if number of repo found and repo downloaded is same.
-# Disable to see rest of script when you want to see results.
-if [ "${#repos_downloaded[@]}" -eq "${#git_repositories[@]}" ]; then
-  echo "All repos found via API are downloaded."
-  echo "Exiting..."
+if (( ${#git_repositories[@]} == 0 )); then
+  echo "No repositories found for user $USERNAME"
   exit 0
 fi
 
-# For all found repos, if already downloaed, skip.
-# Otherwise, clone the repo to REPOSITORIES_ROOT
-for repo in "${git_repositories[@]}"; do
-  echo "Current repo: $repo"
-  if [[ "${repos_downloaded[@]}" =~ "$repo" ]]; then
-    echo "Repo is already downloaded."
-    echo "-------------------------"
+# --- Identify locally present repos (main worktrees only, not linked worktrees) ---
+declare -A repos_downloaded=()
+
+for dir in "$REPOSITORIES_ROOT"/*/; do
+  [[ ! -d "$dir" ]] && continue
+  dir="${dir%/}"
+
+  # Skip non-git directories
+  git -C "$dir" rev-parse --git-dir >/dev/null 2>&1 || continue
+
+  # Skip linked worktrees - only count main worktrees as "downloaded"
+  local_git_dir=$(git -C "$dir" rev-parse --git-dir 2>/dev/null)
+  if [[ "$local_git_dir" != ".git" && "$local_git_dir" != "$dir/.git" ]]; then
     continue
   fi
-  # @QUES Would it make more sense to check the directory as well?
-  echo "Repo is not downloaded."
-  repo_url="https://github.com/$USERNAME/${repo}.git"
-  echo "Repo url to clone: $repo_url"
-  echo "git clone $repo_url ${REPOSITORIES_ROOT}$repo"
-  git clone $repo_url "${REPOSITORIES_ROOT}$repo"
+
+  repo_name="$(basename "$dir")"
+  repos_downloaded["$repo_name"]=1
+done
+
+echo "-------------------------"
+echo "Repos on GitHub: ${#git_repositories[@]}"
+printf '  %s\n' "${git_repositories[@]}"
+echo "-------------------------"
+echo "Repos already cloned: ${#repos_downloaded[@]}"
+printf '  %s\n' "${!repos_downloaded[@]}"
+echo "-------------------------"
+
+# --- Clone missing repos ---
+clone_count=0
+
+for repo in "${git_repositories[@]}"; do
+  if [[ -n "${repos_downloaded[$repo]+x}" ]]; then
+    continue
+  fi
+
+  if [[ "$CLONE_PROTOCOL" == "ssh" ]]; then
+    repo_url="git@github.com:${USERNAME}/${repo}.git"
+  else
+    repo_url="https://github.com/${USERNAME}/${repo}.git"
+  fi
+
+  echo "Cloning: $repo"
+  echo "  $repo_url -> ${REPOSITORIES_ROOT}/${repo}"
+
+  if git clone "$repo_url" "${REPOSITORIES_ROOT}/${repo}"; then
+    clone_count=$((clone_count + 1))
+  else
+    echo "Error: Failed to clone $repo" >&2
+  fi
+
   echo "-------------------------"
 done
 
+# --- Summary ---
+if (( clone_count == 0 )); then
+  echo "All repos already cloned."
+else
+  echo "Cloned $clone_count new repo(s)."
+fi
+
+echo "========== End: ${BASH_SOURCE[0]} =========="
