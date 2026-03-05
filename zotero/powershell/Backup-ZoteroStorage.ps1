@@ -13,6 +13,8 @@
 #   Test A (robocopy hydrates placeholders): PASSED - full content copied, not stub
 #   Test B (exit code accessible): PASSED - Int32, code 1 on dry run
 #   Test C (bracket filenames): PASSED - robocopy handles them natively
+# Alias for quick iteration (add to .bashrc if you want persistence)
+# alias zbk='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w ~/personal_repos/my_config/zotero/powershell/Backup-ZoteroStorage.ps1)"'
 
 param(
     [string]$WindowsUser = $env:MC_WINDOWS_USER,
@@ -102,5 +104,63 @@ $SourceFileCount = $SourceMetrics.Count
 $SourceTotalBytes = $SourceMetrics.Sum
 
 Write-Host "[INFO]  Source: $SourceFileCount files, $([math]::Round($SourceTotalBytes / 1GB, 2)) GB"
+
+# --- Step 4: Prehydration (state-changing - downloads cloud files to local disk) ---
+if ($SkipHydrate) {
+    Write-Host "[INFO]  Skipping hydration (-SkipHydrate)"
+} else {
+    Write-Host "[INFO]  Hydrating placeholder files..."
+    $HydrateAttempted = 0
+    $HydrateSuccess = 0
+    $HydrateFail = 0
+
+    foreach ($file in $SourceFiles) {
+        $attrs = [System.IO.File]::GetAttributes($file.FullName)
+        if ($attrs -band 0x00400000) {
+            $HydrateAttempted++
+            try {
+                Get-Content -LiteralPath $file.FullName -TotalCount 1 -ErrorAction Stop | Out-Null
+                $HydrateSuccess++
+            } catch {
+                $HydrateFail++
+                Write-Host "[WARN]  Hydration failed: $($file.FullName)" -ForegroundColor Yellow
+            }
+        }
+    }
+
+    if ($HydrateAttempted -eq 0) {
+        Write-Host "[INFO]  Hydration: no placeholders found (all files local)"
+    } else {
+        Write-Host "[INFO]  Hydration: $HydrateAttempted attempted, $HydrateSuccess ok, $HydrateFail failed"
+    }
+}
+
+# --- Step 5: Placeholder Validation (read-only, always runs, hard gate) ---
+Write-Host "[INFO]  Validating no placeholders remain..."
+$PlaceholderCount = 0
+$PlaceholderExamples = @()
+
+foreach ($file in $SourceFiles) {
+    $attrs = [System.IO.File]::GetAttributes($file.FullName)
+    if ($attrs -band 0x00400000) {
+        $PlaceholderCount++
+        if ($PlaceholderExamples.Count -lt 10) {
+            $PlaceholderExamples += $file.FullName
+        }
+    }
+}
+
+if ($PlaceholderCount -gt 0) {
+    Write-Host "[ERROR] $PlaceholderCount placeholders remain after hydration" -ForegroundColor Red
+    foreach ($example in $PlaceholderExamples) {
+        Write-Host "[ERROR]   $example" -ForegroundColor Red
+    }
+    if ($PlaceholderCount -gt 10) {
+        Write-Host "[ERROR]   ... and $($PlaceholderCount - 10) more" -ForegroundColor Red
+    }
+    exit 1
+}
+
+Write-Host "[INFO]  Validation passed: 0 placeholders"
 
 exit 0
