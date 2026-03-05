@@ -163,4 +163,62 @@ if ($PlaceholderCount -gt 0) {
 
 Write-Host "[INFO]  Validation passed: 0 placeholders"
 
+# --- Step 6: Drive Detection (read-only + write test) ---
+Write-Host "[INFO]  Searching for backup drive (marker: $MarkerFile)..."
+$DriveLetter = ""
+
+Get-Volume | Where-Object {
+    $_.DriveLetter -and (Test-Path "$($_.DriveLetter):\$MarkerFile")
+} | ForEach-Object {
+    $DriveLetter = $_.DriveLetter
+}
+
+if (-not $DriveLetter) {
+    Write-Host "[ERROR] No backup drive found with marker file: $MarkerFile" -ForegroundColor Red
+    Write-Host "[ERROR] Ensure the drive is connected and $MarkerFile exists at its root" -ForegroundColor Red
+    exit 1
+}
+
+$DestDir = "$($DriveLetter):\$FolderName"
+Write-Host "[INFO]  Backup drive: $($DriveLetter):\"
+Write-Host "[INFO]  Destination: $DestDir"
+
+# Write test - confirm drive is writable (state-changing, self-cleaning)
+$TestFile = "$($DriveLetter):\zotero_backup_write_test_$(Get-Date -Format 'yyyyMMddHHmmss').tmp"
+try {
+    New-Item -Path $TestFile -ItemType File -Force | Out-Null
+    Remove-Item -Path $TestFile -Force
+} catch {
+    Write-Host "[ERROR] Backup drive is not writable: $($DriveLetter):\" -ForegroundColor Red
+    exit 1
+}
+
+# --- Step 7: Disk Space Check (read-only) ---
+$SourceVolume = Get-Volume -DriveLetter $SourceDrive
+$DestVolume = Get-Volume -DriveLetter $DriveLetter
+$SourceFreeBytes = $SourceVolume.SizeRemaining
+$DestFreeBytes = $DestVolume.SizeRemaining
+
+Write-Host "[INFO]  Source drive ($($SourceDrive):): $([math]::Round($SourceFreeBytes / 1GB, 2)) GB free"
+Write-Host "[INFO]  Backup drive ($($DriveLetter):): $([math]::Round($DestFreeBytes / 1GB, 2)) GB free"
+
+# Source drive: warn if low (hydration could fail on cold machine)
+if ($SourceFreeBytes -lt ($SourceTotalBytes * 0.1)) {
+    Write-Host "[WARN]  Source drive has less than 10% of source data size free" -ForegroundColor Yellow
+    Write-Host "[WARN]  Hydration on a cold machine may fill this drive" -ForegroundColor Yellow
+}
+
+# Backup drive: hard gate for first run, warn for incremental
+$DestExists = Test-Path -LiteralPath $DestDir
+if (-not $DestExists -and $DestFreeBytes -lt $SourceTotalBytes) {
+    # First run - destination doesn't exist, need full space
+    Write-Host "[ERROR] First backup requires ~$([math]::Round($SourceTotalBytes / 1GB, 2)) GB but drive has $([math]::Round($DestFreeBytes / 1GB, 2)) GB free" -ForegroundColor Red
+    exit 1
+} elseif ($DestExists -and $DestFreeBytes -lt ($SourceTotalBytes * 0.1)) {
+    # Incremental - warn if less than 10% headroom
+    Write-Host "[WARN]  Backup drive has less than 10% headroom for incremental sync" -ForegroundColor Yellow
+}
+
+Write-Host "[INFO]  Disk space ok"
+
 exit 0
