@@ -93,4 +93,14 @@ if (-not (Get-Command robocopy -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "[INFO]  Validation passed"
+
+# --- Step 3: Source Enumeration + Metrics (read-only) ---
+Write-Host "[INFO]  Enumerating source files..."
+$SourceFiles = Get-ChildItem -Path $SourceDir -Recurse -File
+$SourceMetrics = $SourceFiles | Measure-Object -Property Length -Sum
+$SourceFileCount = $SourceMetrics.Count
+$SourceTotalBytes = $SourceMetrics.Sum
+
+Write-Host "[INFO]  Source: $SourceFileCount files, $([math]::Round($SourceTotalBytes / 1GB, 2)) GB"
+
 exit 0
