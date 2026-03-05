@@ -221,4 +221,65 @@ if (-not $DestExists -and $DestFreeBytes -lt $SourceTotalBytes) {
 
 Write-Host "[INFO]  Disk space ok"
 
+# --- Step 8: Robocopy (read-only in dry run, state-changing with -Execute) ---
+$RobocopyArgs = @($SourceDir, $DestDir, "/COPY:DAT", "/FFT", "/R:2", "/W:5", "/NP")
+
+if ($Execute -and $Mirror) {
+    $RobocopyArgs += "/MIR"
+    $Mode = "mirror"
+    Write-Host "[WARN]  MIRROR MODE: files not in source will be DELETED from destination" -ForegroundColor Yellow
+} else {
+    $RobocopyArgs += "/E"
+    $Mode = "copy"
+}
+
+if (-not $Execute) {
+    $RobocopyArgs += "/L"
+    $Mode = "dry-run"
+    Write-Host "[INFO]  DRY RUN - no files will be copied or deleted"
+}
+
+if ($SingleThread) {
+    $RobocopyArgs += "/MT:1"
+} else {
+    $RobocopyArgs += "/MT:8"
+}
+
+# Log with append and tee to console
+$RobocopyArgs += "/LOG+:$LogPath"
+$RobocopyArgs += "/TEE"
+
+# Write run delimiter to log for grep/awk parsing
+$RunTimestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"
+$Delimiter = "========== RUN: $RunTimestamp | USER: $WindowsUser | MODE: $Mode =========="
+Add-Content -Path $LogPath -Value "`n$Delimiter"
+
+Write-Host "[INFO]  Mode: $Mode | Threads: $(if ($SingleThread) {'1'} else {'8'}) | Log: $LogPath"
+Write-Host "[INFO]  Running robocopy..."
+
+robocopy @RobocopyArgs
+$RobocopyExitCode = $LASTEXITCODE
+
+# --- Step 10: Summary ---
+$ExitMessage = switch ($RobocopyExitCode) {
+    0       { "No changes - already in sync" }
+    1       { "Files copied successfully" }
+    2       { "Extra files detected in destination" }
+    3       { "Files copied + extras detected" }
+    { $_ -ge 4 -and $_ -le 7 } { "Completed with warnings (code $_)" }
+    default { "Robocopy FAILED (code $_)" }
+}
+
+if ($RobocopyExitCode -lt 8) {
+    Write-Host "[INFO]  Robocopy: $ExitMessage"
+} else {
+    Write-Host "[ERROR] Robocopy: $ExitMessage" -ForegroundColor Red
+}
+
+Write-Host "[INFO]  Log: $LogPath"
+
+if ($RobocopyExitCode -ge 8) {
+    exit 1
+}
+
 exit 0
