@@ -1,20 +1,38 @@
 # Backup-ZoteroStorage.ps1
 # Syncs Zotero storage from Dropbox to an external backup drive.
 # Uses robocopy as copy engine; handles Dropbox cloud-only placeholders.
-# Version: 0.1.0 (Commit 1 - skeleton + validation)
-# Date: 2026-03-04
+# Version: 1.0.0
+# Date: 2026-03-05
 #
-# Usage from WSL:
+# Invocation from WSL:
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass \
-#     -File "$(wslpath -w ~/personal_repos/my_config/zotero/scripts/Backup-ZoteroStorage.ps1)" \
+#     -File "$(wslpath -w ~/personal_repos/my_config/zotero/powershell/Backup-ZoteroStorage.ps1)" \
 #     -WindowsUser "$MC_WINDOWS_USER"
+#
+# Quick alias (add to .bashrc):
+#   alias zbk='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w ~/personal_repos/my_config/zotero/powershell/Backup-ZoteroStorage.ps1)"'
+#
+# Recommended usage:
+#   zbk -WindowsUser "$MC_WINDOWS_USER" -SkipHydrate              # dry run
+#   zbk -WindowsUser "$MC_WINDOWS_USER" -Execute                  # first backup (copy only)
+#   zbk -WindowsUser "$MC_WINDOWS_USER" -Execute -Mirror          # mirror (deletes extras)
+#   zbk -WindowsUser "$MC_WINDOWS_USER" -Execute -SingleThread:$false  # fast incremental
+#
+# Debug - single file placeholder check:
+#   [System.IO.File]::GetAttributes("C:\path\to\file") -band 0x00400000
+#
+# Debug - single directory robocopy test:
+#   robocopy "C:\Users\$env:MC_WINDOWS_USER\MIT Dropbox\Luis Martinez\zotero-storage\SomeDir" "$env:TEMP\robocopy_test" /COPY:DAT /FFT /R:2 /W:5
 #
 # Test results (2026-03-04):
 #   Test A (robocopy hydrates placeholders): PASSED - full content copied, not stub
 #   Test B (exit code accessible): PASSED - Int32, code 1 on dry run
 #   Test C (bracket filenames): PASSED - robocopy handles them natively
-# Alias for quick iteration (add to .bashrc if you want persistence)
-# alias zbk='powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w ~/personal_repos/my_config/zotero/powershell/Backup-ZoteroStorage.ps1)"'
+#
+# Destructive operations:
+#   - Hydration (Step 4): downloads cloud files to local disk, consumes C: space
+#   - Robocopy /E (Step 8): writes files to backup drive, never deletes
+#   - Robocopy /MIR (Step 8): writes files AND deletes extras from backup drive
 
 param(
     [string]$WindowsUser = $env:MC_WINDOWS_USER,
@@ -46,6 +64,11 @@ PARAMETERS:
     -SkipHydrate         Skip prehydration pass, rely on robocopy to hydrate
     -SingleThread        Use /MT:1 (default: true, safest for first run)
     -LogPath <path>      Robocopy log file (default: ~/zotero_backup.log)
+
+SAFETY:
+    Default is dry run. No files copied or deleted without -Execute.
+    -Mirror deletes files from destination - requires -Execute.
+    Hydration downloads cloud files to local disk - consumes C: space.
 
 EXAMPLES:
     # Dry run (see what would happen):
@@ -211,17 +234,15 @@ if ($SourceFreeBytes -lt ($SourceTotalBytes * 0.1)) {
 # Backup drive: hard gate for first run, warn for incremental
 $DestExists = Test-Path -LiteralPath $DestDir
 if (-not $DestExists -and $DestFreeBytes -lt $SourceTotalBytes) {
-    # First run - destination doesn't exist, need full space
     Write-Host "[ERROR] First backup requires ~$([math]::Round($SourceTotalBytes / 1GB, 2)) GB but drive has $([math]::Round($DestFreeBytes / 1GB, 2)) GB free" -ForegroundColor Red
     exit 1
 } elseif ($DestExists -and $DestFreeBytes -lt ($SourceTotalBytes * 0.1)) {
-    # Incremental - warn if less than 10% headroom
     Write-Host "[WARN]  Backup drive has less than 10% headroom for incremental sync" -ForegroundColor Yellow
 }
 
 Write-Host "[INFO]  Disk space ok"
 
-# --- Step 8: Robocopy (read-only in dry run, state-changing with -Execute) ---
+# --- Step 8: Robocopy (read-only in dry run, state-changing/destructive with -Execute) ---
 $RobocopyArgs = @($SourceDir, $DestDir, "/COPY:DAT", "/FFT", "/R:2", "/W:5", "/NP")
 
 if ($Execute -and $Mirror) {
@@ -260,7 +281,7 @@ Write-Host "[INFO]  Running robocopy..."
 robocopy @RobocopyArgs
 $RobocopyExitCode = $LASTEXITCODE
 
-# --- Step 10: Summary ---
+# --- Step 9: Robocopy Result ---
 $ExitMessage = switch ($RobocopyExitCode) {
     0       { "No changes - already in sync" }
     1       { "Files copied successfully" }
@@ -282,7 +303,7 @@ if ($RobocopyExitCode -ge 8) {
     exit 1
 }
 
-# --- Step 9: Post-Copy Reconciliation (read-only, skip if dry run) ---
+# --- Step 10: Post-Copy Reconciliation (read-only, skip if dry run) ---
 if (-not $Execute) {
     Write-Host "[INFO]  Skipping reconciliation (dry run)"
     exit 0
@@ -304,7 +325,6 @@ if ($CountDelta -eq 0) {
 } elseif ($CountDelta -gt 0) {
     Write-Host "[WARN]  Source has $CountDelta more files than destination" -ForegroundColor Yellow
     if (-not $Mirror) {
-        # In /E mode, extras on destination are expected - only flag missing files
         Write-Host "[WARN]  Files may have failed to copy - check log for errors" -ForegroundColor Yellow
     }
 } else {
