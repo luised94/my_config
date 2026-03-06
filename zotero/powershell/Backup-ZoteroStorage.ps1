@@ -282,4 +282,39 @@ if ($RobocopyExitCode -ge 8) {
     exit 1
 }
 
+# --- Step 9: Post-Copy Reconciliation (read-only, skip if dry run) ---
+if (-not $Execute) {
+    Write-Host "[INFO]  Skipping reconciliation (dry run)"
+    exit 0
+}
+
+Write-Host "[INFO]  Reconciling source and destination..."
+$DestFiles = Get-ChildItem -Path $DestDir -Recurse -File
+$DestMetrics = $DestFiles | Measure-Object -Property Length -Sum
+$DestFileCount = $DestMetrics.Count
+$DestTotalBytes = $DestMetrics.Sum
+
+Write-Host "[INFO]  Destination: $DestFileCount files, $([math]::Round($DestTotalBytes / 1GB, 2)) GB"
+
+$CountDelta = $SourceFileCount - $DestFileCount
+$SizeDelta = $SourceTotalBytes - $DestTotalBytes
+
+if ($CountDelta -eq 0) {
+    Write-Host "[INFO]  Reconciliation passed: counts match ($SourceFileCount files)"
+} elseif ($CountDelta -gt 0) {
+    Write-Host "[WARN]  Source has $CountDelta more files than destination" -ForegroundColor Yellow
+    if (-not $Mirror) {
+        # In /E mode, extras on destination are expected - only flag missing files
+        Write-Host "[WARN]  Files may have failed to copy - check log for errors" -ForegroundColor Yellow
+    }
+} else {
+    # Destination has more files than source (extras from previous syncs)
+    $ExtraCount = [math]::Abs($CountDelta)
+    Write-Host "[INFO]  Destination has $ExtraCount extra files (not in source)"
+    if (-not $Mirror) {
+        Write-Host "[INFO]  Use -Execute -Mirror to remove extras from destination"
+    }
+}
+
+Write-Host "[INFO]  Complete: $DestDir"
 exit 0
