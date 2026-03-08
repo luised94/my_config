@@ -256,8 +256,7 @@ stash_report() {
 
     # Deduplicate worktrees
     local git_dir
-    git_dir=$(git -C "$repo_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) \
-      || git_dir=$(git -C "$repo_path" rev-parse --git-dir 2>/dev/null)
+    git_dir=$(git -C "$repo_path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || git_dir=$(git -C "$repo_path" rev-parse --git-dir 2>/dev/null)
 
     if [[ -n "${seen_git_dirs[$git_dir]+x}" ]]; then
       continue
@@ -267,8 +266,7 @@ stash_report() {
     # Resolve display name for worktree families
     local display_name="$repo_name"
     local main_wt_path
-    main_wt_path=$(git -C "$repo_path" worktree list --porcelain 2>/dev/null \
-      | awk 'NR==1 && /^worktree /{print $2}')
+    main_wt_path=$(git -C "$repo_path" worktree list --porcelain 2>/dev/null | awk 'NR==1 && /^worktree /{print $2}')
     if [[ -n "$main_wt_path" && "$main_wt_path" != "$repo_path" ]]; then
       display_name="$(basename "$main_wt_path") (via $repo_name)"
     fi
@@ -288,16 +286,12 @@ stash_report() {
     msg_info "$display_name - $count stash(es):"
 
     while IFS= read -r entry; do
-      # entry format: stash@{N}: WIP on branch: <hash> <message>
-      #           or: stash@{N}: On branch: <message>
       local stash_ref="${entry%%:*}"
       local stash_rest="${entry#*: }"
 
-      # Extract age from stash ref
       local stash_date
       stash_date=$(git -C "$repo_path" log -1 --format="%ar" "$stash_ref" 2>/dev/null)
 
-      # Flag auto-stashes from pull_all_repos
       local auto_flag=""
       if [[ "$entry" == *"auto-stash before pull"* ]]; then
         auto_flag=" [auto]"
@@ -306,7 +300,7 @@ stash_report() {
 
       msg_info "  $stash_ref  ($stash_date)${auto_flag}"
       msg_info "    $stash_rest"
-    done <<< "$stash_entries"
+    done < <(printf '%s\n' "$stash_entries")
   done
 
   # --- Summary ---
@@ -387,7 +381,7 @@ pull_all_repos() {
     remote_unavailable=false
     remote="origin"
     url=$(git -C "$repo_path" remote get-url "$remote" 2>/dev/null)
-    
+
     if [[ "$url" == /* || "$url" == file://* ]]; then
       [[ ! -d "${url#file://}" ]] && remote_unavailable=true
     fi
@@ -599,7 +593,7 @@ new_worktree() {
     return 0
   fi
 
-  if ! _is_git_repo; then
+  if ! _is_inside_git_repo; then
     msg_error "Not inside a git repository"
     return 1
   fi
@@ -657,7 +651,7 @@ rebase_worktrees_on_main() {
     return 0
   fi
 
-  if ! _is_git_repo; then
+  if ! _is_inside_git_repo; then
     msg_error "Not inside a git repository"
     return 1
   fi
