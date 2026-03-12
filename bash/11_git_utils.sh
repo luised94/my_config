@@ -326,7 +326,6 @@ stash_report() {
 # RETURNS    : 0 if all repos pulled successfully, 1 otherwise
 # ------------------------------------------------------------------------------
 pull_all_repos() {
-
   # --- Help ---
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
@@ -336,7 +335,6 @@ pull_all_repos() {
     printf "Options:\n"
     printf "  -h, --help  Show this help message\n"
     return 0
-
   fi
 
   local repos_root="${1:-$HOME/personal_repos}"
@@ -345,7 +343,6 @@ pull_all_repos() {
   if [[ ! -d "$repos_root" ]]; then
     msg_error "Repository root does not exist: $repos_root"
     return 1
-
   fi
 
   # --- Collect repositories ---
@@ -356,30 +353,28 @@ pull_all_repos() {
   if (( ${#repo_paths[@]} == 0 )); then
     msg_warn "No subdirectories found in $repos_root"
     return 0
-
   fi
 
-  # --- Process each repository ---
-  local success_count=0
-  local stash_count=0
-  local total_count=0
+  # --- Classify repositories ---
+  local pullable_repos=()
+  local diverged_repos=()
+  local dirty_repos=()
   local repo_name
 
   for repo_path in "${repo_paths[@]}"; do
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
-    total_count=$((total_count + 1))
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
       msg_debug "Skipping $repo_name (not a git repository)"
       continue
-
     fi
 
-    # Check if origin is available. Deals with repos with local origins (like a USB)
-    remote_unavailable=false
-    remote="origin"
+    # Check if origin is available
+    local remote_unavailable=false
+    local remote="origin"
+    local url
     url=$(git -C "$repo_path" remote get-url "$remote" 2>/dev/null)
 
     if [[ "$url" == /* || "$url" == file://* ]]; then
@@ -387,40 +382,95 @@ pull_all_repos() {
     fi
 
     if [[ "$remote_unavailable" == true ]]; then
-      msg_warn "Remote unavailable: ${repo_path##*/}"
+      msg_warn "Remote unavailable: $repo_name"
       continue
-
     fi
 
+    # Warn about dirty working tree (staged or unstaged changes)
+    if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
+      dirty_repos+=("$repo_name")
+    elif [[ -n "$(git -C "$repo_path" diff --cached --name-only 2>/dev/null)" ]]; then
+      dirty_repos+=("$repo_name")
+    fi
+
+    # Determine current branch and its tracking ref
+    local branch
+    branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
+    local tracking="${remote}/${branch}"
+
+    # Skip if no remote tracking branch exists
+    if ! git -C "$repo_path" rev-parse --verify "$tracking" >/dev/null 2>&1; then
+      msg_debug "Skipping $repo_name (no tracking branch: $tracking)"
+      continue
+    fi
+
+    local ahead behind
+    ahead=$(git -C "$repo_path" rev-list --count "${tracking}..HEAD" 2>/dev/null) || continue
+    behind=$(git -C "$repo_path" rev-list --count "HEAD..${tracking}" 2>/dev/null) || continue
+
+    if (( behind > 0 && ahead > 0 )); then
+      # History has diverged - ff-only will fail
+      diverged_repos+=("$repo_name")
+    elif (( behind > 0 )); then
+      pullable_repos+=("$repo_path")
+    fi
+  done
+
+  # --- Report diverged repos (do NOT auto-pull) ---
+  if (( ${#diverged_repos[@]} > 0 )); then
+    msg_warn "${#diverged_repos[@]} repo(s) have diverged history - skipping:"
+    for name in "${diverged_repos[@]}"; do
+      msg_warn "  $name  (resolve manually with: git pull --rebase)"
+    done
+  fi
+
+  # --- Report dirty working trees ---
+  if (( ${#dirty_repos[@]} > 0 )); then
+    msg_warn "${#dirty_repos[@]} repo(s) have uncommitted changes:"
+    for name in "${dirty_repos[@]}"; do
+      msg_warn "  $name"
+    done
+  fi
+
+  # --- Early exit if nothing to pull ---
+  if (( ${#pullable_repos[@]} == 0 )); then
+    msg_info "Nothing to pull - all repos are up to date"
+    (( ${#diverged_repos[@]} == 0 ))
+    return
+  fi
+
+  msg_info "Found ${#pullable_repos[@]} repo(s) with upstream commits"
+
+  # --- Pull each repository ---
+  local success_count=0
+  local fail_count=0
+  local total_count=${#pullable_repos[@]}
+
+  for repo_path in "${pullable_repos[@]}"; do
+    repo_name="$(basename "$repo_path")"
     msg_info "Pulling: $repo_name"
 
-    # Stash uncommitted changes
+    # Stash uncommitted changes before pulling
     if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
       msg_warn "Stashing local changes in $repo_name"
       git -C "$repo_path" stash push -u -m "auto-stash before pull $(date -Iseconds)"
-      stash_count=$((stash_count + 1))
-
     fi
 
-    # Pull with fast-forward only
     if git -C "$repo_path" pull --ff-only; then
       success_count=$((success_count + 1))
-
     else
       msg_error "Pull failed for $repo_name"
-
+      fail_count=$((fail_count + 1))
     fi
-
   done
 
   # --- Summary ---
   msg_info "Complete: $success_count/$total_count repos pulled"
-  if (( stash_count > 0 )); then
-    msg_warn "$stash_count repo(s) have stashed changes"
-
+  if (( fail_count > 0 )); then
+    msg_warn "$fail_count repo(s) failed to pull"
   fi
 
-  (( success_count == total_count ))
+  (( fail_count == 0 && ${#diverged_repos[@]} == 0 ))
 }
 
 # ------------------------------------------------------------------------------
