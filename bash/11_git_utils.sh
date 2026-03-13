@@ -387,6 +387,11 @@ pull_all_repos() {
     total_count=$((total_count + 1))
     stashed=false
 
+    local branch tracking
+    branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || branch="HEAD"
+    tracking="origin/${branch}"
+    msg_info "Pulling $repo_name from $tracking"
+
     # Stash uncommitted changes before pulling
     if ! git -C "$repo_path" diff-index --quiet HEAD 2>/dev/null; then
       msg_warn "Stashing local changes in $repo_name"
