@@ -1,9 +1,9 @@
 #!/usr/bin/awk -f
 # friction_v2_report.awk -- parse structured friction entries
-# Usage: awk -f $MC_ROOT/scripts/generate_mc_friction_report.awk $FRICTION_FILEPATH
+# Usage: awk -f friction_v2_report.awk FRICTION.md
 #
 # Expected format:
-#   ## YYYY-MM-DD HH:MM  [status]  project:name
+#   ## YYYY-MM-DD HH:MM  project:name
 #   What I was trying to do.
 #   What actually happened or what annoyed me.
 #   ?: idea or fix if one comes to mind
@@ -13,6 +13,9 @@ BEGIN {
     n_proj = 0
     n_dates = 0
 }
+
+# skip blank lines and comment/header lines
+/^$/ || /^#[^#]/ || /^Format:/ || /^Operations:/ { next }
 
 # --- header line: start new entry ---
 /^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ {
@@ -24,13 +27,6 @@ BEGIN {
     # parse fields
     date = $2
     time = $3
-
-    # extract status from brackets
-    status = ""
-    match($0, /\[[^\]]*\]/)
-    if (RSTART > 0) {
-        status = substr($0, RSTART + 1, RLENGTH - 2)
-    }
 
     # extract project
     project = ""
@@ -69,14 +65,10 @@ n_entries > 0 && !/^## / && !/^$/ {
     }
 }
 
-# --- blank line: could separate entries or just be whitespace ---
-/^$/ { next }
-
 function flush_entry() {
     # store entry data
     e_date[n_entries]    = date
     e_time[n_entries]    = time
-    e_status[n_entries]  = status
     e_project[n_entries] = project
     e_body[n_entries]    = body
     e_hasfix[n_entries]  = has_fix
@@ -85,7 +77,6 @@ function flush_entry() {
     # tallies
     proj_count[project]++
     date_count[date]++
-    status_count[status == "" ? "open" : status]++
     if (has_fix) proj_fixes[project]++
 
     # index entries per project for grouping
@@ -134,12 +125,6 @@ END {
         total_fixes += proj_fixes[projs[p]] + 0
     printf "  With ?: ideas:    %d (%2.0f%%)\n", total_fixes,
         (n_entries > 0 ? total_fixes * 100 / n_entries : 0)
-    print ""
-
-    # --- status breakdown ---
-    print "-- STATUS --"
-    for (s in status_count)
-        printf "  [%-4s]  %3d\n", s, status_count[s]
     print ""
 
     # --- by project ---
@@ -194,8 +179,7 @@ END {
 
         for (i = 1; i <= n; i++) {
             idx = s_idx[i]
-            st = e_status[idx] == "" ? " " : e_status[idx]
-            printf "\n  %s %s [%s]\n", e_date[idx], e_time[idx], st
+            printf "\n  %s %s\n", e_date[idx], e_time[idx]
 
             # print body lines indented
             split(e_body[idx], blines, "\n")
@@ -220,7 +204,7 @@ END {
     }
     if (!flagged) print "  (no project hit 3x threshold yet)"
 
-    # unresolved: high friction, no ideas
+    # unresolved: no ideas
     print ""
     print "-- UNRESOLVED (no ?: idea) --"
     unresolved = 0

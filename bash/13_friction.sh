@@ -11,21 +11,17 @@
 #     captures that naturally.
 #
 # Entry format:
-#   ## 2026-03-11 14:30  [severity]  project:sm2
+#   ## 2026-03-11 14:30  project:sm2
 #   What I was trying to do.
 #   What actually happened or what annoyed me.
 #   ?: idea or fix if one comes to mind
 #
-# Severity: low | med | high (or skip - just [] - and tag later)
 # Project: auto-detected from git root dirname, overridable.
 #
 # Sync: local only for now. Dropbox or USB sync deferred.
-
 MC_FRICTION_DIRECTORY="$HOME/friction"
 MC_FRICTION_FILEPATH="$MC_FRICTION_DIRECTORY/FRICTION.md"
-
 # --- ensure file and directory exist ---------------------------------
-
 _friction_ensure_file() {
     if [ ! -d "$MC_FRICTION_DIRECTORY" ]; then
         mkdir -p "$MC_FRICTION_DIRECTORY"
@@ -34,11 +30,8 @@ _friction_ensure_file() {
         touch "$MC_FRICTION_FILEPATH"
     fi
 }
-
 _friction_ensure_file
-
 # --- project detection -----------------------------------------------
-
 _friction_detect_project() {
     local git_root
     git_root="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -48,9 +41,7 @@ _friction_detect_project() {
     fi
     basename "$git_root"
 }
-
 # --- flog: append entry and open -------------------------------------
-
 flog() {
     if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
         cat <<'EOF'
@@ -65,20 +56,15 @@ Side effects:
 EOF
         return 0
     fi
-
     local project="${1:-$(_friction_detect_project)}"
-
     local stub
-    stub="$(printf '\n## %s  []  project:%s\nWhat I was trying to do.\nWhat actually happened or what annoyed me.\n?: idea or fix if one comes to mind\n' \
+    stub="$(printf '\n## %s  project:%s\nWhat I was trying to do.\nWhat actually happened or what annoyed me.\n?: idea or fix if one comes to mind\n' \
         "$(date '+%Y-%m-%d %H:%M')" \
         "$project")"
-
     echo "$stub" >> "$MC_FRICTION_FILEPATH"
     "${EDITOR:-nvim}" + "$MC_FRICTION_FILEPATH"
 }
-
-# --- fgrep: filter entries by project --------------------------------
-
+# --- ffriction: filter entries by project ----------------------------
 ffriction() {
     if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
         cat <<'EOF'
@@ -86,28 +72,19 @@ ffriction - show friction entries, optionally filtered by project
 Usage:
   ffriction              show all entries
   ffriction sm2          show entries for project:sm2
-  ffriction sm2 high     show high-severity entries for project:sm2
 EOF
         return 0
     fi
-
     if [ -z "$1" ]; then
         cat "$MC_FRICTION_FILEPATH"
-    elif [ -z "$2" ]; then
+    else
         awk -v proj="project:$1" '
             /^## / { show = (index($0, proj) > 0) }
             show { print }
         ' "$MC_FRICTION_FILEPATH"
-    else
-        awk -v proj="project:$1" -v sev="[$2]" '
-            /^## / { show = (index($0, proj) > 0 && index($0, sev) > 0) }
-            show { print }
-        ' "$MC_FRICTION_FILEPATH"
     fi
 }
-
 # --- fcount: friction summary per project ----------------------------
-
 fcount() {
     grep -oP 'project:\K\S+' "$MC_FRICTION_FILEPATH" | sort | uniq -c | sort -rn
 }
