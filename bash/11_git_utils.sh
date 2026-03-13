@@ -360,6 +360,7 @@ pull_all_repos() {
   local fail_count=0
   local skip_count=0
   local total_count=0
+  local failed_repos=()
   local repo_name stashed
 
   for repo_path in "${repo_paths[@]}"; do
@@ -397,7 +398,7 @@ pull_all_repos() {
     if git -C "$repo_path" pull --ff-only 2>/dev/null; then
       success_count=$((success_count + 1))
     else
-      msg_error "Pull failed for $repo_name (diverged or network issue - resolve manually)"
+      failed_repos+=("$repo_name")
       fail_count=$((fail_count + 1))
     fi
 
@@ -410,6 +411,12 @@ pull_all_repos() {
 
   # --- Summary ---
   msg_info "Complete: $success_count/$total_count pulled, $fail_count failed, $skip_count skipped"
+  if (( ${#failed_repos[@]} > 0 )); then
+    msg_warn "Failed repos (resolve manually with: git pull --rebase):"
+    for name in "${failed_repos[@]}"; do
+      msg_warn "  $name"
+    done
+  fi
 
   (( fail_count == 0 ))
 }
