@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
-# friction_v2_report.awk -- parse structured friction entries
-# Usage: awk -f friction_v2_report.awk FRICTION.md
+# mc_friction_generate_report.awk -- parse structured friction entries
+# Usage: awk -f mc_friction_generate_report.awk FRICTION.md
 #
 # Expected format:
 #   ## YYYY-MM-DD HH:MM  project:name
@@ -12,6 +12,28 @@ BEGIN {
     n_entries = 0
     n_proj = 0
     n_dates = 0
+}
+
+function flush_entry() {
+    # store entry data
+    e_date[n_entries]    = date
+    e_time[n_entries]    = time
+    e_project[n_entries] = project
+    e_body[n_entries]    = body
+    e_hasfix[n_entries]  = has_fix
+    e_fix[n_entries]     = fix_text
+
+    # tallies
+    proj_count[project]++
+    date_count[date]++
+    if (has_fix) proj_fixes[project]++
+
+    # index entries per project for grouping
+    proj_idx[project, proj_count[project]] = n_entries
+
+    # track hour for time-of-day distribution
+    split(time, hm, ":")
+    hour_count[hm[1] + 0]++
 }
 
 # skip blank lines and comment/header lines
@@ -65,28 +87,6 @@ n_entries > 0 && !/^## / && !/^$/ {
     }
 }
 
-function flush_entry() {
-    # store entry data
-    e_date[n_entries]    = date
-    e_time[n_entries]    = time
-    e_project[n_entries] = project
-    e_body[n_entries]    = body
-    e_hasfix[n_entries]  = has_fix
-    e_fix[n_entries]     = fix_text
-
-    # tallies
-    proj_count[project]++
-    date_count[date]++
-    if (has_fix) proj_fixes[project]++
-
-    # index entries per project for grouping
-    proj_idx[project, proj_count[project]] = n_entries
-
-    # track hour for time-of-day distribution
-    split(time, hm, ":")
-    hour_count[hm[1] + 0]++
-}
-
 END {
     # flush last entry
     if (n_entries > 0) flush_entry()
@@ -106,7 +106,7 @@ END {
     }
 
     # --- header ---
-    print "Friction Report (v2 format)"
+    print "Friction Report"
     print "Generated: " strftime("%Y-%m-%d")
     if (n_dates > 0) print "Period:    " dates[0] " to " dates[n_dates - 1]
     print ""

@@ -17,6 +17,21 @@ BEGIN {
     entry_project = ""
 }
 
+function flush_entry() {
+    if (entry_project == project) {
+        # write to archive file
+        printf "%s", buf >> archive_file
+        matched++
+    } else {
+        # write to stdout (remaining)
+        printf "%s", buf
+        kept++
+    }
+    buf = ""
+    entry_project = ""
+    in_entry = 0
+}
+
 # detect entry header
 /^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ {
     # flush previous entry
@@ -41,21 +56,6 @@ BEGIN {
         # lines before any entry (comments, blank lines at top)
         print
     }
-}
-
-function flush_entry() {
-    if (entry_project == project) {
-        # write to archive file
-        printf "%s", buf >> archive_file
-        matched++
-    } else {
-        # write to stdout (remaining)
-        printf "%s", buf
-        kept++
-    }
-    buf = ""
-    entry_project = ""
-    in_entry = 0
 }
 
 END {

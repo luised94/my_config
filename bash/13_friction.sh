@@ -181,7 +181,7 @@ Usage:
 EOF
         return 0
     fi
-    _friction_require_script "generate_mc_friction_report.awk" || return 1
+    _friction_require_script "mc_friction_generate_report.awk" || return 1
 
     local output="/dev/stdout"
     local project=""
@@ -197,7 +197,7 @@ EOF
 
     if [ -z "$project" ]; then
         # full report on active file
-        awk -f "$MC_FRICTION_SCRIPTS/generate_mc_friction_report.awk" \
+        awk -f "$MC_FRICTION_SCRIPTS/mc_friction_generate_report.awk" \
             "$MC_FRICTION_FILEPATH" > "$output"
     else
         # combine active entries for project + archived entries
@@ -205,7 +205,7 @@ EOF
         ffriction "$project" > "$input_file"
         # append any archived files for this project
         cat "$MC_FRICTION_ARCHIVE"/FRICTION_"${project}"_*.md >> "$input_file" 2>/dev/null
-        awk -f "$MC_FRICTION_SCRIPTS/generate_mc_friction_report.awk" \
+        awk -f "$MC_FRICTION_SCRIPTS/mc_friction_generate_report.awk" \
             "$input_file" > "$output"
         rm -f "$input_file"
     fi
