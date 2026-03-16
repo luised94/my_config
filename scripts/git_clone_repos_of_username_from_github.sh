@@ -49,7 +49,7 @@ fi
 
 REPOSITORIES_ROOT="$HOME/personal_repos"
 # Set to "https" or "ssh"
-CLONE_PROTOCOL="ssh"
+CLONE_PROTOCOL="https"
 
 echo "--- Script parameters ---"
 echo "ROOT DIRECTORY: ${REPOSITORIES_ROOT}"
