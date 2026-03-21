@@ -460,6 +460,9 @@ return {
                         zls = { enable_snippets = true, enable_autofix = true },
                     },
                 },
+                clangd = {
+                    filetypes = { 'c', 'cpp' },
+                },
             }
             mason.setup()
             ---@type string[]
