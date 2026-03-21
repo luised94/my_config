@@ -272,7 +272,7 @@ local TERMINAL_STATE = {
 local RUNNER_SPECS = {
     python = { command = "uv run %s",                                  executable = "uv" },
     r      = { command = "Rscript --vanilla %s",                       executable = "Rscript" },
-    c      = { command = "gcc -Wall -Wextra %s -o /tmp/%s && /tmp/%s", executable = "gcc" },
+    c      = { command = "gcc -std=c99 -Wall -Wextra -g -fsanitize=address,undefined %s -o /tmp/%s && /tmp/%s", executable = "gcc" },
     lua    = { command = "lua %s",                                     executable = "lua" },
     sh     = { command = "bash %s",                                    executable = "bash" },
 }
