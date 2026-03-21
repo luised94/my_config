@@ -317,7 +317,7 @@ local function resolve_command(filetype, filepath)
     local spec = RUNNERS[filetype]
     if spec == nil then return nil end
     if filetype == "c" and fn.filereadable("Makefile") == 1 then
-        return "make && ./a.out"
+        return "make run"
     end
     if filetype == "c" then
         local basename = fn.fnamemodify(filepath, ":t:r")
