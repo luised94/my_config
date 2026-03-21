@@ -25,7 +25,7 @@ llvm-config --version
 
 Install modern tools.
 ```{bash}
-sudo apt update && sudo apt install clang-tidy cppcheck clang-format
+sudo apt update && sudo apt install clang-tidy cppcheck clang-format gdb valgrind
 # Check
 clang-tidy --version
 cppcheck --version
