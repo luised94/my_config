@@ -345,6 +345,11 @@ EOF
         return 1
     fi
 
+    if [[ -z "${USB_FRICTION_REPO_PATH:-}" ]]; then
+        echo "friction[ERROR]: USB_FRICTION_REPO_PATH is not set (is friction.conf loaded?)" >&2
+        return 1
+    fi
+
     local friction_usb_repo_path="$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH"
     if [[ ! -d "$friction_usb_repo_path" ]]; then
         echo "friction[ERROR]: USB bare repo not found: $friction_usb_repo_path" >&2
@@ -379,6 +384,11 @@ EOF
 
     if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
         echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
+        return 1
+    fi
+
+    if [[ -z "${USB_FRICTION_REPO_PATH:-}" ]]; then
+        echo "friction[ERROR]: USB_FRICTION_REPO_PATH is not set (is friction.conf loaded?)" >&2
         return 1
     fi
 
