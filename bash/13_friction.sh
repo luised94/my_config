@@ -316,3 +316,77 @@ EOF
     echo "friction: undoing: $friction_last_commit_message"
     git -C "$MC_FRICTION_DIRECTORY" reset --hard HEAD~1
 }
+
+# --- USB operations ---
+
+# fpush -- push friction repo to USB bare repo
+# Usage: fpush
+# Commits any uncommitted changes before pushing.
+fpush() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+fpush - push friction repo to USB bare repo
+Usage:
+  fpush
+Side effects:
+  Commits any uncommitted changes in the friction repo.
+  Pushes to the bare repo on USB.
+EOF
+        return 0
+    fi
+
+    if [[ "$USB_CONNECTED" != true ]]; then
+        echo "friction[ERROR]: USB not connected" >&2
+        return 1
+    fi
+
+    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
+        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
+        return 1
+    fi
+
+    local friction_usb_repo_path="$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH"
+    if [[ ! -d "$friction_usb_repo_path" ]]; then
+        echo "friction[ERROR]: USB bare repo not found: $friction_usb_repo_path" >&2
+        return 1
+    fi
+
+    # Commit working changes if any exist
+    if [[ -n "$(git -C "$MC_FRICTION_DIRECTORY" status --porcelain 2>/dev/null)" ]]; then
+        git -C "$MC_FRICTION_DIRECTORY" add -A
+        git -C "$MC_FRICTION_DIRECTORY" commit -m "friction: sync $(date +%Y-%m-%d)"
+    fi
+
+    git -C "$MC_FRICTION_DIRECTORY" push "$friction_usb_repo_path" main
+}
+
+# fpull -- pull friction repo from USB bare repo
+# Usage: fpull
+fpull() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+fpull - pull friction repo from USB bare repo
+Usage:
+  fpull
+EOF
+        return 0
+    fi
+
+    if [[ "$USB_CONNECTED" != true ]]; then
+        echo "friction[ERROR]: USB not connected" >&2
+        return 1
+    fi
+
+    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
+        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
+        return 1
+    fi
+
+    local friction_usb_repo_path="$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH"
+    if [[ ! -d "$friction_usb_repo_path" ]]; then
+        echo "friction[ERROR]: USB bare repo not found: $friction_usb_repo_path" >&2
+        return 1
+    fi
+
+    git -C "$MC_FRICTION_DIRECTORY" pull "$friction_usb_repo_path" main
+}
