@@ -92,3 +92,54 @@ _friction_require_entries() {
         return 1
     fi
 }
+
+# --- public functions ---
+
+# flog -- append a friction entry
+# Usage: flog [-p project] message...
+# Project auto-detected from git root dirname if -p not given.
+flog() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+flog - append a single-line friction entry
+Usage:
+  flog message...              project auto-detected from git root
+  flog -p project message...   project set explicitly
+EOF
+        return 0
+    fi
+
+    local friction_project=""
+    local friction_message=""
+    local friction_timestamp=""
+    local friction_git_root=""
+
+    if [[ "$1" == "-p" ]]; then
+        if [[ -z "${2:-}" ]]; then
+            echo "friction[ERROR]: -p requires a project name" >&2
+            return 1
+        fi
+        friction_project="$2"
+        _friction_validate_project_name "$friction_project" || return 1
+        shift 2
+    fi
+
+    friction_message="$*"
+    if [[ -z "$friction_message" ]]; then
+        echo "friction[ERROR]: message cannot be empty" >&2
+        echo "friction: usage: flog [-p project] message..." >&2
+        return 1
+    fi
+
+    if [[ -z "$friction_project" ]]; then
+        friction_git_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+        if [[ -n "$friction_git_root" ]]; then
+            friction_project="$(basename "$friction_git_root")"
+        else
+            friction_project="unknown"
+        fi
+    fi
+
+    friction_timestamp="$(date '+%Y-%m-%d %H:%M')"
+    echo "@@ $friction_timestamp project:$friction_project | $friction_message" >> "$MC_FRICTION_FILEPATH"
+}
