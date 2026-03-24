@@ -143,3 +143,55 @@ EOF
     friction_timestamp="$(date '+%Y-%m-%d %H:%M')"
     echo "@@ $friction_timestamp project:$friction_project | $friction_message" >> "$MC_FRICTION_FILEPATH"
 }
+
+# fshow -- show friction entries, optionally filtered by project
+# Usage: fshow [project]
+fshow() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+fshow - show friction entries, optionally filtered by project
+Usage:
+  fshow              show all entries
+  fshow sm2          show entries for project:sm2
+EOF
+        return 0
+    fi
+
+    if [[ -z "${1:-}" ]]; then
+        cat "$MC_FRICTION_FILEPATH"
+        return 0
+    fi
+
+    _friction_validate_project_name "$1" || return 1
+    _friction_require_entries || return 1
+
+    local friction_filter_output=""
+    friction_filter_output="$(grep "project:$1" "$MC_FRICTION_FILEPATH")"
+    if [[ -z "$friction_filter_output" ]]; then
+        echo "friction: no entries found for project:$1" >&2
+        return 1
+    fi
+    echo "$friction_filter_output"
+}
+
+# fbacklog -- show unaddressed friction entry counts by project
+# Usage: fbacklog
+fbacklog() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+fbacklog - show unaddressed friction entry counts by project
+Usage:
+  fbacklog
+EOF
+        return 0
+    fi
+
+    _friction_require_entries || return 1
+
+    local friction_total_count=""
+    friction_total_count="$(grep -c '^@@ ' "$MC_FRICTION_FILEPATH")"
+
+    echo "  by project:"
+    grep -oP 'project:\K\S+' "$MC_FRICTION_FILEPATH" | sort | uniq -c | sort -rn | sed 's/^/    /'
+    echo "  total: $friction_total_count"
+}
