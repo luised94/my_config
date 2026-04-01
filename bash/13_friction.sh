@@ -47,7 +47,18 @@ MC_FRICTION_ARCHIVE="$MC_FRICTION_DIRECTORY/archive"
 
 # --- source-time checks ---
 if [[ ! -d "$MC_FRICTION_DIRECTORY" ]]; then
-    mkdir -p "$MC_FRICTION_DIRECTORY"
+    # Auto-clone from USB bare repo if available, otherwise create plain directory
+    if [[ "$USB_CONNECTED" == true && -n "${USB_FRICTION_REPO_PATH:-}" && -d "$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH" ]]; then
+        echo "friction: cloning from USB bare repo..."
+        if git clone "$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH" "$MC_FRICTION_DIRECTORY"; then
+            echo "friction: cloned to $MC_FRICTION_DIRECTORY"
+        else
+            echo "friction[ERROR]: clone failed, creating empty directory" >&2
+            mkdir -p "$MC_FRICTION_DIRECTORY"
+        fi
+    else
+        mkdir -p "$MC_FRICTION_DIRECTORY"
+    fi
 fi
 
 if [[ ! -f "$MC_FRICTION_FILEPATH" ]]; then
@@ -194,6 +205,33 @@ EOF
     echo "  by project:"
     grep -oP 'project:\K\S+' "$MC_FRICTION_FILEPATH" | sort | uniq -c | sort -rn | sed 's/^/    /'
     echo "  total: $friction_total_count"
+}
+
+# fopen -- open friction file in editor
+# Usage: fopen
+fopen() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        cat <<'EOF'
+fopen - open friction file in editor
+Usage:
+  fopen
+EOF
+        return 0
+    fi
+
+    local friction_editor="${EDITOR:-}"
+    if [[ -z "$friction_editor" ]]; then
+        echo "friction[ERROR]: EDITOR is not set" >&2
+        echo "friction: set EDITOR in your shell config (e.g. export EDITOR=nvim)" >&2
+        return 1
+    fi
+
+    if ! command -v "$friction_editor" > /dev/null 2>&1; then
+        echo "friction[ERROR]: editor not found: $friction_editor" >&2
+        return 1
+    fi
+
+    "$friction_editor" "$MC_FRICTION_FILEPATH"
 }
 
 # farchive -- archive friction entries for a project
