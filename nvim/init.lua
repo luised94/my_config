@@ -424,6 +424,7 @@ vim.filetype.add({
     extension = {
         qmd    = "markdown",
         quarto = "markdown",
+        journal = "hledger",
     },
 })
 
