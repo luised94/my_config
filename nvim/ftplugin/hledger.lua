@@ -26,3 +26,38 @@ vim.cmd([[
   highlight link hledgerComment     Comment
   highlight link hledgerInlineComment Comment
 ]])
+-- === Account Abbreviations ===
+
+local abbrevs = {
+    { "chk",   "assets:checking" },
+    { "sav",   "assets:savings" },
+    { "cah",   "assets:cash" },
+    { "oc",    "liabilities:cards:oriental_checking" },
+    { "sal",   "income:salary" },
+    { "iint",  "income:interest" },
+    { "ioth",  "income:other" },
+    { "rent",  "expenses:housing:rent" },
+    { "elec",  "expenses:utilities:electric" },
+    { "inet",  "expenses:utilities:internet" },
+    { "phon",  "expenses:utilities:phone" },
+    { "groc",  "expenses:food:groceries" },
+    { "din",   "expenses:food:dining" },
+    { "fuel",  "expenses:transport:fuel" },
+    { "tran",  "expenses:transport:transit" },
+    { "ride",  "expenses:transport:rideshare" },
+    { "hins",  "expenses:health:insurance" },
+    { "hmed",  "expenses:health:medical" },
+    { "hphm",  "expenses:health:pharmacy" },
+    { "pers",  "expenses:personal" },
+    { "ent",   "expenses:entertainment" },
+    { "subs",  "expenses:subscriptions" },
+    { "shop",  "expenses:shopping" },
+    { "trav",  "expenses:travel" },
+    { "gift",  "expenses:gifts" },
+    { "fees",  "expenses:fees" },
+    { "eqob",  "equity:opening-balances" },
+}
+
+for _, ab in ipairs(abbrevs) do
+    vim.cmd(string.format("iabbrev <buffer> %s %s", ab[1], ab[2]))
+end
