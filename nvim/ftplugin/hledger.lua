@@ -61,3 +61,29 @@ local abbrevs = {
 for _, ab in ipairs(abbrevs) do
     vim.cmd(string.format("iabbrev <buffer> %s %s", ab[1], ab[2]))
 end
+
+-- === Report Keybindings ===
+
+local function open_hledger_report(cmd)
+    local output = vim.fn.system(cmd)
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(output, "\n"))
+    vim.bo[buf].buftype = "nofile"
+    vim.bo[buf].bufhidden = "wipe"
+    vim.cmd("split")
+    vim.api.nvim_win_set_buf(0, buf)
+end
+
+vim.keymap.set("n", "<leader>b", function()
+    open_hledger_report("hledger bal")
+end, { buffer = true, desc = "hledger: balance report" })
+
+vim.keymap.set("n", "<leader>i", function()
+    open_hledger_report("hledger is")
+end, { buffer = true, desc = "hledger: income statement" })
+
+vim.keymap.set("n", "<leader>f", function()
+    require("telescope.builtin").live_grep({
+        cwd = vim.fn.expand("~/personal_repos/finances/"),
+    })
+end, { buffer = true, desc = "hledger: search finances directory" })
