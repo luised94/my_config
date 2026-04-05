@@ -69,14 +69,20 @@ if [[ ! -d "$MC_FRICTION_ARCHIVE" ]]; then
     mkdir -p "$MC_FRICTION_ARCHIVE"
 fi
 
-if [[ -d "$MC_FRICTION_DIRECTORY/.git" ]]; then
-    MC_FRICTION_IS_REPO=true
-else
+if [[ ! -d "$MC_FRICTION_DIRECTORY/.git" ]]; then
     echo "friction[WARN]: $MC_FRICTION_DIRECTORY is not a git repo, farchive and fundo will not work"
-    MC_FRICTION_IS_REPO=false
 fi
 
 # --- helpers ---
+# _friction_require_repo -- check friction directory is a git repo
+# Used by: farchive, fundo, fpush, fpull
+_friction_require_repo() {
+    if [[ ! -d "$MC_FRICTION_DIRECTORY/.git" ]]; then
+        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
+        return 1
+    fi
+}
+
 # _friction_validate_project_name -- validate project name format
 # Used by: flog, ffriction, farchive, fundo
 _friction_validate_project_name() {
@@ -252,10 +258,7 @@ EOF
         return 0
     fi
 
-    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
-        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo, farchive requires git" >&2
-        return 1
-    fi
+    _friction_require_repo || return 1
 
     if [[ -z "${1:-}" ]]; then
         echo "friction[ERROR]: usage: farchive <project>" >&2
@@ -337,10 +340,7 @@ EOF
         return 0
     fi
 
-    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
-        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo, fundo requires git" >&2
-        return 1
-    fi
+    _friction_require_repo || return 1
 
     local friction_last_commit_message=""
     friction_last_commit_message="$(git -C "$MC_FRICTION_DIRECTORY" log -1 --format=%s 2>/dev/null)"
@@ -378,10 +378,8 @@ EOF
         return 1
     fi
 
-    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
-        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
-        return 1
-    fi
+
+    _friction_require_repo || return 1
 
     if [[ -z "${USB_FRICTION_REPO_PATH:-}" ]]; then
         echo "friction[ERROR]: USB_FRICTION_REPO_PATH is not set (is friction.conf loaded?)" >&2
@@ -420,10 +418,8 @@ EOF
         return 1
     fi
 
-    if [[ "$MC_FRICTION_IS_REPO" != true ]]; then
-        echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
-        return 1
-    fi
+
+    _friction_require_repo || return 1
 
     if [[ -z "${USB_FRICTION_REPO_PATH:-}" ]]; then
         echo "friction[ERROR]: USB_FRICTION_REPO_PATH is not set (is friction.conf loaded?)" >&2
