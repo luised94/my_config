@@ -46,19 +46,9 @@ MC_FRICTION_FILEPATH="$MC_FRICTION_DIRECTORY/FRICTION.md"
 MC_FRICTION_ARCHIVE="$MC_FRICTION_DIRECTORY/archive"
 
 # --- source-time checks ---
+
 if [[ ! -d "$MC_FRICTION_DIRECTORY" ]]; then
-    # Auto-clone from USB bare repo if available, otherwise create plain directory
-    if [[ "$USB_CONNECTED" == true && -n "${USB_FRICTION_REPO_PATH:-}" && -d "$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH" ]]; then
-        echo "friction: cloning from USB bare repo..."
-        if git clone "$USB_MOUNT_POINT/$USB_FRICTION_REPO_PATH" "$MC_FRICTION_DIRECTORY"; then
-            echo "friction: cloned to $MC_FRICTION_DIRECTORY"
-        else
-            echo "friction[ERROR]: clone failed, creating empty directory" >&2
-            mkdir -p "$MC_FRICTION_DIRECTORY"
-        fi
-    else
-        mkdir -p "$MC_FRICTION_DIRECTORY"
-    fi
+  mkdir -p "$MC_FRICTION_DIRECTORY"
 fi
 
 if [[ ! -f "$MC_FRICTION_FILEPATH" ]]; then
