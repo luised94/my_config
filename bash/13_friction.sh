@@ -14,7 +14,7 @@
 #   text         -- free-form description, no newlines
 #
 # Data lives in a git repo. Archive is a directory of per-project
-# monthly files. Archiving creates a git commit. fundo rolls back
+# monthly files. Archiving creates a git commit. friction_undo rolls back
 # the last archive commit.
 #
 # USB integration: reads USB_* variables set by usb.sh (loaded by
@@ -60,12 +60,12 @@ if [[ ! -d "$MC_FRICTION_ARCHIVE" ]]; then
 fi
 
 if [[ ! -d "$MC_FRICTION_DIRECTORY/.git" ]]; then
-    echo "friction[WARN]: $MC_FRICTION_DIRECTORY is not a git repo, farchive and fundo will not work"
+    echo "friction[WARN]: $MC_FRICTION_DIRECTORY is not a git repo, friction_archive and friction_undo will not work"
 fi
 
 # --- helpers ---
 # _friction_require_repo -- check friction directory is a git repo
-# Used by: farchive, fundo, fpush, fpull
+# Used by: friction_archive, friction_undo, fpush, fpull
 _friction_require_repo() {
     if [[ ! -d "$MC_FRICTION_DIRECTORY/.git" ]]; then
         echo "friction[ERROR]: $MC_FRICTION_DIRECTORY is not a git repo" >&2
@@ -74,7 +74,7 @@ _friction_require_repo() {
 }
 
 # _friction_validate_project_name -- validate project name format
-# Used by: flog, ffriction, farchive, fundo
+# Used by: friction_log, friction_show, friction_archive, friction_undo
 _friction_validate_project_name() {
     local friction_project_name="$1"
     if [[ -z "$friction_project_name" ]]; then
@@ -88,7 +88,7 @@ _friction_validate_project_name() {
 }
 
 # _friction_require_entries -- check friction file has entries
-# Used by: ffriction, fbacklog, farchive
+# Used by: friction_show, friction_backlog, friction_archive
 _friction_require_entries() {
     if [[ ! -s "$MC_FRICTION_FILEPATH" ]]; then
         echo "friction[ERROR]: friction file is empty" >&2
@@ -102,16 +102,16 @@ _friction_require_entries() {
 
 # --- public functions ---
 
-# flog -- append a friction entry
-# Usage: flog [-p project] message...
+# friction_log -- append a friction entry
+# Usage: friction_log [-p project] message...
 # Project auto-detected from git root dirname if -p not given.
-flog() {
+friction_log() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-flog - append a single-line friction entry
+friction_log - append a single-line friction entry
 Usage:
-  flog message...              project auto-detected from git root
-  flog -p project message...   project set explicitly
+  friction_log message...              project auto-detected from git root
+  friction_log -p project message...   project set explicitly
 EOF
         return 0
     fi
@@ -134,7 +134,7 @@ EOF
     friction_message="$*"
     if [[ -z "$friction_message" ]]; then
         echo "friction[ERROR]: message cannot be empty" >&2
-        echo "friction: usage: flog [-p project] message..." >&2
+        echo "friction: usage: friction_log [-p project] message..." >&2
         return 1
     fi
 
@@ -151,15 +151,15 @@ EOF
     echo "@@ $friction_timestamp project:$friction_project | $friction_message" >> "$MC_FRICTION_FILEPATH"
 }
 
-# fshow -- show friction entries, optionally filtered by project
-# Usage: fshow [project]
-fshow() {
+# friction_show -- show friction entries, optionally filtered by project
+# Usage: friction_show [project]
+friction_show() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-fshow - show friction entries, optionally filtered by project
+friction_show - show friction entries, optionally filtered by project
 Usage:
-  fshow              show all entries
-  fshow sm2          show entries for project:sm2
+  friction_show              show all entries
+  friction_show sm2          show entries for project:sm2
 EOF
         return 0
     fi
@@ -181,14 +181,14 @@ EOF
     echo "$friction_filter_output"
 }
 
-# fbacklog -- show unaddressed friction entry counts by project
-# Usage: fbacklog
-fbacklog() {
+# friction_backlog -- show unaddressed friction entry counts by project
+# Usage: friction_backlog
+friction_backlog() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-fbacklog - show unaddressed friction entry counts by project
+friction_backlog - show unaddressed friction entry counts by project
 Usage:
-  fbacklog
+  friction_backlog
 EOF
         return 0
     fi
@@ -203,14 +203,14 @@ EOF
     echo "  total: $friction_total_count"
 }
 
-# fopen -- open friction file in editor
-# Usage: fopen
-fopen() {
+# friction_open -- open friction file in editor
+# Usage: friction_open
+friction_open() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-fopen - open friction file in editor
+friction_open - open friction file in editor
 Usage:
-  fopen
+  friction_open
 EOF
         return 0
     fi
@@ -230,20 +230,20 @@ EOF
     "$friction_editor" "$MC_FRICTION_FILEPATH"
 }
 
-# farchive -- archive friction entries for a project
-# Usage: farchive <project>
+# friction_archive -- archive friction entries for a project
+# Usage: friction_archive <project>
 # Moves matching entries to archive/FRICTION_{project}_{YYYY-MM}.md,
 # removes them from FRICTION.md, and creates a git commit.
-farchive() {
+friction_archive() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-farchive - archive friction entries for a project
+friction_archive - archive friction entries for a project
 Usage:
-  farchive <project>
+  friction_archive <project>
 Side effects:
   Moves matching entries from FRICTION.md to archive/FRICTION_{project}_{YYYY-MM}.md.
   Creates a git commit with the archive changes.
-  Use fundo to roll back the last archive commit.
+  Use friction_undo to roll back the last archive commit.
 EOF
         return 0
     fi
@@ -251,7 +251,7 @@ EOF
     _friction_require_repo || return 1
 
     if [[ -z "${1:-}" ]]; then
-        echo "friction[ERROR]: usage: farchive <project>" >&2
+        echo "friction[ERROR]: usage: friction_archive <project>" >&2
         return 1
     fi
 
@@ -313,18 +313,18 @@ EOF
     echo "  remaining: $friction_remaining_count entries"
 }
 
-# fundo -- roll back the last farchive commit
-# Usage: fundo
+# friction_undo -- roll back the last friction_archive commit
+# Usage: friction_undo
 # Checks that the last commit message matches the archive pattern
 # before resetting. This prevents accidentally undoing non-archive commits.
-fundo() {
+friction_undo() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-fundo - roll back the last farchive commit
+friction_undo - roll back the last friction_archive commit
 Usage:
-  fundo
+  friction_undo
 Side effects:
-  Resets the last commit if it was an farchive commit.
+  Resets the last commit if it was an friction_archive commit.
   Restores FRICTION.md and archive/ to their pre-archive state.
 EOF
         return 0
@@ -345,8 +345,12 @@ EOF
     git -C "$MC_FRICTION_DIRECTORY" reset --hard HEAD~1
 }
 
-# --- USB operations ---
 # --- aliases ---
 alias fpush='usb_push friction'
 alias fpull='usb_pull friction'
-
+alias flog='friction_log'
+alias fshow='friction_show'
+alias fbacklog='friction_backlog'
+alias fopen='friction_open'
+alias farchive='friction_archive'
+alias fundo='friction_undo'
