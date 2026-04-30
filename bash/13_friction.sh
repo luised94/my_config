@@ -345,8 +345,11 @@ EOF
     git -C "$MC_FRICTION_DIRECTORY" reset --hard HEAD~1
 }
 
+fpush() {
+  usb_commit friction || return 1
+  usb_push friction
+}
 # --- aliases ---
-alias fpush='usb_push friction'
 alias fpull='usb_pull friction'
 alias flog='friction_log'
 alias fshow='friction_show'
