@@ -108,7 +108,7 @@ _friction_require_entries() {
 friction_log() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_log - append a single-line friction entry
+friction_log (alias: flog) - append a single-line friction entry
 Usage:
   friction_log message...              project auto-detected from git root
   friction_log -p project message...   project set explicitly
@@ -156,7 +156,7 @@ EOF
 friction_show() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_show - show friction entries, optionally filtered by project
+friction_show(alias: fshow) - show friction entries, optionally filtered by project
 Usage:
   friction_show              show all entries
   friction_show sm2          show entries for project:sm2
@@ -186,7 +186,7 @@ EOF
 friction_backlog() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_backlog - show unaddressed friction entry counts by project
+friction_backlog (alias: fbacklog) - show unaddressed friction entry counts by project
 Usage:
   friction_backlog
 EOF
@@ -208,7 +208,7 @@ EOF
 friction_open() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_open - open friction file in editor
+friction_open (alias: fopen)  - open friction file in editor
 Usage:
   friction_open
 EOF
@@ -237,7 +237,7 @@ EOF
 friction_archive() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_archive - archive friction entries for a project
+friction_archive (alias: farchive) - archive friction entries for a project
 Usage:
   friction_archive <project>
 Side effects:
@@ -320,11 +320,11 @@ EOF
 friction_undo() {
     if [[ "$1" == "-h" || "$1" == "--help" ]]; then
         cat <<'EOF'
-friction_undo - roll back the last friction_archive commit
+friction_undo  (alias: fundo)- roll back the last friction_archive commit
 Usage:
   friction_undo
 Side effects:
-  Resets the last commit if it was an friction_archive commit.
+  Resets the last commit if it was a friction_archive commit.
   Restores FRICTION.md and archive/ to their pre-archive state.
 EOF
         return 0
