@@ -1,14 +1,11 @@
 -- ftplugin/hledger.lua - buffer-local settings for hledger journals
-
 vim.opt_local.expandtab = true
 vim.opt_local.tabstop = 2
 vim.opt_local.shiftwidth = 2
 vim.opt_local.textwidth = 0
 vim.opt_local.formatoptions:remove("t")
-
 vim.b.ts_highlight = false
 -- === Syntax Highlighting ===
-
 vim.cmd([[
   syntax match hledgerDate       "^\d\{4\}-\d\{2\}-\d\{2\}"
   syntax match hledgerAccount    "\s\+[a-zA-Z][a-zA-Z0-9_-]*\(:[a-zA-Z0-9_-]\+\)\+"
@@ -17,7 +14,6 @@ vim.cmd([[
   syntax match hledgerPending    "^\d\{4\}-\d\{2\}-\d\{2\}\s\+\zs!"
   syntax match hledgerComment    "^;.*$"
   syntax match hledgerInlineComment "\s;.*$"
-
   highlight link hledgerDate        Constant
   highlight link hledgerAccount     Identifier
   highlight link hledgerAmount      Number
@@ -27,7 +23,9 @@ vim.cmd([[
   highlight link hledgerInlineComment Comment
 ]])
 -- === Account Abbreviations ===
-
+-- When adding new accounts to the journal, add a corresponding
+-- abbreviation here. Run :iabbrev in a journal buffer to list
+-- all active abbreviations.
 local abbrevs = {
     { "chk",   "assets:checking" },
     { "sav",   "assets:savings" },
@@ -57,13 +55,10 @@ local abbrevs = {
     { "fees",  "expenses:fees" },
     { "eqob",  "equity:opening-balances" },
 }
-
 for _, ab in ipairs(abbrevs) do
     vim.cmd(string.format("iabbrev <buffer> %s %s", ab[1], ab[2]))
 end
-
 -- === Report Keybindings ===
-
 local function open_hledger_report(cmd)
     local output = vim.fn.system(cmd)
     local buf = vim.api.nvim_create_buf(false, true)
@@ -73,17 +68,17 @@ local function open_hledger_report(cmd)
     vim.cmd("split")
     vim.api.nvim_win_set_buf(0, buf)
 end
-
 vim.keymap.set("n", "<leader>b", function()
     open_hledger_report("hledger bal")
 end, { buffer = true, desc = "hledger: balance report" })
-
 vim.keymap.set("n", "<leader>i", function()
     open_hledger_report("hledger is")
 end, { buffer = true, desc = "hledger: income statement" })
-
 vim.keymap.set("n", "<leader>f", function()
-    require("telescope.builtin").live_grep({
-        cwd = vim.fn.expand("~/personal_repos/finances/"),
-    })
+    local dir = vim.env.FINANCES_DIR
+    if not dir then
+        vim.notify("FINANCES_DIR not set", vim.log.levels.WARN)
+        return
+    end
+    require("telescope.builtin").live_grep({ cwd = dir })
 end, { buffer = true, desc = "hledger: search finances directory" })
