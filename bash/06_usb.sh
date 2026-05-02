@@ -19,6 +19,8 @@
 # If usb-sh is not cloned on this machine, USB features are unavailable
 # and modules degrade gracefully via their own defensive checks.
 
+export GPG_TTY=$(tty)
+
 if [[ -f "$HOME/personal_repos/usb-sh/usb.sh" ]]; then
     source "$HOME/personal_repos/usb-sh/usb.sh"
 else
