@@ -409,6 +409,19 @@ api.nvim_create_autocmd('FileType', {
     end,
 })
 
+-- Disable persistence for sensitive tmpfs files
+-- Relevant when used with usb-sh (usb_init_keys / usb_edit_keys)
+vim.api.nvim_create_autocmd({"BufReadPre", "BufNewFile"}, {
+  pattern = "/dev/shm/*",
+  callback = function()
+    vim.opt_local.swapfile = false
+    vim.opt_local.backup = false
+    vim.opt_local.writebackup = false
+    vim.opt_local.undofile = false
+    vim.opt_local.shada = ""
+  end
+})
+
 -- === COMMANDS ===
 api.nvim_create_user_command('YankClean', function()
     vim.cmd('normal! gg')
