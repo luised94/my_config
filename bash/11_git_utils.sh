@@ -643,13 +643,11 @@ new_worktree() {
 # ------------------------------------------------------------------------------
 rebase_worktrees_on_main() {
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    printf "Usage: %s [worktree-root]\n\n" "${FUNCNAME[0]}"
-    printf "Rebase all worktrees of current repository onto main.\n\n"
-    printf "Arguments:\n"
-    printf "  worktree-root  Directory containing worktrees (default: \$HOME/personal_repos)\n\n"
+    printf "Usage: %s\n\n" "${FUNCNAME[0]}"
+    printf "Rebase all worktrees of current repository onto origin/main.\n\n"
     printf "Notes:\n"
     printf "  - Must be run from within the main repository\n"
-    printf "  - Expects worktree dirs named: <repo>-<branch>\n"
+    printf "  - Discovers worktrees via 'git worktree list'\n"
     printf "  - Uses --force-with-lease for safe pushes\n"
     return 0
   fi
@@ -659,27 +657,21 @@ rebase_worktrees_on_main() {
     return 1
   fi
 
-  local worktree_root="${1:-$HOME/personal_repos}"
-  local current_repo
-  current_repo="$(basename "$(git rev-parse --show-toplevel)")"
+  local repo_name
+  repo_name="$(basename "$(git rev-parse --show-toplevel)")"
 
-  if [[ ! -d "$worktree_root" ]]; then
-    msg_error "Worktree root does not exist: $worktree_root"
-    return 1
-  fi
-
-  # Find worktrees matching this repo's naming pattern
+  # Discover worktrees via porcelain, skipping the main worktree (first entry)
   local worktree_paths
   mapfile -t worktree_paths < <(
-    find "$worktree_root" -maxdepth 1 -mindepth 1 -type d -name "${current_repo}-*"
+    git worktree list --porcelain | awk '/^worktree /{print substr($0, 10)}' | tail -n +2
   )
 
   if (( ${#worktree_paths[@]} == 0 )); then
-    msg_warn "No worktrees found for '$current_repo' in $worktree_root"
+    msg_warn "No worktrees found for '$repo_name'"
     return 0
   fi
 
-  msg_info "Found ${#worktree_paths[@]} worktree(s) for $current_repo"
+  msg_info "Found ${#worktree_paths[@]} worktree(s) for $repo_name"
 
   # Assumes remote is named 'origin'
   msg_info "Fetching from origin..."
