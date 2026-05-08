@@ -43,9 +43,9 @@
 #   pull_all_repos          Fetch and fast-forward all repos
 #   push_all_repos          Push unpushed commits
 #   new_worktree            Create a linked worktree
+#   remove_worktree         Remove a linked worktree
 #   rebase_worktrees_on_main  Rebase worktree branches onto main
 #   prune_merged_branches   Delete fully-merged local branches
-# RELATED
 # ==============================================================================
 # ------------------------------------------------------------------------------
 # FUNCTION   : status_all_repos
@@ -631,6 +631,89 @@ new_worktree() {
   mkdir -p "$worktree_root" || return 1
   msg_info "Creating worktree: $dest_path"
   git worktree add "$dest_path" "$branch_name"
+}
+
+# ------------------------------------------------------------------------------
+# FUNCTION   : remove_worktree
+# PURPOSE    : Remove the worktree associated with a given branch.
+# USAGE      : remove_worktree <branch-name>
+# ARGS       : branch-name - Name of the branch whose worktree should be removed
+# RETURNS    : 0 on success, 1 on error
+# NOTES      : Will not force-remove worktrees with uncommitted changes.
+#              Use 'git worktree remove --force <path>' manually if needed.
+# ------------------------------------------------------------------------------
+remove_worktree() {
+  if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    printf "Usage: %s <branch-name>\n\n" "${FUNCNAME[0]}"
+    printf "Remove the worktree associated with a given branch.\n\n"
+    printf "Arguments:\n"
+    printf "  branch-name    Name of branch whose worktree should be removed\n\n"
+    printf "Notes:\n"
+    printf "  - Will refuse if worktree has uncommitted changes\n"
+    printf "  - Must be run from within the repository (any worktree)\n\n"
+    printf "Examples:\n"
+    printf "  %s feature/login\n" "${FUNCNAME[0]}"
+    printf "  %s bugfix/header\n" "${FUNCNAME[0]}"
+    return 0
+  fi
+
+  if ! _is_inside_git_repo; then
+    msg_error "Not inside a git repository"
+    return 1
+  fi
+
+  local branch_name="${1:-}"
+
+  if [[ -z "$branch_name" ]]; then
+    msg_error "Branch name required"
+    msg_info "Run '${FUNCNAME[0]} -h' for usage"
+    return 1
+  fi
+
+  # Find the worktree path for this branch via porcelain output
+  local worktree_path=""
+  local current_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*)
+        current_path="${line#worktree }"
+        ;;
+      "branch refs/heads/${branch_name}")
+        worktree_path="$current_path"
+        break
+        ;;
+      "")
+        current_path=""
+        ;;
+    esac
+  done < <(git worktree list --porcelain)
+
+  if [[ -z "$worktree_path" ]]; then
+    msg_error "No worktree found for branch '$branch_name'"
+    msg_info "Check available worktrees with: git worktree list"
+    return 1
+  fi
+
+  # Guard against removing the main worktree
+  local main_wt_path
+  main_wt_path=$(git worktree list --porcelain | head -1)
+  main_wt_path="${main_wt_path#worktree }"
+
+  if [[ "$worktree_path" == "$main_wt_path" ]]; then
+    msg_error "Cannot remove the main worktree"
+    return 1
+  fi
+
+  msg_info "Removing worktree: $worktree_path (branch: $branch_name)"
+
+  if git worktree remove "$worktree_path"; then
+    msg_info "Worktree removed successfully"
+    return 0
+  else
+    msg_error "Failed to remove worktree (uncommitted changes?)"
+    msg_info "To force: git worktree remove --force $worktree_path"
+    return 1
+  fi
 }
 
 # ------------------------------------------------------------------------------
