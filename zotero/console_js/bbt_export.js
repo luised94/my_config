@@ -31,10 +31,10 @@ var CONFIG = {
     STATE_NAME: 'full_library_export.state.json',
     RESUME_ENABLED: true,      // Allows mode decision + state read/write (no slicing yet)
     FORCE_FULL: false,         // Manual override (mode decision only in commit 1)
-    FULL_INTERVAL_DAYS: 7      // "Lazy" weekly full: triggers on next run after N days
+    FULL_INTERVAL_DAYS: 7,      // "Lazy" weekly full: triggers on next run after N days
     // Version guards
     MIN_ZOTERO_VERSION: '7.0',
-    MAX_ZOTERO_VERSION: '7.0.11',     // Bump after confirming script works on a newer version
+    MAX_ZOTERO_VERSION: '9.0.3',     // Bump after confirming script works on a newer version
     MIN_BBT_VERSION: '6.7',
     MAX_BBT_VERSION: '6.7.250',       // Bump after confirming on newer BBT
     BYPASS_VERSION_CHECK: false       // Single override for ALL version checks (min/max, Zotero/BBT)
