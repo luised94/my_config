@@ -947,6 +947,8 @@ prune_merged_branches() {
       for p in "${protected_branches[@]}"; do
         [[ "$branch" == "$p" ]] && is_protected=true && break
       done
+      # Transitional: protect backup branches pending migration to snapshot tags
+      [[ "$branch" == *backup* ]] && is_protected=true
       [[ "$is_protected" == true ]] && continue
 
       # Skip worktree-linked branches (protected)
