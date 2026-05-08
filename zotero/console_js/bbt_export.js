@@ -32,6 +32,12 @@ var CONFIG = {
     RESUME_ENABLED: true,      // Allows mode decision + state read/write (no slicing yet)
     FORCE_FULL: false,         // Manual override (mode decision only in commit 1)
     FULL_INTERVAL_DAYS: 7      // "Lazy" weekly full: triggers on next run after N days
+    // Version guards
+    MIN_ZOTERO_VERSION: '7.0',
+    MAX_ZOTERO_VERSION: '7.0.11',     // Bump after confirming script works on a newer version
+    MIN_BBT_VERSION: '6.7',
+    MAX_BBT_VERSION: '6.7.250',       // Bump after confirming on newer BBT
+    BYPASS_VERSION_CHECK: false       // Single override for ALL version checks (min/max, Zotero/BBT)
 };
 
 // 2. PATHS
@@ -61,6 +67,71 @@ var yieldToEventLoop = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // 5. PRE-FLIGHT ASSERTIONS
 var preflightStart = Date.now();
 Zotero.debug("[Export] Running pre-flight assertions...");
+
+// 5a. VERSION CHECKS (Zotero + Better BibTeX)
+
+// --- Zotero ---
+var zoteroVersion = Zotero.version;
+if (Services.vc.compare(zoteroVersion, CONFIG.MIN_ZOTERO_VERSION) < 0) {
+    let msg = `Zotero ${zoteroVersion} is below minimum ${CONFIG.MIN_ZOTERO_VERSION}. ` +
+              `Script uses IOUtils/PathUtils, which require Zotero 7+.`;
+    if (!CONFIG.BYPASS_VERSION_CHECK) {
+        throw new Error(`Pre-flight failed: ${msg}\nTo override, set CONFIG.BYPASS_VERSION_CHECK = true and re-run.`);
+    }
+    Zotero.debug(`[Export] WARNING: ${msg} (bypassed)`);
+} else if (CONFIG.MAX_ZOTERO_VERSION && Services.vc.compare(zoteroVersion, CONFIG.MAX_ZOTERO_VERSION) > 0) {
+    let msg = `Zotero ${zoteroVersion} is newer than last verified ${CONFIG.MAX_ZOTERO_VERSION}.`;
+    if (!CONFIG.BYPASS_VERSION_CHECK) {
+        throw new Error(
+            `Pre-flight failed: ${msg}\n` +
+            `If the script runs successfully on this version, update CONFIG.MAX_ZOTERO_VERSION to "${zoteroVersion}" ` +
+            `to record the new tested ceiling. To skip this check, set CONFIG.BYPASS_VERSION_CHECK = true.`
+        );
+    }
+    Zotero.debug(`[Export] WARNING: ${msg} (bypassed)`);
+} else {
+    Zotero.debug(`[Export] Zotero ${zoteroVersion} within tested range [${CONFIG.MIN_ZOTERO_VERSION}, ${CONFIG.MAX_ZOTERO_VERSION || '*'}] û`);
+}
+
+// --- Better BibTeX ---
+var bbtVersion = '';
+if (!Zotero.BetterBibTeX) {
+    if (!CONFIG.BYPASS_VERSION_CHECK) {
+        throw new Error(
+            `Pre-flight failed: Better BibTeX is not installed or not loaded. ` +
+            `This script depends on its translator (${CONFIG.TRANSLATOR_ID}). ` +
+            `Install BBT, restart Zotero, and re-run. ` +
+            `To bypass, set CONFIG.BYPASS_VERSION_CHECK = true (translator call will likely fail).`
+        );
+    }
+    Zotero.debug('[Export] WARNING: Better BibTeX not detected (bypassed).');
+} else {
+    if (Zotero.BetterBibTeX.ready) {
+        try { await Zotero.BetterBibTeX.ready; }
+        catch (e) { Zotero.debug(`[Export] BBT ready promise rejected: ${e.message}`); }
+    }
+    bbtVersion = Zotero.BetterBibTeX.version;
+    if (Services.vc.compare(bbtVersion, CONFIG.MIN_BBT_VERSION) < 0) {
+        let msg = `BetterBibTeX ${bbtVersion} is below minimum ${CONFIG.MIN_BBT_VERSION}. ` +
+                  `Older BBT versions may produce incompatible output or lack the translator.`;
+        if (!CONFIG.BYPASS_VERSION_CHECK) {
+            throw new Error(`Pre-flight failed: ${msg}\nTo override, set CONFIG.BYPASS_VERSION_CHECK = true and re-run.`);
+        }
+        Zotero.debug(`[Export] WARNING: ${msg} (bypassed)`);
+    } else if (CONFIG.MAX_BBT_VERSION && Services.vc.compare(bbtVersion, CONFIG.MAX_BBT_VERSION) > 0) {
+        let msg = `BetterBibTeX ${bbtVersion} is newer than last verified ${CONFIG.MAX_BBT_VERSION}.`;
+        if (!CONFIG.BYPASS_VERSION_CHECK) {
+            throw new Error(
+                `Pre-flight failed: ${msg}\n` +
+                `If the script runs successfully on this version, update CONFIG.MAX_BBT_VERSION to "${bbtVersion}" ` +
+                `to record the new tested ceiling. To skip this check, set CONFIG.BYPASS_VERSION_CHECK = true.`
+            );
+        }
+        Zotero.debug(`[Export] WARNING: ${msg} (bypassed)`);
+    } else {
+        Zotero.debug(`[Export] BetterBibTeX ${bbtVersion} within tested range [${CONFIG.MIN_BBT_VERSION}, ${CONFIG.MAX_BBT_VERSION || '*'}] û`);
+    }
+}
 
 if (!CONFIG.DRY_RUN) {
     try {
@@ -96,11 +167,13 @@ timing.preflight = Date.now() - preflightStart;
 var now = Date.now();
 
 var exportState = {
-    stateVersion: 1,
+    stateVersion: 2,
     lastRunAt: 0,
     lastRunMode: 'UNKNOWN',
     lastRunReason: '',
-    lastFullExportAt: 0
+    lastFullExportAt: 0,
+    lastZoteroVersion: '',
+    lastBbtVersion: ''
 };
 
 var stateLoadStatus = 'DISABLED';
@@ -122,6 +195,8 @@ if (CONFIG.RESUME_ENABLED) {
                 if (typeof parsedState.lastRunMode === 'string') exportState.lastRunMode = parsedState.lastRunMode;
                 if (typeof parsedState.lastRunReason === 'string') exportState.lastRunReason = parsedState.lastRunReason;
                 if (typeof parsedState.lastFullExportAt === 'number') exportState.lastFullExportAt = parsedState.lastFullExportAt;
+                if (typeof parsedState.lastZoteroVersion === 'string') exportState.lastZoteroVersion = parsedState.lastZoteroVersion;
+                if (typeof parsedState.lastBbtVersion === 'string') exportState.lastBbtVersion = parsedState.lastBbtVersion;
             } else {
                 stateLoadStatus = 'INVALID';
             }
@@ -160,6 +235,14 @@ Zotero.debug(
     `; ModeDecision=${modeDecision.mode} reason=${modeDecision.reason}` +
     (daysSinceLastFull !== null ? ` daysSinceLastFull=${daysSinceLastFull.toFixed(2)}` : '')
 );
+
+// 5c. VERSION DRIFT DETECTION
+if (exportState.lastZoteroVersion && exportState.lastZoteroVersion !== zoteroVersion) {
+    Zotero.debug(`[Export] Zotero version changed since last run: ${exportState.lastZoteroVersion}  ${zoteroVersion}`);
+}
+if (exportState.lastBbtVersion && exportState.lastBbtVersion !== bbtVersion) {
+    Zotero.debug(`[Export] BetterBibTeX version changed since last run: ${exportState.lastBbtVersion}  ${bbtVersion}`);
+}
 
 // 6. DATA SLICING
 var allIds = idsFromSearch.sort((a, b) => a - b);
@@ -303,14 +386,14 @@ timing.total = Date.now() - timing.scriptStart;
 
 // 9b. STATE SAVE
 if (CONFIG.RESUME_ENABLED) {
-    exportState.stateVersion = 1;
+    exportState.stateVersion = 2;
     // Timestamps in exportState use Unix epoch milliseconds (ms since 1970-01-01T00:00:00Z)
-    exportState.lastRunAt = Date.now(); 
+    exportState.lastRunAt = Date.now();
     exportState.lastRunMode = modeDecision.mode;
     exportState.lastRunReason = modeDecision.reason;
-
+    exportState.lastZoteroVersion = zoteroVersion;
+    exportState.lastBbtVersion = bbtVersion;
     // Note: lastFullExportAt is not updated yet in commit 1 (behavior unchanged)
-
     try {
         await IOUtils.writeUTF8(statePath, JSON.stringify(exportState, null, 2));
         Zotero.debug(`[Export] State saved: ${statePath}`);
