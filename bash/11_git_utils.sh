@@ -662,8 +662,6 @@ rebase_worktrees_on_main() {
   local worktree_root="${1:-$HOME/personal_repos}"
   local current_repo
   current_repo="$(basename "$(git rev-parse --show-toplevel)")"
-  local start_dir
-  start_dir="$(pwd)"
 
   if [[ ! -d "$worktree_root" ]]; then
     msg_error "Worktree root does not exist: $worktree_root"
@@ -683,29 +681,38 @@ rebase_worktrees_on_main() {
 
   msg_info "Found ${#worktree_paths[@]} worktree(s) for $current_repo"
 
+  # Assumes remote is named 'origin'
+  msg_info "Fetching from origin..."
+  if ! git fetch origin; then
+    msg_error "Failed to fetch from origin"
+    return 1
+  fi
+
   local branch
   local fail_count=0
 
   for wt_path in "${worktree_paths[@]}"; do
-    cd "$wt_path" || continue
-    branch="$(git rev-parse --abbrev-ref HEAD)"
+    if [[ ! -d "$wt_path" ]]; then
+      msg_warn "Worktree path does not exist: $wt_path"
+      continue
+    fi
+
+    branch="$(git -C "$wt_path" rev-parse --abbrev-ref HEAD)"
 
     msg_info "Rebasing: $branch"
 
-    if git rebase main; then
+    if git -C "$wt_path" rebase origin/main; then
       msg_info "Pushing: $branch"
-      if ! git push --force-with-lease origin "$branch"; then
+      if ! git -C "$wt_path" push --force-with-lease origin "$branch"; then
         msg_error "Push failed for $branch"
         fail_count=$((fail_count + 1))
       fi
     else
       msg_error "Rebase conflict in $branch - aborting"
-      git rebase --abort
+      git -C "$wt_path" rebase --abort
       fail_count=$((fail_count + 1))
     fi
   done
-
-  cd "$start_dir" || return 1
 
   if (( fail_count > 0 )); then
     msg_warn "Completed with $fail_count failure(s)"
