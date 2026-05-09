@@ -8,8 +8,8 @@
 # DIRECTORY LAYOUT
 #   $HOME/personal_repos/ (repos_root default.)
 #     reponame/                  Main worktree (holds the .git directory)
-#     reponame-branch_name/     Linked worktree (points back to main's .git)
-#     reponame-scope-branch/    Nested worktree naming is supported
+#     reponame--branch_name/     Linked worktree (points back to main's .git)
+#     reponame--scope-branch/    Nested worktree naming is supported
 #
 # WORKTREE MODEL
 #   A main worktree and its linked worktrees share a single git directory.
@@ -617,11 +617,10 @@ new_worktree() {
   fi
 
   # Build destination path
-  # @ANTICIPATE: Delimiter choice may matter for parsing worktree paths later
   local repo_name
   repo_name="$(basename "$(git rev-parse --show-toplevel)")"
   local sanitized_branch="${branch_name//\//-}"
-  local dest_path="${worktree_root}/${repo_name}-${sanitized_branch}"
+  local dest_path="${worktree_root}/${repo_name}--${sanitized_branch}"
 
   if [[ -e "$dest_path" ]]; then
     msg_error "Path already exists: $dest_path"
@@ -722,7 +721,7 @@ remove_worktree() {
 # USAGE      : rebase_worktrees_on_main [worktree-root]
 # ARGS       : worktree-root - Directory containing worktrees (default: $HOME/personal_repos)
 # RETURNS    : 0 on success, 1 on error
-# NOTES      : Expects worktree naming convention: <repo>-<branch>
+# NOTES      : Uses porcelain discovery.
 # ------------------------------------------------------------------------------
 rebase_worktrees_on_main() {
   if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
