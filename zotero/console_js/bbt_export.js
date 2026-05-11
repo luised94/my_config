@@ -36,7 +36,7 @@ var CONFIG = {
     MIN_ZOTERO_VERSION: '7.0',
     MAX_ZOTERO_VERSION: '9.0.3',     // Bump after confirming script works on a newer version
     MIN_BBT_VERSION: '6.7',
-    MAX_BBT_VERSION: '6.7.250',       // Bump after confirming on newer BBT
+    MAX_BBT_VERSION: '9.0.23',       // Bump after confirming on newer BBT
     BYPASS_VERSION_CHECK: false       // Single override for ALL version checks (min/max, Zotero/BBT)
 };
 
