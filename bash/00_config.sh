@@ -139,7 +139,7 @@ MC_ALIASES=(
 MC_EXCLUDE_DIRS=(
     ".git" "node_modules" ".next" ".nuxt" ".venv" "venv" "env" "__pycache__"
     "renv" ".Rproj.user" "build" "dist" "target" "out" "bin" "vendor" "deps"
-    ".idea" ".vscode" ".cache" "tmp" "temp" "coverage"
+    ".idea" ".ruff_cache" ".vscode" ".cache" "tmp" "temp" "coverage"
 )
 
 MC_EXCLUDE_FILES=(
