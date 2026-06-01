@@ -34,7 +34,7 @@ var CONFIG = {
     FULL_INTERVAL_DAYS: 7,      // "Lazy" weekly full: triggers on next run after N days
     // Version guards
     MIN_ZOTERO_VERSION: '7.0',
-    MAX_ZOTERO_VERSION: '9.0.3',     // Bump after confirming script works on a newer version
+    MAX_ZOTERO_VERSION: '9.0.4',     // Bump after confirming script works on a newer version
     BYPASS_VERSION_CHECK: false       // Single override for ALL version checks (min/max, Zotero/BBT)
 };
 
