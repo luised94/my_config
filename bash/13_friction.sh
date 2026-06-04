@@ -203,6 +203,7 @@ EOF
 
     friction_timestamp="$(date '+%Y-%m-%d %H:%M')"
     echo "@@ $friction_timestamp project:$friction_project | $friction_message" >> "$MC_FRICTION_FILEPATH"
+    echo "friction: logged to project:$friction_project" >&2
 }
 
 # friction_show -- show friction entries, optionally filtered by project
