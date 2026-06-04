@@ -286,7 +286,10 @@ EOF
 }
 
 
+
 # friction_archive -- archive friction entries for a project
+# Dry-run by default: previews matched entries and prompts for confirmation.
+# Use --execute to skip the preview and archive immediately.
 # Default matching is exact: farchive friction archives only project:friction.
 # Use --prefix to archive a project and all its subtopics.
 # Use --before YYYY-MM-DD to archive only entries older than a date.
@@ -297,7 +300,8 @@ friction_archive() {
         cat <<'EOF'
 friction_archive (alias: farchive) - archive friction entries for a project
 Usage:
-  friction_archive project                           exact match (default)
+  friction_archive project                           preview, then confirm
+  friction_archive --execute project                 skip preview, archive immediately
   friction_archive --prefix project                  match project and all subtopics
   friction_archive project --before YYYY-MM-DD       only entries before date
   friction_archive --prefix project --before YYYY-MM-DD  combined
@@ -319,11 +323,16 @@ EOF
     local friction_archive_match_mode="exact"
     local friction_archive_project=""
     local friction_archive_before_date=""
+    local friction_archive_execute=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --prefix)
                 friction_archive_match_mode="prefix"
+                shift
+                ;;
+            --execute)
+                friction_archive_execute=true
                 shift
                 ;;
             --before)
@@ -354,7 +363,7 @@ EOF
     done
 
     if [[ -z "$friction_archive_project" ]]; then
-        echo "friction[ERROR]: usage: friction_archive [--prefix] project [--before YYYY-MM-DD]" >&2
+        echo "friction[ERROR]: usage: friction_archive [--execute] [--prefix] project [--before YYYY-MM-DD]" >&2
         return 1
     fi
 
@@ -363,6 +372,46 @@ EOF
     if [[ ! -s "$MC_FRICTION_FILEPATH" ]]; then
         echo "friction[ERROR]: friction file is empty" >&2
         return 1
+    fi
+
+    # --- dry-run preview ---
+    # run awk in show mode with the same filters to preview what would be archived
+    local friction_preview_count=""
+    friction_preview_count="$(awk -f "$MC_FRICTION_AWK_SCRIPT" \
+        -v mode=show \
+        -v project="$friction_archive_project" \
+        -v match_mode="$friction_archive_match_mode" \
+        -v before_date="$friction_archive_before_date" \
+        "$MC_FRICTION_FILEPATH" 2>/dev/null | grep -c '^@@ ' || echo 0)"
+
+    if [[ "$friction_preview_count" -le 0 ]]; then
+        echo "friction: no entries match, nothing to archive" >&2
+        return 1
+    fi
+
+    if [[ "$friction_archive_execute" != true ]]; then
+        # show the matched entries
+        echo "friction: entries to archive:" >&2
+        echo "" >&2
+        awk -f "$MC_FRICTION_AWK_SCRIPT" \
+            -v mode=show \
+            -v project="$friction_archive_project" \
+            -v match_mode="$friction_archive_match_mode" \
+            -v before_date="$friction_archive_before_date" \
+            "$MC_FRICTION_FILEPATH" 2>/dev/null | head -50 >&2
+
+        if [[ "$friction_preview_count" -gt 50 ]]; then
+            echo "  ... and $(( friction_preview_count - 50 )) more" >&2
+        fi
+
+        echo "" >&2
+        echo -n "friction: archive $friction_preview_count entries? [y/N] " >&2
+        local friction_archive_confirm=""
+        read -r friction_archive_confirm
+        if [[ "$friction_archive_confirm" != "y" && "$friction_archive_confirm" != "Y" ]]; then
+            echo "friction: cancelled" >&2
+            return 0
+        fi
     fi
 
     # --- lock check ---
