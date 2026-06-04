@@ -1,21 +1,75 @@
 #!/usr/bin/env bash
-# 13_friction.sh -- friction tracking: single-line entries, project-tagged.
+# 13_friction.sh -- friction tracking: rapid-capture inbox with project tagging.
 # Source this file. Do not execute directly.
 # Loaded by bash/ startup chain after 06_usb.sh.
+#
+# --- data model ---
+#
+# FRICTION.md is a working inbox. Entries are logged via friction_log,
+# reviewed via friction_show, and removed via friction_archive.
+# Archiving is the only status transition. The archive directory
+# is the outbox (graveyard). There is no "resolved" or "in progress"
+# state. Entries have no unique ID; identity is the full line content.
 #
 # Entry format (one per line):
 #   @@ 2026-03-11 14:30 project:sm2 | description text here
 #
 # Fields:
-#   @@           -- entry marker
-#   ISO date     -- YYYY-MM-DD HH:MM, auto-generated
-#   project:name -- project tag, auto-detected or explicit
-#   |            -- separator
-#   text         -- free-form description, no newlines
+#   @@              entry marker (literal)
+#   YYYY-MM-DD      date, auto-generated
+#   HH:MM           time, auto-generated
+#   project:name    project tag (auto-detected from git root or explicit)
+#   |               separator (literal)
+#   text            free-form description, single line
+#
+# Non-entry lines (lines not starting with @@) are preserved by all
+# operations. They serve as optional note space. Indented lines after
+# an @@ entry are loosely associated with that entry and travel with
+# it during archive. They are not parsed.
+#
+# --- project naming convention ---
+#
+# Projects use hierarchical names: domain-subtopic, hyphen-separated.
+# Examples:
+#   friction              bare domain (the friction tool itself)
+#   friction-archive      subtopic under friction
+#   friction-show         subtopic under friction
+#   my_config-zotero      subtopic under my_config
+#   llms-prompts          subtopic under llms
+#
+# The domain is the first segment before the first hyphen.
+# If no hyphen, the project name IS the domain.
+#
+# --- matching behavior ---
+#
+# friction_show uses PREFIX matching by default:
+#   fshow friction        matches friction, friction-archive, friction-show
+#   fshow friction-show   matches friction-show only (no further subtopics)
+#   fshow --exact friction  matches only bare "friction"
+#
+# friction_archive uses EXACT matching by default:
+#   farchive friction-archive   archives only friction-archive entries
+#   farchive friction           archives only bare "friction" entries
+#   farchive --prefix friction  archives friction and all subtopics
+#
+# The asymmetry is intentional: reading is cheap, moving is not.
+#
+# --- output contract ---
+#
+# Entry data goes to stdout. Diagnostics, summaries, and feedback
+# go to stderr. This makes all commands pipe-friendly:
+#   fshow friction | wc -l          count entries
+#   fshow friction 2>/dev/null      clean entry data only
+#   fshow friction                  both streams print to terminal
+#
+# --- dependencies ---
+#
+# mc_friction.awk    consolidated awk script for show and archive
+# usb.sh             USB sync (optional, degrades gracefully)
 #
 # Data lives in a git repo. Archive is a directory of per-project
-# monthly files. Archiving creates a git commit. friction_undo rolls back
-# the last archive commit.
+# monthly files. Archiving creates a git commit. friction_undo
+# rolls back the last archive commit.
 #
 # USB integration: reads USB_* variables set by usb.sh (loaded by
 # bash/06_usb.sh). Does not source usb.sh. Degrades gracefully
