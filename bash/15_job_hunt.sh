@@ -128,6 +128,184 @@ jobinit() {
     # Create subdirectories.
     mkdir -p "${JOB_POSTINGS}" "${JOB_PROMPTS}" "${JOB_BOOKMARKS}" "${JOB_ALERTS}" 2>/dev/null
 
+    # Create starter alerts files if they don't exist.
+    # PURPOSE: Document all active alerts and monitoring prompts
+    # in one place so you can audit, update, and not forget what
+    # you set up. External services (Google Alerts, LinkedIn, etc.)
+    # are configured in those platforms -- these files are your
+    # local record of what's active and why.
+    if [ ! -f "${JOB_ALERTS}/google-alerts.txt" ]; then
+        cat > "${JOB_ALERTS}/google-alerts.txt" << 'GALERTS'
+# google-alerts.txt -- Google Alert queries
+# ==========================================
+# Configure these at: https://google.com/alerts
+# Settings: once a day, only best results, deliver to email.
+#
+# PURPOSE: Google Alerts catch hiring signals and industry news
+# that job boards miss. A company raising money or announcing
+# an expansion will start hiring 2-4 weeks later. Catching
+# that signal early puts you ahead of the posting.
+#
+# STRATEGY:
+#   - Group 1: Target company hiring signals. Use company
+#     names + hiring/scientist/careers keywords.
+#   - Group 2: Market and trend tracking. Catch funding rounds,
+#     expansions, layoffs in your target geography.
+#   - Group 3: Technology-specific hiring. Match your skill
+#     areas to active hiring keywords.
+#
+# MAINTENANCE: Review monthly. Remove companies you've lost
+# interest in. Add companies discovered through networking.
+# If an alert produces zero useful results for 4 weeks,
+# adjust the query or delete it.
+#
+# FORMAT: One alert per block. Include the exact query string
+# you entered in Google Alerts and a note about its purpose.
+#
+# EXAMPLE:
+# --- Alert: Tier 1 company hiring signals ---
+# Query: "Company A" OR "Company B" hiring OR scientist
+# Purpose: Catch job postings and hiring news at top targets
+# Status: active
+# Last reviewed: YYYY-MM-DD
+GALERTS
+        echo "  Created: alerts/google-alerts.txt"
+    fi
+
+    if [ ! -f "${JOB_ALERTS}/linkedin-alerts.txt" ]; then
+        cat > "${JOB_ALERTS}/linkedin-alerts.txt" << 'LALERTS'
+# linkedin-alerts.txt -- LinkedIn job alert configurations
+# ========================================================
+# Configure these at: linkedin.com/jobs
+# Set each to daily email notification.
+#
+# PURPOSE: LinkedIn alerts are your primary job discovery
+# channel. Each alert maps to one of your skill-profile
+# buckets so you see relevant postings grouped by fit type.
+#
+# STRATEGY:
+#   - One alert per bucket (4 total for a four-bucket system).
+#   - Use specific keywords that match how companies write
+#     job postings, not how academics describe skills.
+#   - Filter by location, experience level, job type, and
+#     industry to reduce noise.
+#   - Also follow target companies directly on LinkedIn so
+#     their postings appear in your feed even if keywords
+#     don't match.
+#
+# MAINTENANCE: Review biweekly. If an alert produces too
+# much noise, tighten the keywords or add industry filters.
+# If it produces nothing, broaden or check that the keywords
+# match how industry actually phrases these roles.
+#
+# FORMAT: One alert per block. Include keywords, filters,
+# and which bucket it serves.
+#
+# EXAMPLE:
+# --- Alert: Bucket 1 (Protein biochemistry) ---
+# Keywords: Scientist protein biochemistry
+# Location: Boston, MA + Cambridge, MA (25 mi)
+# Filters: Full-time + Contract, On-site + Hybrid
+# Industry: Biotechnology Research, Pharmaceutical Manufacturing
+# Experience: Entry level + Associate + Mid-Senior level
+# Salary: $80,000+
+# Frequency: Daily
+# Status: active
+# Last reviewed: YYYY-MM-DD
+#
+# Also document your LinkedIn Job Preferences here:
+# Job titles: (list the titles you've set)
+# Location types: (on-site/hybrid/remote)
+# Locations: (cities)
+# Employment types: (full-time, contract, etc.)
+LALERTS
+        echo "  Created: alerts/linkedin-alerts.txt"
+    fi
+
+    if [ ! -f "${JOB_ALERTS}/other-alerts.txt" ]; then
+        cat > "${JOB_ALERTS}/other-alerts.txt" << 'OALERTS'
+# other-alerts.txt -- BioSpace, Indeed, and other platform alerts
+# ===============================================================
+# Document any additional job alert services here.
+#
+# PURPOSE: Aggregator sites (BioSpace, Indeed, Glassdoor) cast
+# a wider net than company career pages. They have 1-3 day lag
+# compared to direct postings, but catch companies you haven't
+# bookmarked.
+#
+# STRATEGY: Keep these broad. Use 1-2 saved searches per
+# platform. The goal is to catch things your LinkedIn alerts
+# and career page bookmarks miss, not to duplicate them.
+#
+# FORMAT: One platform per block. Include the search terms,
+# filters, and email frequency.
+#
+# EXAMPLE:
+# --- BioSpace ---
+# URL: https://jobs.biospace.com
+# Search: Scientist, Boston/Cambridge
+# Filters: Biotechnology, PhD, Full-time
+# Frequency: Weekly email
+# Status: active
+# Last reviewed: YYYY-MM-DD
+#
+# --- Indeed ---
+# Search 1: "Scientist PhD biochemistry" Cambridge MA 25mi
+# Search 2: "Scientist PhD genomics CRISPR" Cambridge MA 25mi
+# Frequency: Daily email
+# Status: active
+# Last reviewed: YYYY-MM-DD
+OALERTS
+        echo "  Created: alerts/other-alerts.txt"
+    fi
+
+    if [ ! -f "${JOB_ALERTS}/perplexity-prompts.txt" ]; then
+        cat > "${JOB_ALERTS}/perplexity-prompts.txt" << 'PPROMPTS'
+# perplexity-prompts.txt -- AI-assisted market intelligence prompts
+# =================================================================
+# Run these manually in Perplexity, Claude, or similar tools.
+# They are not automated -- you copy-paste and read the output.
+#
+# PURPOSE: Job boards show you what's posted. These prompts
+# show you what's about to be posted. Funding rounds, expansions,
+# and leadership hires are leading indicators of scientist-level
+# hiring 2-8 weeks later.
+#
+# CADENCE:
+#   Weekly (every Monday, 2 min): market scan
+#   Biweekly: industry temperature check
+#   Monthly (rotate): deep dives by topic
+#   Ad hoc: before networking events or interviews
+#
+# STRATEGY: Don't just read the output -- act on it. If a
+# company raised a round, check their careers page. If a
+# company announced layoffs, remove them from your active
+# monitoring. If a new startup launched in your space, add
+# them to your bookmark file.
+#
+# MAINTENANCE: Update prompts when your target geography,
+# skill areas, or companies change. Add new prompts when
+# you discover useful angles. Remove prompts that
+# consistently produce nothing actionable.
+#
+# FORMAT: One prompt per block. Include the cadence, the
+# full prompt text, and notes on what to do with the output.
+#
+# EXAMPLE:
+# --- Weekly market scan (every Monday) ---
+# Prompt:
+# What Boston/Cambridge biotech companies announced new
+# funding rounds, expansions, or significant hires in the
+# past 7 days? Focus on companies working in [your areas].
+# List company name, what happened, and whether they appear
+# to be hiring.
+#
+# Action: Check careers pages of any company mentioned.
+# Add new companies to bookmarks if relevant.
+PPROMPTS
+        echo "  Created: alerts/perplexity-prompts.txt"
+    fi
+
     # Create starter portal-ready-info.txt if it doesn't exist.
     # PURPOSE: A single file you can copy-paste from when filling
     # out job application portals. Every portal asks for the same
@@ -334,6 +512,7 @@ BOOKMARKS
     echo "  |-- postings/           $(ls "${JOB_POSTINGS}" 2>/dev/null | wc -l) posting(s)"
     echo "  |-- prompts/            $(ls "${JOB_PROMPTS}" 2>/dev/null | wc -l) prompt(s)"
     echo "  |-- bookmarks/          $(ls "${JOB_BOOKMARKS}" 2>/dev/null | wc -l) file(s)"
+    echo "  |-- alerts/             $(ls "${JOB_ALERTS}" 2>/dev/null | wc -l) file(s)"
     echo "  |-- portal-ready-info.txt"
     echo "  \-- tracker.tsv         $(( $(wc -l < "${JOB_TRACKER}" 2>/dev/null || echo 1) - 1 )) application(s)"
     echo ""
@@ -920,6 +1099,57 @@ jobbookmarkedit() {
 }
 
 # ------------------------------------------------------------------
+# ALERT MANAGEMENT
+# ------------------------------------------------------------------
+
+# jobalerts: List alert documentation files and their last-modified
+# dates. Helps you remember what's configured and when you last
+# reviewed it.
+jobalerts() {
+    _job_assert_dir "${JOB_ALERTS}" "Alerts" || return 1
+
+    local count
+    count=$(ls -1 "${JOB_ALERTS}" 2>/dev/null | wc -l)
+
+    if [ "${count}" -eq 0 ]; then
+        echo "No alert files found. Run jobinit to create templates."
+        return 0
+    fi
+
+    echo "Alert documentation files:"
+    echo ""
+    ls -lt "${JOB_ALERTS}"/ 2>/dev/null | tail -n +2 | while read -r line; do
+        echo "  ${line}"
+    done
+    echo ""
+    echo "Edit with: jobalertedit <filename>"
+    echo "Files: google-alerts.txt, linkedin-alerts.txt,"
+    echo "       other-alerts.txt, perplexity-prompts.txt"
+}
+
+# jobalertedit [filename]
+# Edit an alert documentation file. Defaults to google-alerts.txt.
+jobalertedit() {
+    _job_assert_dir "${JOB_ALERTS}" "Alerts" || return 1
+    local file="${1:-google-alerts.txt}"
+    local filepath="${JOB_ALERTS}/${file}"
+    local editor
+    editor=$(_job_get_editor) || return 1
+
+    if [ ! -f "${filepath}" ]; then
+        echo "Alert file not found: ${file}" >&2
+        echo "Available files:" >&2
+        ls -1 "${JOB_ALERTS}/" 2>/dev/null >&2
+        if [ "$(ls -1 "${JOB_ALERTS}/" 2>/dev/null | wc -l)" -eq 0 ]; then
+            echo "  (none -- run jobinit to create templates)" >&2
+        fi
+        return 1
+    fi
+
+    ${editor} "${filepath}"
+}
+
+# ------------------------------------------------------------------
 # DIAGNOSTICS
 # ------------------------------------------------------------------
 
@@ -942,6 +1172,7 @@ jobdiag() {
     echo "  Postings:   $([ -d "${JOB_POSTINGS}" ] && echo 'OK' || echo 'MISSING')"
     echo "  Prompts:    $([ -d "${JOB_PROMPTS}" ] && echo 'OK' || echo 'MISSING')"
     echo "  Bookmarks:  $([ -d "${JOB_BOOKMARKS}" ] && echo 'OK' || echo 'MISSING')"
+    echo "  Alerts:     $([ -d "${JOB_ALERTS}" ] && echo 'OK' || echo 'MISSING')"
     echo ""
     echo "Files:"
     echo "  Portal info:     $([ -f "${JOB_PORTAL}" ] && echo 'OK' || echo 'MISSING')"
@@ -953,6 +1184,7 @@ jobdiag() {
     echo "  Postings saved:  $(ls -d "${JOB_POSTINGS}"/*/ 2>/dev/null | wc -l)"
     echo "  Prompts:         $(ls "${JOB_PROMPTS}" 2>/dev/null | wc -l)"
     echo "  Bookmark files:  $(ls "${JOB_BOOKMARKS}" 2>/dev/null | wc -l)"
+    echo "  Alert files:     $(ls "${JOB_ALERTS}" 2>/dev/null | wc -l)"
     echo "  Applications:    $(( $(wc -l < "${JOB_TRACKER}" 2>/dev/null || echo 1) - 1 ))"
     echo ""
 
@@ -1025,6 +1257,12 @@ EDITING
   jobbookmarkedit [f]   Edit a bookmark file
   jobbookmarks          List bookmark files
 
+ALERTS
+  jobalerts             List alert documentation files
+  jobalertedit [file]   Edit an alert file
+                        (google-alerts.txt, linkedin-alerts.txt,
+                        other-alerts.txt, perplexity-prompts.txt)
+
 WORKFLOW EXAMPLE
   1. jobcheck                              # scan career pages
   2. jobsave beam scientist-crispr         # save posting text
@@ -1040,6 +1278,7 @@ DIRECTORY LAYOUT
     \-- posting.txt                  Raw posting + metadata
   prompts/*.txt                      Prompt templates with CV
   bookmarks/*.txt                    URL lists for jobcheck
+  alerts/*.txt                       Alert configs and prompts
   portal-ready-info.txt              Copy-paste form fields
   tracker.tsv                        Application log (TSV)
 
