@@ -805,14 +805,16 @@ jobsave() {
     _job_assert_dir "${JOB_POSTINGS}" "Postings" || return 1
 
     if [ -z "$1" ] || [ -z "$2" ]; then
-        echo "Usage: jobsave <company> <role-description>"
-        echo ""
-        echo "Examples:"
-        echo "  jobsave beam scientist-crispr-screening"
-        echo "  jobsave foghorn scientist-protein-biochem"
-        echo "  jobsave broad staff-scientist-genomics"
-        echo ""
-        echo "Tip: Keep role-description short and hyphenated."
+        {
+            echo "Usage: jobsave <company> <role-description>"
+            echo ""
+            echo "Examples:"
+            echo "  jobsave beam scientist-crispr-screening"
+            echo "  jobsave foghorn scientist-protein-biochem"
+            echo "  jobsave broad staff-scientist-genomics"
+            echo ""
+            echo "Tip: Keep role-description short and hyphenated."
+        } >&2
         return 1
     fi
 
@@ -874,21 +876,23 @@ jobopen() {
     _job_assert_dir "${JOB_POSTINGS}" "Postings" || return 1
 
     if [ -z "$1" ]; then
-        echo "Usage: jobopen <partial-name>"
-        echo "  Opens the most recent posting matching the name."
-        echo ""
-        echo "Examples:"
-        echo "  jobopen vertex"
-        echo "  jobopen beam"
-        echo "  jobopen 2026-06-05"
-        echo ""
-        echo "Recent postings:"
-        ls -dt "${JOB_POSTINGS}"/*/ 2>/dev/null | head -10 | while read -r d; do
-            basename "${d}"
-        done
-        if [ "$(ls -d "${JOB_POSTINGS}"/*/ 2>/dev/null | wc -l)" -eq 0 ]; then
-            echo "  (none yet -- use jobsave to create one)"
-        fi
+        {
+            echo "Usage: jobopen <partial-name>"
+            echo "  Opens the most recent posting matching the name."
+            echo ""
+            echo "Examples:"
+            echo "  jobopen vertex"
+            echo "  jobopen beam"
+            echo "  jobopen 2026-06-05"
+            echo ""
+            echo "Recent postings:"
+            ls -dt "${JOB_POSTINGS}"/*/ 2>/dev/null | head -10 | while read -r d; do
+                basename "${d}"
+            done
+            if [ "$(ls -d "${JOB_POSTINGS}"/*/ 2>/dev/null | wc -l)" -eq 0 ]; then
+                echo "  (none yet -- use jobsave to create one)"
+            fi
+        } >&2
         return 1
     fi
 
@@ -935,9 +939,11 @@ jobdir() {
     _job_assert_dir "${JOB_POSTINGS}" "Postings" || return 1
 
     if [ -z "$1" ]; then
-        echo "Usage: jobdir <partial-name>"
-        echo "  Prints the path to cd into or copy files to."
-        echo "  Example: cd \$(jobdir vertex)"
+        {
+            echo "Usage: jobdir <partial-name>"
+            echo "  Prints the path to cd into or copy files to."
+            echo "  Example: cd \$(jobdir vertex)"
+        } >&2
         return 1
     fi
 
@@ -966,14 +972,16 @@ jobdir() {
 # Example: joblog vertex 'Research Scientist, Structural Bio' 1
 joblog() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        echo "Usage: joblog <company> <role> <bucket>"
-        echo ""
-        echo "  company  Company name (e.g., vertex, beam, foghorn)"
-        echo "  role     Full role title in quotes"
-        echo "  bucket   1-6 (see bucket definitions in jobhelp)"
-        echo ""
-        echo "Example:"
-        echo "  joblog vertex 'Research Scientist, Structural Bio' 1"
+        {
+            echo "Usage: joblog <company> <role> <bucket>"
+            echo ""
+            echo "  company  Company name (e.g., vertex, beam, foghorn)"
+            echo "  role     Full role title in quotes"
+            echo "  bucket   1-6 (see bucket definitions in jobhelp)"
+            echo ""
+            echo "Example:"
+            echo "  joblog vertex 'Research Scientist, Structural Bio' 1"
+        } >&2
         return 1
     fi
 
@@ -1012,9 +1020,19 @@ joblog() {
 
     _job_assert_writable "${JOB_TRACKER}" "Tracker" || return 1
 
-    printf "%s\t%s\t%s\t%s\tapplied\t%s\n" \
+    # Guard the append: a failed write (full disk, Dropbox perms,
+    # lost mount between the writable-check and here) must NOT be
+    # followed by a "Logged" confirmation. Silent-bad-state class:
+    # without this, the count below re-reads the file, looks
+    # plausible, and you trust a record that was never written.
+    if ! printf "%s\t%s\t%s\t%s\tapplied\t%s\n" \
         "${company}" "${role}" "${today}" "${bucket}" "${followup}" \
-        >> "${JOB_TRACKER}"
+        >> "${JOB_TRACKER}"; then
+        echo "ERROR: Failed to write to tracker: ${JOB_TRACKER}" >&2
+        echo "  Application was NOT logged. Check disk space and" >&2
+        echo "  Dropbox sync, then re-run." >&2
+        return 1
+    fi
 
     # Confirm with a count so user knows the log is growing.
     local total

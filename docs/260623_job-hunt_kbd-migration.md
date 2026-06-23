@@ -187,3 +187,33 @@ OK.
 - The Perplexity cadence change (monthly deep dives -> event-driven) is a
   process note recorded in the alert files, not a script behavior.
 - Postings, jpegs, and other Dropbox artifacts are left where they are.
+
+---
+
+## Addendum: hygiene pass (same day)
+
+Two A3 channel-discipline defects fixed after the migration, surfaced by
+running the CLI-tools triage gate per verb. Not structural; no staging.
+
+1. **joblog append guarded.** The single tracker write (`printf ... >>`)
+   was unguarded: a failed write (full disk, lost Dropbox mount, perms)
+   would still print "Logged (#N)" because the count re-reads the file
+   and looks plausible. Wrapped the append in `if ! printf ...; then`
+   with a stderr error and `return 1`. Verified: against an unwritable
+   tracker path, no "Logged" line, error to stderr, rc=1.
+
+2. **Four Usage blocks routed to stderr.** `jobsave`, `jobopen`,
+   `jobdir`, `joblog` printed their missing-arg usage text to stdout.
+   `jobdir` is the dangerous one -- it is meant to be command-substituted
+   (`cd $(jobdir vertex)`), so a typo previously captured usage text as a
+   path. Each block wrapped in `{ ... } >&2`. Verified: `jobdir` with no
+   args now yields empty stdout.
+
+Structure deliberately left unchanged. Per the doctrine's A4 boundary,
+this module IS shell: nearly every verb is essentially-interactive
+(Track I), the helpers are one-fact-one-place (not speculative
+abstraction), and manufacturing a functional core would be the forbidden
+dogma-swap. Flagged but NOT fixed (watch items, per the A5 forward-look):
+the duplicated posting-match line shared by jobopen/jobdir (two callers;
+extract only when a third appears), and the absent source-guard (the
+source-time root-validation warnings already go to stderr).
