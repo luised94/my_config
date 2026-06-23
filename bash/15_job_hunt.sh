@@ -16,12 +16,22 @@
 # SETUP:
 #   1. Set MC_WINDOWS_USER in your bashrc/profile:
 #        export MC_WINDOWS_USER="Luised94"
-#   2. Ensure this file is sourced by bashrc (e.g., placed in a
+#   2. Clone the kbd repo so the config root exists:
+#        ~/personal_repos/kbd/docs/job_hunt/
+#   3. Ensure this file is sourced by bashrc (e.g., placed in a
 #      directory that bashrc loads on startup).
-#   3. Run `jobinit` once to create the directory structure.
-#   4. Place your prompt template(s) in prompts/ directory.
-#   5. Place your bookmark URLs in bookmarks/career_pages.txt.
-#   6. Fill in portal-ready-info.txt with your personal details.
+#   4. Run `jobinit` once to create the directory structure.
+#   5. Place your prompt template(s) in the kbd prompts/ directory.
+#   6. Place your bookmark URLs in bookmarks/career_pages.txt.
+#   7. Fill in portal-ready-info.txt with your personal details.
+#
+# LAYOUT (two roots, since 2026-06-23):
+#   CONFIG (kbd, version-controlled): alerts/, bookmarks/, prompts/,
+#     portal-ready-info.txt  -> $JOB_CONFIG_DIR
+#   DATA (Dropbox, not committed): postings/, tracker.tsv
+#     -> $JOB_DATA_DIR
+#   Migrating from the old single-root layout? Run `jobmigrate` for
+#   a dry-run set of mv commands.
 #
 # QUICK WORKFLOW:
 #   # Monday morning -- scan career pages
@@ -74,16 +84,41 @@ fi
 # ------------------------------------------------------------------
 # PATHS
 # ------------------------------------------------------------------
-# All paths derived from one root. Changing JOB_DIR is the only
-# edit needed if the Dropbox location changes.
+# Paths derive from TWO roots, by design (changed 2026-06-23):
+#
+#   JOB_CONFIG_DIR  Version-controlled text config + knowledge that
+#                   lives in the kbd repo. Small, diffable, worth
+#                   committing: alerts/, bookmarks/, prompts/,
+#                   portal-ready-info.txt. Edit it, commit it, and
+#                   it follows you to any machine via git.
+#
+#   JOB_DATA_DIR    Bulky or machine-/account-specific artifacts that
+#                   stay in Dropbox: postings/ (raw posting text +
+#                   tailored docs), tracker.tsv (working application
+#                   log). Not committed to kbd.
+#
+# Why split: config is knowledge you want under version control and
+# portable across machines; data is working output that is large,
+# changes constantly, or you simply do not want in a git history.
+#
+# To relocate either root, change only the one line below.
 
-JOB_DIR="/mnt/c/Users/${MC_WINDOWS_USER}/MIT Dropbox/Luis Martinez/Personal/job_applications"
-JOB_POSTINGS="${JOB_DIR}/postings"
-JOB_PROMPTS="${JOB_DIR}/prompts"
-JOB_BOOKMARKS="${JOB_DIR}/bookmarks"
-JOB_ALERTS="${JOB_DIR}/alerts"
-JOB_PORTAL="${JOB_DIR}/portal-ready-info.txt"
-JOB_TRACKER="${JOB_DIR}/tracker.tsv"
+# kbd config root. Uses $HOME so it resolves on any machine where the
+# repo is cloned to the same relative path.
+JOB_CONFIG_DIR="${HOME}/personal_repos/kbd/docs/job_hunt"
+
+# Dropbox data root (postings + tracker live here).
+JOB_DATA_DIR="/mnt/c/Users/${MC_WINDOWS_USER}/MIT Dropbox/Luis Martinez/Personal/job_applications"
+
+# Config paths (kbd).
+JOB_PROMPTS="${JOB_CONFIG_DIR}/prompts"
+JOB_BOOKMARKS="${JOB_CONFIG_DIR}/bookmarks"
+JOB_ALERTS="${JOB_CONFIG_DIR}/alerts"
+JOB_PORTAL="${JOB_CONFIG_DIR}/portal-ready-info.txt"
+
+# Data paths (Dropbox).
+JOB_POSTINGS="${JOB_DATA_DIR}/postings"
+JOB_TRACKER="${JOB_DATA_DIR}/tracker.tsv"
 
 # Default prompt file name (must exist in $JOB_PROMPTS/).
 # Change this if you create a new primary prompt variant.
@@ -92,13 +127,19 @@ JOB_DEFAULT_PROMPT="industry.txt"
 # ------------------------------------------------------------------
 # ROOT DIRECTORY VALIDATION
 # ------------------------------------------------------------------
-# The Dropbox directory may not be mounted or synced on every
-# device. Warn early so the user doesn't discover this mid-
-# workflow.
+# Either root may be missing: kbd may not be cloned yet, or Dropbox
+# may not be mounted/synced. Warn early on either so the user does
+# not discover it mid-workflow.
 
-if [ ! -d "${JOB_DIR}" ]; then
-    echo "[15_job_hunt.sh] WARNING: Job directory not found:" >&2
-    echo "  ${JOB_DIR}" >&2
+if [ ! -d "${JOB_CONFIG_DIR}" ]; then
+    echo "[15_job_hunt.sh] WARNING: Config directory (kbd) not found:" >&2
+    echo "  ${JOB_CONFIG_DIR}" >&2
+    echo "  Is the kbd repo cloned? Run 'jobinit' to create it." >&2
+fi
+
+if [ ! -d "${JOB_DATA_DIR}" ]; then
+    echo "[15_job_hunt.sh] WARNING: Data directory (Dropbox) not found:" >&2
+    echo "  ${JOB_DATA_DIR}" >&2
     echo "  Is Dropbox synced? Is MC_WINDOWS_USER correct?" >&2
     echo "  Run 'jobinit' after fixing to create subdirectories." >&2
 fi
@@ -113,20 +154,34 @@ fi
 jobinit() {
     echo "Initializing job search directory structure..."
 
-    # Validate root exists or can be created.
-    if [ ! -d "${JOB_DIR}" ]; then
-        echo "  Root directory does not exist: ${JOB_DIR}"
+    # --- kbd config root ---
+    if [ ! -d "${JOB_CONFIG_DIR}" ]; then
+        echo "  Config root does not exist: ${JOB_CONFIG_DIR}"
         echo "  Attempting to create..."
-        mkdir -p "${JOB_DIR}" 2>/dev/null
-        if [ ! -d "${JOB_DIR}" ]; then
-            echo "  ERROR: Cannot create root directory." >&2
+        mkdir -p "${JOB_CONFIG_DIR}" 2>/dev/null
+        if [ ! -d "${JOB_CONFIG_DIR}" ]; then
+            echo "  ERROR: Cannot create config root." >&2
+            echo "  Is the kbd repo path correct and writable?" >&2
+            return 1
+        fi
+    fi
+
+    # --- Dropbox data root ---
+    if [ ! -d "${JOB_DATA_DIR}" ]; then
+        echo "  Data root does not exist: ${JOB_DATA_DIR}"
+        echo "  Attempting to create..."
+        mkdir -p "${JOB_DATA_DIR}" 2>/dev/null
+        if [ ! -d "${JOB_DATA_DIR}" ]; then
+            echo "  ERROR: Cannot create data root." >&2
             echo "  Check that the Dropbox path is correct and writable." >&2
             return 1
         fi
     fi
 
-    # Create subdirectories.
-    mkdir -p "${JOB_POSTINGS}" "${JOB_PROMPTS}" "${JOB_BOOKMARKS}" "${JOB_ALERTS}" 2>/dev/null
+    # Create subdirectories. Config subdirs in kbd, data subdirs in
+    # Dropbox.
+    mkdir -p "${JOB_PROMPTS}" "${JOB_BOOKMARKS}" "${JOB_ALERTS}" 2>/dev/null
+    mkdir -p "${JOB_POSTINGS}" 2>/dev/null
 
     # Create starter alerts files if they don't exist.
     # PURPOSE: Document all active alerts and monitoring prompts
@@ -184,7 +239,10 @@ GALERTS
 # buckets so you see relevant postings grouped by fit type.
 #
 # STRATEGY:
-#   - One alert per bucket (4 total for a four-bucket system).
+#   - One alert per active bucket. Buckets 1-5 are live; bucket 6
+#     (strategic/non-bench) is dormant -- add an alert only when a
+#     posting activates it. As of 2026-06-23: Alerts 1-4 cover
+#     buckets 1-4, Alert 5 covers bucket 5 (non-research PhD roles).
 #   - Use specific keywords that match how companies write
 #     job postings, not how academics describe skills.
 #   - Filter by location, experience level, job type, and
@@ -508,15 +566,21 @@ BOOKMARKS
 
     echo ""
     echo "Directory structure:"
-    echo "  ${JOB_DIR}/"
-    echo "  |-- postings/           $(ls "${JOB_POSTINGS}" 2>/dev/null | wc -l) posting(s)"
+    echo "  CONFIG (kbd, version-controlled):"
+    echo "  ${JOB_CONFIG_DIR}/"
     echo "  |-- prompts/            $(ls "${JOB_PROMPTS}" 2>/dev/null | wc -l) prompt(s)"
     echo "  |-- bookmarks/          $(ls "${JOB_BOOKMARKS}" 2>/dev/null | wc -l) file(s)"
     echo "  |-- alerts/             $(ls "${JOB_ALERTS}" 2>/dev/null | wc -l) file(s)"
-    echo "  |-- portal-ready-info.txt"
+    echo "  \-- portal-ready-info.txt"
+    echo ""
+    echo "  DATA (Dropbox):"
+    echo "  ${JOB_DATA_DIR}/"
+    echo "  |-- postings/           $(ls "${JOB_POSTINGS}" 2>/dev/null | wc -l) posting(s)"
     echo "  \-- tracker.tsv         $(( $(wc -l < "${JOB_TRACKER}" 2>/dev/null || echo 1) - 1 )) application(s)"
     echo ""
     echo "Run 'jobhelp' for available commands."
+    echo "To relocate existing Dropbox files into kbd, run 'jobmigrate'"
+    echo "(it prints mv commands; it does not move anything itself)."
 }
 
 # ------------------------------------------------------------------
@@ -627,7 +691,10 @@ _job_sanitize_name() {
 # NAVIGATION
 # ------------------------------------------------------------------
 
-alias jobcd='cd "${JOB_DIR}" && pwd'
+# jobcd  -> kbd config root (alerts/bookmarks/prompts/portal info)
+# jobcddata -> Dropbox data root (postings/tracker)
+alias jobcd='cd "${JOB_CONFIG_DIR}" && pwd'
+alias jobcddata='cd "${JOB_DATA_DIR}" && pwd'
 
 # List recent posting directories, most recent first.
 # Shows directory names only (not contents).
@@ -772,7 +839,7 @@ jobsave() {
 # POSTING: ${company} -- ${role}
 # ===================================================
 # Date found:    ${today}
-# Bucket:        [1-4, fill in after analysis]
+# Bucket:        [1-6, fill in after analysis]
 # URL:           [paste the posting URL here]
 # Salary range:  [from posting, if listed]
 # Portal:        [workday/greenhouse/lever/other]
@@ -891,7 +958,7 @@ jobdir() {
 
 # joblog <company> <role> <bucket>
 # Append an application record to the TSV tracker.
-# Bucket: 1-4. Status defaults to "applied".
+# Bucket: 1-6. Status defaults to "applied".
 # Follow-up date: automatically set to 14 days from today.
 #
 # Creates the tracker with a header row if it doesn't exist.
@@ -903,21 +970,24 @@ joblog() {
         echo ""
         echo "  company  Company name (e.g., vertex, beam, foghorn)"
         echo "  role     Full role title in quotes"
-        echo "  bucket   1-4 (see bucket definitions in prompt)"
+        echo "  bucket   1-6 (see bucket definitions in jobhelp)"
         echo ""
         echo "Example:"
         echo "  joblog vertex 'Research Scientist, Structural Bio' 1"
         return 1
     fi
 
-    # Validate bucket is 1-4.
+    # Validate bucket is 1-6.
     local bucket="$3"
-    if ! echo "${bucket}" | grep -qE '^[1-4]$'; then
-        echo "ERROR: Bucket must be 1, 2, 3, or 4. Got: ${bucket}" >&2
+    if ! echo "${bucket}" | grep -qE '^[1-6]$'; then
+        echo "ERROR: Bucket must be 1-6. Got: ${bucket}" >&2
         echo "  1 = Protein biochemistry / mechanistic" >&2
         echo "  2 = Genetics / screening / functional genomics" >&2
-        echo "  3 = Hybrid biochem + genomics" >&2
+        echo "  3 = Hybrid biochem + genomics (strongest fit)" >&2
         echo "  4 = Science-adjacent / application scientist" >&2
+        echo "  5 = Non-research PhD (field app sci, tech support," >&2
+        echo "      QC scientist, process development scientist)" >&2
+        echo "  6 = Strategic / non-bench (PM, sci writer, MSL)" >&2
         return 1
     fi
 
@@ -1168,11 +1238,12 @@ jobdiag() {
     echo "  bash version:     ${BASH_VERSION}"
     echo ""
     echo "Directories:"
-    echo "  Root:       $([ -d "${JOB_DIR}" ] && echo 'OK' || echo 'MISSING') -- ${JOB_DIR}"
-    echo "  Postings:   $([ -d "${JOB_POSTINGS}" ] && echo 'OK' || echo 'MISSING')"
+    echo "  Config root (kbd):  $([ -d "${JOB_CONFIG_DIR}" ] && echo 'OK' || echo 'MISSING') -- ${JOB_CONFIG_DIR}"
+    echo "  Data root (Dropbox):$([ -d "${JOB_DATA_DIR}" ] && echo ' OK' || echo ' MISSING') -- ${JOB_DATA_DIR}"
     echo "  Prompts:    $([ -d "${JOB_PROMPTS}" ] && echo 'OK' || echo 'MISSING')"
     echo "  Bookmarks:  $([ -d "${JOB_BOOKMARKS}" ] && echo 'OK' || echo 'MISSING')"
     echo "  Alerts:     $([ -d "${JOB_ALERTS}" ] && echo 'OK' || echo 'MISSING')"
+    echo "  Postings:   $([ -d "${JOB_POSTINGS}" ] && echo 'OK' || echo 'MISSING')"
     echo ""
     echo "Files:"
     echo "  Portal info:     $([ -f "${JOB_PORTAL}" ] && echo 'OK' || echo 'MISSING')"
@@ -1219,6 +1290,81 @@ jobdiag() {
 }
 
 # ------------------------------------------------------------------
+# MIGRATION (one-time, dry-run only)
+# ------------------------------------------------------------------
+# jobmigrate: Print the exact shell commands to relocate config and
+# knowledge files from the old single-root Dropbox layout into the
+# kbd config root. This was the 2026-06-23 reorganization: config
+# (alerts/bookmarks/prompts/portal-ready-info.txt) moves to kbd for
+# version control; data (postings/tracker.tsv) stays in Dropbox.
+#
+# SAFETY: This function NEVER moves anything. It only prints commands
+# for you to review and run by hand. It uses `git mv` when the source
+# is inside a git work tree so history is preserved, otherwise plain
+# `mv`. Review every line before running.
+#
+# Usage: jobmigrate            # print the plan
+#        jobmigrate | less     # page through it
+jobmigrate() {
+    # Old layout root: everything used to live under the Dropbox data
+    # root. We migrate the config subset out of it into kbd.
+    local old_root="${JOB_DATA_DIR}"
+
+    echo "# ============================================================"
+    echo "# job_hunt migration plan (DRY RUN -- nothing has been moved)"
+    echo "# Generated: $(date +%Y-%m-%d\ %H:%M)"
+    echo "# ============================================================"
+    echo "#"
+    echo "# Moves CONFIG out of Dropbox into the kbd repo. Data"
+    echo "# (postings/, tracker.tsv) stays in Dropbox and is NOT touched."
+    echo "#"
+    echo "# Review each line, then copy-paste to run. Use 'git mv' lines"
+    echo "# only if the kbd repo is the destination's git work tree."
+    echo "#"
+    echo "# Source (old, Dropbox): ${old_root}"
+    echo "# Dest   (new, kbd):     ${JOB_CONFIG_DIR}"
+    echo ""
+    echo "# --- 1. Ensure kbd config root exists ---"
+    echo "mkdir -p \"${JOB_CONFIG_DIR}\""
+    echo ""
+    echo "# --- 2. Move config directories (alerts, bookmarks, prompts) ---"
+
+    local item
+    for item in alerts bookmarks prompts; do
+        if [ -d "${old_root}/${item}" ]; then
+            echo "mv \"${old_root}/${item}\" \"${JOB_CONFIG_DIR}/${item}\""
+        else
+            echo "# (skip: ${old_root}/${item} not found)"
+        fi
+    done
+
+    echo ""
+    echo "# --- 3. Move portal-ready-info.txt ---"
+    if [ -f "${old_root}/portal-ready-info.txt" ]; then
+        echo "mv \"${old_root}/portal-ready-info.txt\" \"${JOB_CONFIG_DIR}/portal-ready-info.txt\""
+    else
+        echo "# (skip: portal-ready-info.txt not found in ${old_root})"
+    fi
+
+    echo ""
+    echo "# --- 4. STAYS IN DROPBOX (do not move) ---"
+    echo "#   postings/        (bulky raw posting text + tailored docs)"
+    echo "#   tracker.tsv      (working application log)"
+    echo "#   *.jpeg, README.md, jobportal.txt, recruitment_agencies/,"
+    echo "#   reference-emails*, skills-per-job.txt, etc."
+    echo "#   These are intentionally left in: ${old_root}"
+    echo ""
+    echo "# --- 5. After moving, commit the kbd side ---"
+    echo "cd \"${JOB_CONFIG_DIR}\" && git add -A && \\"
+    echo "  git commit -m 'job_hunt: relocate config (alerts/bookmarks/prompts/portal) into kbd'"
+    echo ""
+    echo "# --- 6. Verify ---"
+    echo "jobdiag    # all config paths should read OK"
+    echo ""
+    echo "# End of plan. Nothing above has been executed."
+}
+
+# ------------------------------------------------------------------
 # HELP
 # ------------------------------------------------------------------
 
@@ -1230,6 +1376,10 @@ JOB SEARCH PIPELINE -- COMMAND REFERENCE
 SETUP (run once)
   jobinit             Create directory structure and starter files
   jobdiag             Check setup, find issues
+  jobmigrate          Print mv commands to relocate config into kbd
+                      (dry run -- moves nothing)
+  jobcd               cd to kbd config root
+  jobcddata           cd to Dropbox data root
 
 DAILY ROUTINE
   jobcheck [file] [n] Open career pages in browser
@@ -1240,7 +1390,7 @@ APPLYING (the core loop)
   jobclip [prompt]    Copy prompt+CV to clipboard
                       (default: industry.txt)
   jobinfo             Print portal-ready info to terminal
-  joblog co role N    Log application to tracker (N = bucket 1-4)
+  joblog co role N    Log application to tracker (N = bucket 1-6)
 
 REVIEWING
   jobls               List recent postings
@@ -1273,19 +1423,27 @@ WORKFLOW EXAMPLE
   7. [submit application]
   8. joblog beam 'Scientist, CRISPR' 2     # log it
 
-DIRECTORY LAYOUT
-  postings/YYYY-MM-DD_company_role/  One dir per application
-    \-- posting.txt                  Raw posting + metadata
-  prompts/*.txt                      Prompt templates with CV
-  bookmarks/*.txt                    URL lists for jobcheck
-  alerts/*.txt                       Alert configs and prompts
-  portal-ready-info.txt              Copy-paste form fields
-  tracker.tsv                        Application log (TSV)
+DIRECTORY LAYOUT (two roots as of 2026-06-23)
+  CONFIG -- kbd repo, version-controlled:
+    ~/personal_repos/kbd/docs/job_hunt/
+      prompts/*.txt                  Prompt templates with CV
+      bookmarks/*.txt                URL lists for jobcheck
+      alerts/*.txt                   Alert configs and prompts
+      portal-ready-info.txt          Copy-paste form fields
+  DATA -- Dropbox, not committed:
+    .../job_applications/
+      postings/YYYY-MM-DD_company_role/  One dir per application
+        \-- posting.txt              Raw posting + metadata
+      tracker.tsv                    Application log (TSV)
 
 BUCKET REFERENCE
   1 = Protein biochemistry / mechanistic
   2 = Genetics / screening / functional genomics
   3 = Hybrid biochem + genomics (strongest fit)
   4 = Science-adjacent / application scientist
+  5 = Non-research PhD (field app scientist, technical support
+      scientist, QC scientist, process development scientist)
+  6 = Strategic / non-bench, DORMANT (product manager, scientific
+      writer, MSL -- activate when a posting triggers it)
 HELP
 }
