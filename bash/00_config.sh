@@ -125,7 +125,7 @@ MC_ALIASES=(
     "grm=git rebase main"
     "gs=git status"
     "ngd=nvim < <(git diff)"
-    "ngda=nvim < <(git diff HEAD)"
+    "nld=nvim < <(git diff HEAD~1)"
     "ngdc=nvim < <(git diff --cached)"
     "nglc=git diff-tree --no-commit-id --name-only -r -z HEAD | xargs -0 nvim"
     # MC Aliases
