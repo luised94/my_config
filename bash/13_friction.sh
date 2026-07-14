@@ -95,7 +95,7 @@ if [[ "${USB_INITIALIZED:-}" != true ]]; then
 fi
 
 # --- variable setup ---
-MC_FRICTION_DIRECTORY="${USB_FRICTION_LOCAL_DIR:-$HOME/personal_repos/friction}"
+MC_FRICTION_DIRECTORY="${USB_FRICTION_LOCAL_DIR:-$HOME/personal_repos/usb-repos/friction}"
 MC_FRICTION_FILEPATH="$MC_FRICTION_DIRECTORY/FRICTION.md"
 MC_FRICTION_ARCHIVE="$MC_FRICTION_DIRECTORY/archive"
 MC_FRICTION_AWK_SCRIPT="$HOME/personal_repos/my_config/scripts/mc_friction_process_entries.awk"

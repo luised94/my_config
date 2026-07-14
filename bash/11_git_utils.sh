@@ -79,6 +79,8 @@ status_all_repos() {
     esac
   done
 
+  #     # One-level glob is load-bearing: ~/personal_repos/usb-repos/ is
+  #     # usb-sh-controlled (one repo, one transport). Do not recurse.
   repos_root="${repos_root:-$HOME/personal_repos}"
 
   # --- Validate directory ---
@@ -249,6 +251,9 @@ stash_report() {
     repo_path="${repo_path%/}"
     local repo_name="$(basename "$repo_path")"
 
+    # usb-sh-controlled; see github luised94/usb-sh docs/design.md
+    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  
+
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
       continue
@@ -367,6 +372,8 @@ pull_all_repos() {
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
 
+    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
+
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
       msg_debug "Skipping $repo_name (not a git repository)"
@@ -472,6 +479,8 @@ push_all_repos() {
   for repo_path in "${repo_paths[@]}"; do
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
+
+    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -870,6 +879,8 @@ prune_merged_branches() {
   for repo_path in "${repo_paths[@]}"; do
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
+
+    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
