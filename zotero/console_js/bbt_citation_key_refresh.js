@@ -25,7 +25,7 @@
 // 1. CONFIGURATION
 var CONFIG = {
     HARD_CAP: 70000,            // Safety limit - abort if library exceeds this
-    MAX_TO_PROCESS: 1000,       // Start with 1000, increase after stable: 5000  10000  null (full)
+    MAX_TO_PROCESS: 1000,       // Start with 1000, increase after stable: 5000 -> 10000 -> null (full)
     BATCH_SIZE: 15,             // Items per batch
     YIELD_MS: 500,              // Pause between batches for UI responsiveness
     ITEM_TIMEOUT_MS: 30000,     // 30s max per item before skip
