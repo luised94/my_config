@@ -224,6 +224,90 @@ A10.5 Not applicable to this codebase (recorded so we do not re-litigate):
   the risk), ES5 arguments-object patterns, IIFE-for-privacy (module
   closures and blocks cover it).
 
+A10.6 Call-site clarity (substitutes for named arguments):
+
+JavaScript has no named arguments and no import provenance in console
+scripts. The substitutes:
+
+- Options object: any own function with more than two parameters, or
+  with ANY boolean parameter, takes a single options object:
+  runAudit({ dryRun: true, limit: 500 }). The call site then reads
+  like named arguments. Bare boolean positional arguments
+  (doSomething(true, false)) are banned in own code.
+- Inline argument comments for host APIs we cannot reshape:
+  Zotero.Items.getAsync(id, /* options */ null).
+- Provenance by full qualification: never alias or rename host APIs.
+  Write Zotero.Items.getAsync(...) at every call site; no
+  const get = Zotero.Items.getAsync. In a single-file console script
+  every callable is then one of exactly two obvious origins: defined
+  above in this file, or a fully qualified host/plugin API
+  (Zotero.*, IOUtils.*, PathUtils.*, Services.*, Components.*).
+- No magic literals at call sites; values that mean something come
+  from CONFIG or a named constant block (TAGS, PATHS).
+
+A10.7 Performance, memory, and behavior notes (why some rules exist;
+ranked by how likely they are to matter at 60k items):
+
+- forEach with an async callback DOES NOT await: it fires every
+  callback immediately and returns. This silently launches thousands
+  of concurrent promises and breaks batching. for...of with await is
+  sequential and correct. This alone justifies the for...of rule.
+- await in a loop is sequential BY DESIGN and that is usually what we
+  want: Promise.all over thousands of item operations spikes memory,
+  floods the DB, and starves the UI thread. Parallelism is opt-in,
+  small, and commented (A10.3).
+- Do not accumulate full Zotero item objects across the whole run;
+  they anchor large object graphs and defeat GC (the reason for
+  GC_EVERY in the BBT scripts). Accumulate ids, keys, paths, or small
+  summary objects; let per-batch references die with the batch.
+- Zotero.Items.getAll(libraryID) materializes the entire library in
+  memory. Prefer Zotero.Search (or a DB id query) to get IDs, then
+  load in batches with getAsync. The BBT scripts model this.
+- One saveTx per item means one transaction per item: slow, and each
+  fires notifications/sync bookkeeping. Batch writes inside
+  Zotero.DB.executeTransaction (USE_TRANSACTION_WRAPPER pattern).
+  Behavior note: notifications may be deferred/coalesced inside a
+  transaction -- relevant to thread 3 loop-safety.
+- Each stage of a map/filter/reduce chain allocates a full
+  intermediate array. At tens of thousands of elements an explicit
+  single-pass loop does the same work with zero intermediates. (For
+  small arrays this is irrelevant; the ban is for clarity there.)
+- Spread into calls or push -- fn(...bigArray),
+  arr.push(...bigArray) -- passes every element as an argument and can
+  exceed engine argument limits (order 100k, engine-dependent) or blow
+  the stack. Use a loop or concat for large arrays. [...smallThing]
+  is fine.
+- Object/array spread and Object.assign copies are SHALLOW. Nested
+  objects remain shared; mutating a "copy" mutates the original one
+  level down. When a real copy matters, copy explicitly per field or
+  structuredClone and say so.
+- Per-item Zotero.debug or ProgressWindow updates dominate runtime at
+  scale (string formatting + UI). Log and update at intervals
+  (LOG_EVERY / progress every N items), totals in SUMMARY.
+- try/catch has no meaningful cost in modern engines; the old
+  "deoptimizes the function" advice is obsolete. Never contort code
+  to avoid a catch block. The rule against try/catch for expected
+  failures is about clarity, not speed.
+- Building large report strings: collect lines in an array and join
+  once at the end. (Engines handle += better than they used to, but
+  array-join is predictably linear and reads as intent.)
+- Template literals, optional chaining, destructuring, const vs var:
+  performance is identical for our purposes. Every choice among these
+  is made on clarity grounds alone; never justify a deviation from
+  A10 with micro-performance claims.
+- Closures capture their whole enclosing scope for as long as they
+  live. A long-lived callback defined inside a loop over items can
+  pin those items in memory. Prefer top-level named functions taking
+  explicit parameters for anything with a lifetime.
+
+A10.8 Rule-change protocol:
+
+Some of these rules will eventually bite. When one does, do not
+silently violate it. Either (a) add a dated exception here with the
+rationale and the specific site it applies to, or (b) change the rule
+here in the same change that violates it. Grandfathered code is fixed
+opportunistically, never in bulk sweeps mixed with feature changes.
+
 ## Part B: Library conventions (owner-authored)
 
 Every entry below is DRAFT unless marked CONFIRMED. Inferred from the
