@@ -41,7 +41,7 @@ handoff document so the repository, not any chat transcript, is the record.
 | one-time-operations/verify_pdf_file_duplicates_with_hash.sh | DELETE. Empty file. |
 | one-time-operations/verify_pdf_file_duplicates_with_file_name.sh | DELETE. Filename-prefix matching is unsafe (15-char truncation causes false positives). If duplicate detection recurs, do it properly by DOI/ISBN/title in console JS, or port the PS1 backup scaffold. Git history preserves this script. |
 | powershell/Backup-ZoteroStorage.ps1 | KEEP. Reference-quality. Serves as the scaffold for future PS1 tools (e.g. Move-OrphanFiles.ps1). Encoding is plain ASCII; no conversion needed. |
-| console_js/bbt_export.js | KEEP. Flagship script. Open item: incremental-export scaffolding is half built; either finish incremental slicing or freeze as full-export-only with a comment. |
+| console_js/bbt_export.js | KEEP. Flagship script. Fixed: stray non-ASCII byte (0xFB) on line 91 removed (thread 2 ASCII sweep, 2026-07). Open item: incremental-export scaffolding is half built; either finish incremental slicing or freeze as full-export-only with a comment. |
 | console_js/bbt_citation_key_refresh.js | KEEP. Fix one stray 0x1A control character in a comment. Open item: sort item IDs before processing so START_INDEX resume is order-stable. |
 | console_js/adjust_attachment_paths.js | KEEP. Useful whenever a base path changes. Also informs the orphan pipeline (historical base paths). |
 | console_js/convert_readstatus_to_tags.js | SALVAGE. One-time migration, but its tag logic seeds the tag-hygiene report (thread 3). |

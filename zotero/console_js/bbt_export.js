@@ -88,7 +88,7 @@ if (Services.vc.compare(zoteroVersion, CONFIG.MIN_ZOTERO_VERSION) < 0) {
     }
     Zotero.debug(`[Export] WARNING: ${msg} (bypassed)`);
 } else {
-    Zotero.debug(`[Export] Zotero ${zoteroVersion} within tested range [${CONFIG.MIN_ZOTERO_VERSION}, ${CONFIG.MAX_ZOTERO_VERSION || '*'}] û`);
+    Zotero.debug(`[Export] Zotero ${zoteroVersion} within tested range [${CONFIG.MIN_ZOTERO_VERSION}, ${CONFIG.MAX_ZOTERO_VERSION || '*'}] `);
 }
 
 // --- Better BibTeX (presence only; version is not exposed to the JS console) ---
