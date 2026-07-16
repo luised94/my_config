@@ -91,6 +91,14 @@ handoff document so the repository, not any chat transcript, is the record.
 - Q4: Fate of duplicate detection: likely a future console JS report by
   DOI/ISBN/normalized title. Not scheduled.
 - Q5: WSL-to-Windows script transport: manual copy for now; future feature.
+- Q6: Environment/version reporting (folded from general_settings.md,
+  now deleted): a small console script that outputs Zotero version,
+  installed plugins and their versions, and selected preferences, so
+  the tested-version ceilings in script CONFIGs and the dependency
+  list in README.md can be updated from real data instead of memory.
+  Original notes also wanted Zotero version detection from WSL
+  (wslpath); superseded if the console script covers it. Unscheduled;
+  natural fit alongside any thread's spike work.
 
 ## 5. Spike track
 
