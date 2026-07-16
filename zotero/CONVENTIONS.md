@@ -215,6 +215,21 @@ A10.3 Tradeoffs decided (defaults; revisit only with reason):
   commented as such.
 - Callbacks: no anonymous callback nested inside another anonymous
   callback; extract and name.
+- No premature helpers. Added 2026-07 (thread 2). Do not extract a
+  function until at least one of these holds: (a) it has three or more
+  textual call sites; (b) it is a clear, pure generalization worth naming
+  on its own; or (c) it is genuinely shared across files (and even then,
+  inlining at each site is often still better than abstracting). "Textual
+  call sites" means places it is written in the source, not runtime
+  invocation count: a one-line filter written once but run 78k times in a
+  loop stays inlined. Side-effecting helpers (that read or write files,
+  the DB, or the library) state so in the name so a reader knows a call is
+  not pure. The reference scripts' assert(), report()/log(), and a
+  yield-to-event-loop helper qualify by call-site count and stay; single
+  textual-use helpers like a one-off path-basename or ignore-list match
+  are inlined. Rationale: in single-file console scripts, indirection
+  costs more than the duplication it removes; a reader should follow the
+  work top to bottom without chasing one-call-site functions.
 
 A10.4 Dormant rules (activate only if a real plugin with UI and a
 build step is ever built -- MAINTENANCE_PLAN thread map, tier 3):
