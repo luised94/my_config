@@ -123,6 +123,107 @@ reference format.
   checks earliest), and loop-safe (must not re-trigger themselves via
   their own saves; mechanism per spike S3 findings).
 
+### A10. JavaScript style
+
+Baseline philosophy: boring and explicit beats clever, whenever
+performance and memory are equal. Evaluated against the Zotero 7
+console environment (privileged Firefox sandbox, single-file pasted
+scripts, no build step, no module system, no web DOM) and against the
+proven scripts in console_js/.
+
+A10.1 Adopted rules (required in new JS):
+
+- === and !== always. For null-or-undefined, write both checks
+  explicitly or use a documented == null with a comment; default to
+  the explicit pair.
+- Semicolons required. No ASI reliance.
+- One declaration per line. No comma declarations.
+- No classes, no this, no prototypes, no new for own code. State is
+  plain objects passed explicitly or closed over. Factories (functions
+  returning plain objects) where construction is needed.
+- No generators. Return arrays.
+- for...of is the default loop. Plain indexed for where the index is
+  needed. No forEach for control flow (break/continue do not work).
+- No long map/filter/reduce chains. Break into explicit steps with
+  named intermediate variables. Single-step map or filter is fine.
+- Early exit: a for loop with if + break, not some/find acrobatics.
+  (find for a simple lookup is acceptable.)
+- Named function declarations for multi-line bodies. Arrow functions
+  only for short, pure, single-expression callbacks.
+- No && / || as statement-level control flow. Use if.
+- switch: no fall-through ever; every case breaks or returns. Prefer
+  if/else chains or a lookup table (data-driven) in JS.
+- Errors: throw only Error instances. Never swallow exceptions; catch
+  blocks log and count (see A6) or rethrow. Expected failures use
+  return values; try/catch is for exceptional cases (JSON.parse, IO).
+- assert(condition, message) helper throwing Error, used in PRE-FLIGHT;
+  assertion count recorded in the timing object.
+- Ban: with, void, new Function. eval is banned with one possible
+  documented exception pending the script-runner decision
+  (handoff/03 OQ5); if adopted, it gets a named wrapper, a fixed
+  source directory, and a header warning.
+- No implicit globals; every binding declared.
+
+A10.2 Zotero-console-specific deviations (documented, intentional):
+
+- var at the TOP LEVEL of console scripts is allowed and preferred.
+  Reason: re-running a script in the same Run JavaScript window with
+  top-level let/const throws redeclaration errors; var tolerates
+  re-runs. Inside functions and blocks: const by default, let when
+  reassigned, never var. Do not "modernize" top-level var away.
+- Async IIFE wrapper (async function() { ... })() is allowed solely to
+  obtain await in the console. No other IIFEs; use blocks or named
+  functions for scoping.
+- Optional chaining ?. and nullish coalescing ?? are allowed for
+  probing host/plugin APIs that legitimately vary by version
+  (e.g. Components.utils?.forceGC, block?.content?.[0]?.text) and for
+  reaching into externally-shaped data. They are not a substitute for
+  explicit validation of our own data structures.
+- Template literals are the DEFAULT for any string with interpolation,
+  especially log lines. This diverges from advice preferring
+  concatenation: for a logging-heavy codebase, template literals are
+  the boring option (no escaping bugs, no + chains). Plain quotes for
+  static strings; single quotes preferred.
+
+A10.3 Tradeoffs decided (defaults; revisit only with reason):
+
+- Ternary: allowed only as a single-line simple assignment
+  (x = cond ? a : b). Anything nested or multi-line becomes if/else.
+- Truthiness: new code writes explicit comparisons
+  (arr.length > 0, x !== null, s !== ""). Existing truthy checks in
+  kept scripts are grandfathered; fix opportunistically.
+- Default parameters: allowed. The signature is the explicit, visible
+  place for a default; an undefined-check in the body hides it.
+- Destructuring: avoided. Write const a = obj.a;. Exception: none
+  needed so far.
+- Object copies: Object spread ({ ...src, extra }) allowed; building
+  property-by-property preferred when the shape matters to the reader.
+- Computed keys: assign after creation (obj[key] = value) rather than
+  { [key]: value }.
+- Async: async/await only; no .then chains. Sequential awaits by
+  default; Promise.all only when parallelism is intentional and
+  commented as such.
+- Callbacks: no anonymous callback nested inside another anonymous
+  callback; extract and name.
+
+A10.4 Dormant rules (activate only if a real plugin with UI and a
+build step is ever built -- MAINTENANCE_PLAN thread map, tier 3):
+
+- All DOM guidance: getElementById / single data-attribute selectors,
+  no innerHTML with interpolated strings (XSS), createElement +
+  textContent, explicit classList add/remove over toggle-with-flag.
+- Module guidance: named exports only, no default exports, no barrel
+  re-exports, no dynamic import().
+- Tooling: ESLint wired to these rules. Nothing to attach it to today
+  (console scripts have no build); revisit with the plugin.
+
+A10.5 Not applicable to this codebase (recorded so we do not re-litigate):
+
+- Event-listener architecture, "use strict" pragmas (console sandbox
+  and function bodies make it moot; no implicit globals rule covers
+  the risk), ES5 arguments-object patterns, IIFE-for-privacy (module
+  closures and blocks cover it).
+
 ## Part B: Library conventions (owner-authored)
 
 Every entry below is DRAFT unless marked CONFIRMED. Inferred from the
@@ -142,6 +243,10 @@ Action/maintenance tags, prefix "__", may coexist with reading-state:
 
 - __add-metadata item needs metadata completion (e.g. Google Books)
 - __add-file     item needs a file attached
+
+Ownership tags, prefix "__", orthogonal to reading-state (CONFIRMED):
+
+- __print        physical copy of the item is owned
 
 Known open points (Q1 in MAINTENANCE_PLAN.md):
 - Are reading-state tags strictly mutually exclusive, and what is the
