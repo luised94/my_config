@@ -101,18 +101,34 @@ handoff document so the repository, not any chat transcript, is the record.
   list in README.md can be updated from real data instead of memory.
   Original notes also wanted Zotero version detection from WSL
   (wslpath); superseded if the console script covers it. Unscheduled;
-  natural fit alongside any thread's spike work.
+  natural fit alongside any thread's spike work. Thread 2 confirmed
+  Zotero 9.0.6 for the console, attachment, DB, and IOUtils APIs
+  (VERIFIED_ENVIRONMENT.md); the BBT export/key path is NOT yet
+  re-confirmed on 9.0.6, so bbt_* script ceilings stay as they are until
+  a run verifies them.
+- Q7: Origin of the "undefined" top-level attachment folder (349 files,
+  found by S2). Likely an older tool serializing a missing author as the
+  literal string "undefined" (distinct from the intended "_" missing
+  author folder). Owner does not currently know. Harmless to the orphan
+  pipeline (surfaced in the per-folder breakdown); relevant to the future
+  metadata-completeness thread. Not scheduled.
 
 ## 5. Spike track
 
 Cheap throwaway console scripts run interactively (user pastes output back).
-Spikes live in their threads, not in thread 1.
+Spikes live in their threads, not in thread 1. Completed spike scripts are
+kept in spikes/ with a STATUS header. Numbering matches this section; a
+sub-spike that splits off mid-thread takes a letter suffix (e.g. S2b).
 
-- S1 (thread 2): attachment introspection. linkMode values present in the
-  library; getFilePath() behavior for linked file / stored / linked URL /
-  missing file; how html, epub, snapshot attachments present.
-- S2 (thread 2): IOUtils directory walk at scale (60k+ files). Streaming vs
-  buffering, memory, duration, Dropbox hydration behavior.
+- S1 (thread 2): DONE (Zotero 9.0.6, 2026-07). Attachment introspection.
+  Findings in handoff/02 and VERIFIED_ENVIRONMENT.md.
+  spikes/spike_s1_attachment_introspection.js.
+- S2 (thread 2): DONE (2026-07). IOUtils directory walk at scale.
+  Findings in handoff/02 and VERIFIED_ENVIRONMENT.md.
+  spikes/spike_s2_directory_walk.js.
+- S2b (thread 2): DONE (2026-07). Dropbox placeholder move/hydration test
+  (PowerShell). Move-Item within the Dropbox root preserves online-only
+  placeholders. spikes/Spike-S2b-PlaceholderMove.ps1.
 - S3 (thread 3): item-added event semantics. Fire timing vs translator
   metadata population; whether saveTx inside a handler re-triggers events;
   item state at fire time; burst behavior on bulk import. Make-or-break for
@@ -138,6 +154,17 @@ Spikes live in their threads, not in thread 1.
   handoff/03_incoming_automation.md.
 - Thread 4: annotation export. Deliberately under-specified until S5.
   Independent; can float. See handoff/04_annotation_export.md.
+- Thread 5 (deferred, not yet specified): metadata completeness and
+  citation-key integrity. Ensure items carry at least a date and some
+  form of author, since citation keys (CONVENTIONS B3) are built from
+  author + year + title and feed the owner's external knowledge system.
+  Load-bearing constraint: backfilling author/year CHANGES the key and
+  can break existing citations, so this thread must treat key stability
+  as first-class and coordinate with bbt_citation_key_refresh.js. Data is
+  collected opportunistically meanwhile by the orphan auditor's opt-in
+  metadata-gap report (thread 2) and relates to the "_"/"undefined"
+  attachment folders (B2, Q7). Owner has flagged this as possibly more
+  important than it first appears; scope before starting.
 
 Ordering: thread 1 first. Thread 2 next, optionally overlapping thread 3's
 spike phase. Thread 3 implementation after its spikes and Q1. Thread 4 last
