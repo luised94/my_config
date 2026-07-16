@@ -386,24 +386,79 @@ Known open points (Q1 in MAINTENANCE_PLAN.md):
 - Any renames, additions, or retirements desired?
 - Read_Status in the extra field is legacy; tags are the source of truth.
 
-### B2. Linked attachments (DRAFT)
+### B2. Linked attachments (base path CONFIRMED; rest OBSERVED, thread 2)
 
-- Base directory: <Windows user>/MIT Dropbox/<Dropbox user>/zotero-storage
-- Attachments are linked files (not stored copies).
-- Formats in use: pdf, html, epub, possibly others.
-- Filename pattern: Author_Year_Title (underscores for spaces), as
-  implied by find_files.sh patterns like "Bishop_2006_*". Confirm the
-  exact rule (first author only? title truncation? produced by ZotFile,
-  Attanger, or manual?).
+- Base directory (CONFIRMED, S1 pref + S2 walk):
+  C:\Users\<Windows user>\MIT Dropbox\<Dropbox user>\zotero-storage
+  The owner switches between two machines, so <Windows user> and
+  <Dropbox user> are CONFIG parameters, never hard-coded. Observed values
+  on the primary machine: Luised94 / Luis Martinez.
+- Attachments are linked files (LINK_MODE_LINKED_FILE = 2). Paths are
+  stored relative ("attachments:Author/File.ext"): 71,437 of 71,442
+  linked-file attachments are relative, 5 absolute (S1). Absolute
+  reconstruction: base + "\" + relative-part with "/" -> "\".
+  saveRelativeAttachmentPath is true.
+- linkMode inventory (S1, My Library): linked_file 71,442; linked_url
+  6,237; embedded_image 206; imported_url 37; imported_file 10; zero in
+  trash. Only linked_file lives under this base; imported_* and
+  embedded_image resolve into the Zotero storage/ directory (out of
+  scope). linked_url has no file.
+- Formats OBSERVED on disk (S2, by extension): pdf ~61.5k, html ~14k,
+  epub ~1.2k, png ~900, txt ~300, jpg, djvu, mhtml, hocr, doc, mobi, rtf,
+  plus 81 ".epu" (a truncated ".epub" -- filename truncation clips the
+  extension in a few cases). Content types (S1): application/pdf,
+  text/html, application/epub+zip, image/png, some null and
+  application/octet-stream, a short tail. Total ~78,152 files, ~28,746
+  folders, ~436 GB, folder depth 2 (base/author/file: no per-snapshot
+  resource subfolders).
+- Filename/folder pattern OBSERVED (S1 samples; owner to confirm the
+  exact truncation length): top-level folder is the first author's
+  surname with spaces PRESERVED (e.g. "de Luca"); surnames with
+  diacritics keep their accented form (see the non-ASCII note below);
+  the file is
+  "Surname_Year_TitleWords.ext" with spaces replaced by underscores and
+  the title truncated mid-word at roughly 45-50 characters (e.g.
+  "..._An_Overvie.pdf", "..._Single_Notion,_Multiple_My.pdf"). Missing
+  author lands in a "_" top-level folder (CONFIRMED by owner, expected).
+  A separate "undefined" top-level folder (349 files) is of unknown
+  origin (likely an older tool serializing a missing author as the
+  literal string "undefined"); see MAINTENANCE_PLAN Q7.
+- Non-ASCII paths are ~9% of the library (6,913 files, S2): Korean,
+  Chinese, Hebrew-script, Latin-with-diacritics. Path comparison must
+  normalize Unicode (NFC) as well as case and separators. Owner has not
+  observed Dropbox changing a file's normalization between machines but
+  cannot rule it out; the orphan auditor flags NFC-only matches rather
+  than treating them as orphans (handoff/02 decision, 2026-07).
 - Historical base paths exist in the wild (e.g. "Dropbox (MIT)"); scripts
-  comparing paths must account for stale-but-fixable bases.
+  comparing paths must account for stale-but-fixable bases. With the
+  current setup nearly all paths are relative, so the stale bucket is
+  tiny, but adjust_attachment_paths.js remains the fixer.
 - Quarantine convention: sibling folders next to the base for staged
-  deletions (existing: pdf_to_delete; new: zotero-orphans).
+  deletions, INSIDE the Dropbox root and on the same NTFS volume so moves
+  stay rename-only (existing: pdf_to_delete; orphan pipeline:
+  zotero-orphans, with a dated subfolder per run). Move-Item within the
+  Dropbox root preserves Dropbox online-only placeholders (no hydration,
+  no corruption -- S2b); robocopy and cross-volume moves do not and are
+  banned for quarantine moves.
 
-### B3. Citation keys (DRAFT)
+### B3. Citation keys (scheme described by owner; exact BBT string TBD)
 
 - Managed by Better BibTeX. citationKey field is authoritative.
-- Exact BBT key format string: TO BE FILLED IN by owner.
+- Conceptual scheme (owner-described, thread 2): folded first-author
+  surname + year + first significant title word (title lowercased,
+  stopwords skipped, first word selected). Written by the owner as
+  "auth.fold + year + title.lower.skipwords().select(1, 1)". The exact
+  BBT formatter string is still TO BE FILLED IN from the live BBT config
+  (Q6's environment-report spike is the natural place to capture it).
+- Keys are used as citation anchors in the owner's external knowledge
+  system. ENTAILMENT (load-bearing): a key is a function of author, year,
+  and title, so any change to those fields changes the key. Backfilling a
+  missing author or year (see B5) is therefore NOT a free metadata fix --
+  it mutates the citation key and can break existing references in the
+  knowledge system unless they are updated in lockstep. The filename
+  analog of a degenerate key is the "_" / "undefined" attachment folder
+  (B2). Any future metadata-completion work must treat key stability as a
+  first-class constraint and coordinate with bbt_citation_key_refresh.js.
 
 ### B4. Notes and annotations (DRAFT)
 
@@ -417,6 +472,14 @@ Placeholders for conventions the owner intends to record:
 
 - Collection structure and naming: TODO
 - Item-type-specific metadata requirements (what counts as complete for
-  a book vs an article): TODO
+  a book vs an article): TODO. Seeded by owner (thread 2): every item
+  should have at least a date and some form of author, because the
+  citation key (B3) is built from author + year + title. Items lacking
+  these produce degenerate keys and land in the "_" / "undefined"
+  attachment folders (B2). The orphan auditor emits a metadata-gap count
+  and a sample of offending keys as an opt-in side report, to collect
+  data for this work without acting on it. Deferred to a dedicated future
+  thread (MAINTENANCE_PLAN thread map); see the key-stability entailment
+  in B3 before any backfill.
 - Backup cadence and retention: TODO
 - Anything else: TODO
