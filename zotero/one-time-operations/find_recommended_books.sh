@@ -1,4 +1,10 @@
 #!/bin/bash
+# STATUS: one-time operation, COMPLETED. Kept for reference.
+# Personal checklist: searches the linked-attachment base for a fixed
+# list of recommended books by filename pattern (Author_Year_Title).
+# Requires WINDOWS_USER exported. Runs from WSL against the Windows
+# filesystem. If this need recurs, port to PowerShell per
+# CONVENTIONS.md A1, or generalize to read patterns from an input file.
 
 # Zotero Reading List Checker
 # Usage: ./zotero_find_files.sh
