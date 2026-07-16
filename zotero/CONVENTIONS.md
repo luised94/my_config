@@ -113,6 +113,22 @@ reference format.
   "Verified facts" section populated by spikes, stamped with the tested
   Zotero/plugin versions. Threads commit finalized designs back into
   their handoff document before implementation commits begin.
+- Spikes live in spikes/, one file per spike, named spike_sN_desc.js
+  (console) or Spike-SN-Desc.ps1 (PowerShell), with N the number from
+  MAINTENANCE_PLAN section 5 and a letter for sub-spikes (S2b). Each
+  spike is committed with a STATUS header (completed, thread, version,
+  what it verified). A spike script: is report-only by default (a spike
+  never mutates the library or files except a single explicitly-named
+  test target); in the Zotero console, uses the "Run as async function"
+  checkbox with top-level await, not an async IIFE (A10.2); wraps its
+  body in try/catch that logs via Zotero.debug and rethrows so failures
+  are loud; and returns a plain summary object as its result (also
+  mirrored to Zotero.debug line by line, since the console log survives
+  even when the return value does not). When a spike's findings involve
+  non-ASCII data (e.g. file paths), the write-up DESCRIBES and COUNTS
+  them rather than pasting the raw characters, to keep docs ASCII (A8).
+  Reusable host-environment facts (as opposed to a single library's
+  measurements) are promoted from the handoff to VERIFIED_ENVIRONMENT.md.
 
 ### A9. Actions & Tags scripts
 

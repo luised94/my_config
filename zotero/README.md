@@ -29,6 +29,13 @@ Start here:
 - better_notes_templates/ -- Better Notes templates.
 - one-time-operations/ -- completed, non-maintained scripts kept for
   reference; each carries a STATUS header.
+- spikes/ -- completed throwaway spike scripts kept for reference and
+  re-runnability. Each carries a STATUS header and a version stamp.
+  Findings are recorded in the relevant handoff document's "Verified
+  facts" and, when reusable across threads, in VERIFIED_ENVIRONMENT.md.
+  Naming: spike_sN_description.js (console) or Spike-SN-Description.ps1
+  (PowerShell); N matches the spike number in MAINTENANCE_PLAN.md
+  section 5 (sub-spikes take a letter, e.g. S2b).
 
 ## Dependencies
 
