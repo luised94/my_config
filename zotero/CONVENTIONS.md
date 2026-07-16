@@ -288,6 +288,11 @@ ranked by how likely they are to matter at 60k items):
 - Zotero.Items.getAll(libraryID) materializes the entire library in
   memory. Prefer Zotero.Search (or a DB id query) to get IDs, then
   load in batches with getAsync. The BBT scripts model this.
+- Zotero.DB.queryAsync REJECTS an inline LIKE literal with the error
+  "Please enter a LIKE clause with bindings" (a built-in injection
+  guard). The pattern must be a bound parameter: write
+  queryAsync('... WHERE path LIKE ?', ['attachments:%']), not the pattern
+  inline. Discovered by thread 2 spike S1 on Zotero 9.0.6.
 - One saveTx per item means one transaction per item: slow, and each
   fires notifications/sync bookkeeping. Batch writes inside
   Zotero.DB.executeTransaction (USE_TRANSACTION_WRAPPER pattern).
