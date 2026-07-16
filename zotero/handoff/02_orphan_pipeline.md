@@ -227,6 +227,10 @@ MAINTENANCE_PLAN section 5 reserves S3 for thread 3).
 Stamped: Zotero 9.0.6, Windows (version TODO: owner to stamp), Dropbox
 desktop client (version TODO: owner to stamp). Spike run 2026-07.
 
+The reusable subset of these facts (attachment-API semantics, IOUtils and
+Move-Item behavior) is promoted to VERIFIED_ENVIRONMENT.md; the
+library-specific measurements below stay here.
+
 ### From S1 (attachment introspection)
 
 - linkMode constants: IMPORTED_FILE=0, IMPORTED_URL=1, LINKED_FILE=2,

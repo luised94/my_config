@@ -75,7 +75,10 @@ handoff document so the repository, not any chat transcript, is the record.
 - D8: Every load-bearing assumption about Zotero internals is verified by a
   spike before design freezes. Spike findings are committed into the
   relevant handoff document as "Verified facts" with the Zotero and plugin
-  versions they were tested against.
+  versions they were tested against. A thread's handoff holds that
+  thread's specific measurements; reusable host-environment behavior (API
+  semantics, filesystem behavior) is promoted to VERIFIED_ENVIRONMENT.md,
+  version-stamped, so it outlives the thread. (Amended thread 2, 2026-07.)
 - D9: All new files are ASCII-only.
 
 ## 4. Open questions

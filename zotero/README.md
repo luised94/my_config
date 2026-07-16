@@ -13,6 +13,9 @@ Start here:
   conventions (tag taxonomy, attachment naming, citation keys).
 - handoff/ -- design documents for in-flight work (orphan pipeline,
   incoming-item automation, annotation export).
+- VERIFIED_ENVIRONMENT.md -- cross-thread ledger of host-environment
+  behavior verified by spikes (Zotero console, attachment APIs,
+  filesystem/Dropbox), version-stamped.
 
 ## Layout
 
