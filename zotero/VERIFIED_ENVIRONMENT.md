@@ -56,8 +56,7 @@ Tested: Zotero 9.0.6 (S1, 2026-07).
 
 ## Filesystem (IOUtils / PathUtils, Windows + Dropbox)
 
-Tested: Zotero 9.0.6; Windows + Dropbox desktop (versions TODO: owner to
-stamp). (S2, S2b, 2026-07.)
+Tested: Zotero 9.0.6; Windows 11 Pro (25H2) or Windows 10 + Dropbox desktop (260.4.2926)
 
 - IOUtils.getChildren(dir) returns a full array of child paths PER
   DIRECTORY (buffered, not streamed). Per-call memory is bounded by the

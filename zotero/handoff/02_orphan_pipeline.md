@@ -224,8 +224,7 @@ MAINTENANCE_PLAN section 5 reserves S3 for thread 3).
 
 ## Verified facts
 
-Stamped: Zotero 9.0.6, Windows (version TODO: owner to stamp), Dropbox
-desktop client (version TODO: owner to stamp). Spike run 2026-07.
+Stamped: Zotero 9.0.6, Windows 11 Pro (25H2) or Windows 10 + Dropbox desktop (260.4.2926) Spike run 2026-07.
 
 The reusable subset of these facts (attachment-API semantics, IOUtils and
 Move-Item behavior) is promoted to VERIFIED_ENVIRONMENT.md; the
