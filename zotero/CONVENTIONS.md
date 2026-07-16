@@ -171,9 +171,19 @@ A10.2 Zotero-console-specific deviations (documented, intentional):
   top-level let/const throws redeclaration errors; var tolerates
   re-runs. Inside functions and blocks: const by default, let when
   reassigned, never var. Do not "modernize" top-level var away.
-- Async IIFE wrapper (async function() { ... })() is allowed solely to
-  obtain await in the console. No other IIFEs; use blocks or named
-  functions for scoping.
+- To obtain await at the top level, use the Run JavaScript window's
+  "Run as async function" checkbox and write top-level await directly.
+  Do NOT wrap the script in an async IIFE.
+  Changed 2026-07 (was: "async IIFE wrapper is allowed solely to obtain
+  await"). Thread 2 spikes S1/S2 established that the Zotero 9.0.6 console
+  does not await a returned Promise: an async IIFE causes the console to
+  print "undefined / completed successfully" immediately while the script
+  runs on in the background, the script's return value is lost, and any
+  thrown error becomes a silent unhandled rejection (output simply stops
+  mid-run). The checkbox awaits the body, so `return x;` becomes the
+  displayed result and errors surface. Wrap the body in try/catch that
+  logs via Zotero.debug and rethrows, so failures are loud either way.
+  No other IIFEs; use blocks or named functions for scoping.
 - Optional chaining ?. and nullish coalescing ?? are allowed for
   probing host/plugin APIs that legitimately vary by version
   (e.g. Components.utils?.forceGC, block?.content?.[0]?.text) and for
