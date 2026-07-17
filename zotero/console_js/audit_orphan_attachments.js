@@ -62,17 +62,27 @@
 // 1. CONFIGURATION
 var CONFIG = {
     // --- ramp caps (ID5). 0 = no cap (full run). ---
-    MAX_ATTACHMENTS: 1000,        // Phase-1 linked-file rows processed (ramp: 1000, 5000, 0)
-    MAX_ENTRIES: 5000,            // Phase-2 walk entries (ramp: 5000, 25000, 0)
+    // Ramp validated 2026-07 (1000/5000, 5000/25000, full all closed their
+    // identities); defaults now full. Restore small caps to re-ramp.
+    MAX_ATTACHMENTS: 0,           // Phase-1 linked-file rows processed (0 = full)
+    MAX_ENTRIES: 0,               // Phase-2 walk entries (0 = full)
 
     // --- paths ---
     BASE_PATH: '',                // '' = derive from Zotero baseAttachmentPath pref
     OUTPUT_SUBDIR: 'orphan_audit',// under the Zotero data directory (ID1)
-    // Known historical bases (OQ1). Compared prefix-wise against the 5
-    // absolute-path outliers after normalization. Extend as discovered.
-    HISTORICAL_BASES: [
-        'C:\\Users\\Luised94\\Dropbox (MIT)\\zotero-storage'
+    // Stale-base handling for the ~5 absolute-path outliers (OQ1). The owner
+    // uses two machines that share ONE logical base but differ in the Windows
+    // user prefix (C:\Users\<user>\...). An absolute path saved on the other
+    // machine therefore has a foreign user prefix but the SAME suffix; it is
+    // fixable-stale (re-relativize with adjust_attachment_paths.js), not
+    // unknown. STALE_BASE_SUFFIXES holds that machine-independent tail,
+    // matched case-insensitively as a substring. HISTORICAL_BASES holds
+    // genuinely different historical roots (e.g. an old "Dropbox (MIT)"
+    // layout), matched as a normalized prefix. Both classify as fixable.
+    STALE_BASE_SUFFIXES: [
+        '\\MIT Dropbox\\Luis Martinez\\zotero-storage'
     ],
+    HISTORICAL_BASES: [],         // e.g. 'C:\\Users\\<user>\\Dropbox (MIT)\\zotero-storage'
 
     // --- pre-flight trust-but-verify (handoff/02) ---
     SAMPLE_VERIFY_COUNT: 200,     // random linked-file items; reconstructed path must equal getFilePath()
@@ -302,10 +312,15 @@ if (CONFIG.MAX_ATTACHMENTS > 0 && linkRows.length === CONFIG.MAX_ATTACHMENTS) {
     capsHit.push('MAX_ATTACHMENTS');
 }
 
-// Historical bases, normalized once for prefix comparison.
+// Historical bases (prefix match) and stale suffixes (substring match),
+// normalized once.
 var historicalBaseKeys = [];
 for (var hb of CONFIG.HISTORICAL_BASES) {
     historicalBaseKeys.push(normalizeKey(hb));
+}
+var staleSuffixKeys = [];
+for (var ss of CONFIG.STALE_BASE_SUFFIXES) {
+    staleSuffixKeys.push(normalizeKey(ss));
 }
 
 var rowsSinceYield = 0;
@@ -333,6 +348,14 @@ for (var linkRow of linkRows) {
         if (storedKey.startsWith(baseKey + '\\')) {
             absolutePath = storedPath;   // under the current base; compares normally
         } else {
+            // Cross-machine same-base: foreign user prefix, matching suffix.
+            var matchedSuffix = false;
+            for (var suffixKey of staleSuffixKeys) {
+                if (storedKey.indexOf(suffixKey + '\\') !== -1) {
+                    matchedSuffix = true;
+                    break;
+                }
+            }
             var matchedHistorical = false;
             for (var hbKey of historicalBaseKeys) {
                 if (storedKey.startsWith(hbKey + '\\')) {
@@ -341,8 +364,12 @@ for (var linkRow of linkRows) {
                 }
             }
             var staleReason = 'absolute path under unknown base';
-            if (matchedHistorical) {
-                staleReason = 'absolute path under known historical base ' +
+            if (matchedSuffix) {
+                staleReason = 'absolute path under the shared base with a ' +
+                    'foreign machine user prefix (fixable: re-relativize with ' +
+                    'adjust_attachment_paths.js)';
+            } else if (matchedHistorical) {
+                staleReason = 'absolute path under a known historical base ' +
                     '(fixable with adjust_attachment_paths.js)';
             }
             staleRows.push({ itemID: linkRow.itemID, rawStored: storedPath,
