@@ -230,12 +230,68 @@ the finalized design above.
   aggregated in the database; no item objects are loaded for it,
   consistent with A10.7.
 
+### From the first full auditor run (Zotero 9.0.6, machine "liusm", 2026-07)
+
+Report-only; both reconciliation identities closed (residual 0).
+
+- Library: 71,387 linked-file rows (trash excluded), 71,382 relative /
+  5 absolute, 122 duplicate links. (Down slightly from S1's 71,442; the
+  auditor excludes trash and the library has churned since the spike.)
+- Disk: 78,160 files, 28,771 dirs, maxDepth 2, 0 ignore-list hits, 0
+  stat failures. (S2 saw 78,152 / 28,746; normal drift.)
+- Result: 71,188 matched, 6,972 orphans, 72 broken (missing), 5 broken
+  (stale), 0 NFC-only matches, 0 duplicate disk keys.
+- Interpretation (owner-confirmed direction): orphans are dominated by
+  SUPERSEDED RENAME ARTIFACTS, not lost files. Evidence: orphans (6,972)
+  vastly exceed broken-missing links (72), so the items already point at
+  a different, matched file; the leftover is old-scheme dead weight.
+  Sampled orphan names show untruncated titles (current scheme truncates
+  ~45-50 chars), lowercase-surname old scheme, dropped "et al" folders,
+  Dropbox conflict copies ("... 2.pdf", "... 3.pdf"), and no-year names.
+- 0 NFC-only matches in the CURRENT library is the first evidence that
+  Dropbox is not renormalizing Unicode between the two machines (the
+  open concern behind the flag-don't-fold design). Kept as a standing
+  check, not proof; cost is zero while it stays zero.
+- The 5 absolute-path outliers classified as fixable-stale via
+  STALE_BASE_SUFFIXES (cross-machine same-base, foreign Windows-user
+  prefix), not "unknown" -- the auditor was corrected after this run
+  (OQ1 refinement; owner supplied the shared suffix
+  "\MIT Dropbox\Luis Martinez\zotero-storage"). Re-confirm the 5 stale
+  lines read as cross-machine on the next run.
+- Per-folder anomalies for owner inspection BEFORE any quarantine:
+  "_" 3027 matched / 1113 orphans (expected big bucket); "undefined"
+  6 / 343 (=349, matches S2 exactly; junk from an old tool); "Legouve"
+  1 / 393 and "Polya" (accented) 6 / 284 -- both extreme, likely
+  one-time bulk imports whose items were later removed/refiled; a cluster
+  of accented-name folders (Martinez, de Jouvenel, Muller, Klein) with
+  inverted orphan ratios vs the CJK surname folders, consistent with
+  historical encoding churn. The accented "Polya" folder and an ASCII
+  "Polya" folder coexist on disk. These clusters are NOT auto-quarantine
+  candidates without a look.
+- Metadata-gap side report: 61,712 parent items of linked files;
+  944 missing creator, 1,481 missing date, 942 missing BOTH; 0 standalone
+  linked-file attachments. The ~942 missing-both are the degenerate-key
+  population feeding "_"/"undefined"; thread-5 seed data (do not act).
+- Walk took 114s here (vs S2's 49s): partly the second machine, partly
+  the adaptive backoff over-reacting to NTFS/cloud-filter slowness (it
+  ramped the yield to 120 ms, which is metadata cost, not UI pressure).
+  Harmless; SLOW_INTERVAL_MS / backoff cap can be tuned later.
+
 ## Spikes (DONE)
 
 S1 attachment introspection, S2 directory walk, and S2b placeholder-move
 are complete; scripts are in zotero/spikes/. Findings below. S2b is the
 PowerShell placeholder/hydration test (numbered S2b, not S3, because
 MAINTENANCE_PLAN section 5 reserves S3 for thread 3).
+
+S2c (spikes/Spike-S2c-OrphanListReadAndTriage.ps1): PENDING owner run.
+Read-only. Verifies the mover's input contract (Windows PowerShell 5.1
+reads the auditor's UTF-8-with-BOM, CRLF, non-ASCII orphans.txt with the
+BOM stripped and characters intact) AND triages orphans into heuristic
+buckets (conflict-copy, clipped-extension, lowercase-name, no-year,
+residual) so the owner sees the safe-vs-review split before the mover
+exists. PowerShell sub-spike of the thread-2 walk track; S3 stays
+reserved for thread 3. Gates writing Move-OrphanFiles.ps1.
 
 ## Open questions (RESOLVED)
 
