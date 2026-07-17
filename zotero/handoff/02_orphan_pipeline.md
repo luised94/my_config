@@ -190,6 +190,46 @@ would also hydrate. Therefore the mover:
   dehydrate. (S2b's attrib +U probe was inconclusive because the test file
   was already dehydrated; moot for this design.)
 
+## Implementation decisions (2026-07, pre-implementation, owner-confirmed)
+
+Settled at implementation kickoff; interface-level details not fixed by
+the finalized design above.
+
+- ID1 (output layout): one timestamped subfolder per run under the
+  Zotero data directory: <data>/orphan_audit/<YYYY-MM-DD_HHMMSS>/
+  containing orphans.txt, broken_links_missing.txt,
+  broken_links_stale.txt, normalization_mismatches.txt, and
+  run_summary.json. The mover takes the orphans.txt path (or the run
+  folder) as a parameter. No timestamp suffixes on file names.
+- ID2 (encoding): the .txt path lists are UTF-8 WITH BOM and CRLF line
+  endings, because the consumer is Windows PowerShell 5.1, which only
+  reliably detects UTF-8 via the BOM. run_summary.json is UTF-8 without
+  BOM (JSON consumers dislike BOMs; the mover does not parse it).
+- ID3 (mover host): target is Windows PowerShell 5.1 (verified
+  5.1.26100.8875 on the primary machine). The mover HARD-CHECKS
+  $PSVersionTable.PSVersion and aborts on any other major.minor
+  (including PowerShell 7) with a named -BypassVersionCheck switch,
+  because default encoding and Move-Item semantics are unverified
+  elsewhere. Re-verify and bump the ceiling if PS 7 is ever adopted.
+- ID4 (mover stale entries): if a listed path no longer exists at move
+  time, the mover counts it as skipped-missing with a warning and
+  continues; it aborts only via the consecutive-failure pattern, never
+  for a single stale entry.
+- ID5 (validation ramp semantics): the 1000/5000/full ramp is expressed
+  as CONFIG caps -- MAX_ATTACHMENTS on the Phase-1 rows and MAX_ENTRIES
+  on the walk. On a capped (partial) run the reconciliation identity is
+  reported but NOT asserted, since partial arithmetic cannot close; it
+  is asserted only on a full run.
+- ID6 (no resume; dated A5 exception): the auditor is report-only and a
+  full run costs roughly a 2-minute walk plus fast DB queries, so it
+  keeps checkpoint logging but omits START_INDEX resume machinery -- a
+  crashed run is cheaper to rerun than to resume. Recorded in the
+  script header as a dated exception to A5.
+- ID7 (metadata-gap mechanics): the side report is pure SQL
+  (itemAttachments -> parent items -> itemCreators / itemData joins),
+  aggregated in the database; no item objects are loaded for it,
+  consistent with A10.7.
+
 ## Spikes (DONE)
 
 S1 attachment introspection, S2 directory walk, and S2b placeholder-move
