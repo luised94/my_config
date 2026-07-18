@@ -1,0 +1,17 @@
+# ShellCheck configuration for my_config.
+#
+# WHY external-sources: files in bash/ are sourced as a chain by
+# dotfiles/bashrc.sh rather than each sourcing the next, so ShellCheck cannot
+# see cross-file definitions on its own. Enabling this lets explicit `source`
+# directives resolve and avoids spurious SC1091 noise.
+external-sources=true
+
+# WHY severity lives in scripts/lint.sh, not here: ShellCheck's rc format does
+# not honor a `severity` key (verified: `severity=error` still reports
+# warnings). The warning threshold is therefore applied by lint.sh via
+# `-S warning`. This file only carries options the rc format actually supports.
+
+# WHY SC2034 is not globally disabled: the config arrays in 00_config.sh are
+# consumed by sibling files and look "unused" to ShellCheck, but a blanket
+# disable would also hide genuinely dead variables. These are annotated
+# per-line where legitimate instead (see commit C5).
