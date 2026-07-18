@@ -87,6 +87,9 @@ MC_SHELL_OPTIONS=(
     "checkwinsize"
 )
 
+# Extra PATH entries, appended in 01_activate.sh. An entry may use a leading ~
+# to mean $HOME (expanded explicitly there); no other variable references are
+# expanded, so write absolute paths or ~-relative paths only.
 MC_ADDITIONAL_PATHS=(
     "/opt/zig"
 )

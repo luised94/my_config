@@ -23,9 +23,17 @@ for var in "${MC_ENV_VARS[@]}"; do
 done
 
 # Expand and Apply PATHs
-for p in "${MC_ADDITIONAL_PATHS[@]}"; do
-    eval "p_expanded=$p"
-    [[ -d "$p_expanded" ]] && PATH="$PATH:$p_expanded"
+# Entries in MC_ADDITIONAL_PATHS may use a leading ~ for $HOME (see 00_config.sh).
+# Expand that explicitly instead of via eval, so values containing spaces stay
+# intact and no unintended code runs. The membership check keeps re-sourcing
+# from growing PATH.
+for path_entry in "${MC_ADDITIONAL_PATHS[@]}"; do
+    expanded_path="${path_entry/#\~/$HOME}"
+    [[ -d "$expanded_path" ]] || continue
+    case ":$PATH:" in
+        *":$expanded_path:"*) : ;;                 # already present; skip append
+        *) PATH="$PATH:$expanded_path" ;;
+    esac
 done
 
 # Set the default editor.
@@ -71,9 +79,9 @@ fi
 # Apply and export Individual Preferences (available in subshells)
 export BROWSER
 export EDITOR
-export HISTCONTROL="$MC_HISTCONTROL"
-export HISTFILESIZE="$MC_HISTFILESIZE"
-export HISTSIZE="$MC_HISTSIZE"
+export HISTCONTROL="$MC_HIST_CONTROL"
+export HISTFILESIZE="$MC_HIST_FILESIZE"
+export HISTSIZE="$MC_HIST_SIZE"
 export PATH
 export PS1="$MC_PS1"
 export VISUAL="$editor"
