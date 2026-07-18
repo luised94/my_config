@@ -32,7 +32,7 @@ MC_ROOT="${MC_ROOT:-$HOME/personal_repos/my_config}"
 MC_ROOT="${MC_ROOT%/}"
 
 if [[ ! -d "$MC_ROOT" && $- == *i* ]]; then
-  printf "[ERROR] BASH_UTILS_ROOT does not exist: %s\n" "$MC_ROOT" >&2
+  printf "[ERROR] MC_ROOT does not exist: %s\n" "$MC_ROOT" >&2
 
 fi
 
@@ -80,4 +80,4 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # RUST/CARGO/RUSTUP
-. "$HOME/.cargo/env"
+[ -s "$HOME/.cargo/env" ] && \. "$HOME/.cargo/env"  # This loads cargo/rust env
