@@ -48,6 +48,23 @@
 #   rebase_worktrees_on_main  Rebase worktree branches onto main
 #   prune_merged_branches   Delete fully-merged local branches
 # ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Merged from the former bash/05_git_helpers.sh (removed in this commit). Shared
+# git-state helper; also called by 10_vim_utils.sh. Defined here near the top of
+# this file so it precedes every use within it. This is runtime-safe for
+# 10_vim_utils.sh (which loads before this file) because that file's callers run
+# only after the whole chain is sourced -- bash resolves function calls late.
+# ------------------------------------------------------------------------------
+# Check that user is in git repo.
+_is_inside_git_repo() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # ------------------------------------------------------------------------------
 # FUNCTION   : status_all_repos
 # PURPOSE    : Display a compact status overview for all git repos in a directory.
