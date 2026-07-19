@@ -436,7 +436,8 @@ EOF
     local friction_original_entry_count=""
     friction_original_entry_count="$(grep -c '^@@ ' "$MC_FRICTION_FILEPATH" || echo 0)"
 
-    local friction_archive_file="$MC_FRICTION_ARCHIVE/FRICTION_${friction_archive_project}_$(date +%Y-%m).md"
+    local friction_archive_file
+    friction_archive_file="$MC_FRICTION_ARCHIVE/FRICTION_${friction_archive_project}_$(date +%Y-%m).md"
     local friction_remaining_tmp="$MC_FRICTION_DIRECTORY/.friction_remaining.tmp"
 
     # --- run awk archive ---

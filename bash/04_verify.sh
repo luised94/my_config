@@ -1,8 +1,10 @@
+# shellcheck shell=bash
 # ------------------------------------------------------------------------------
 # TITLE      : MC System Verification (04_verify.sh)
 # PURPOSE    : Persistent caching for environment health.
 # CONTEXT    : Sourced by .bashrc. Defines and then runs the check.
 # ------------------------------------------------------------------------------
+# shellcheck disable=SC2120  # --force is optional; passed by mc_reload/bootstrap callers
 mc_verify() {
     # 1. Setup Variables
     local cache_dir="$HOME/.cache/mc"
@@ -164,6 +166,7 @@ Reload the MC bash environment by re-sourcing bashrc.
   _MC_SKIPPED_EXTENSIONS=()
   _MC_FAILED_EXTENSIONS=()
 
+  # shellcheck disable=SC1090  # bashrc path is dynamic (MC_ROOT-relative)
   source "$bashrc" && msg_info "MC environment reloaded"
 
   # Deduplicate PATH

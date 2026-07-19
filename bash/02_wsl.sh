@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ------------------------------------------------------------------------------
 # TITLE      : MC WSL Platform Logic (02_wsl.sh)
 # PURPOSE    : Handles Windows interop, Dropbox path detection, and WSL-specific vars.

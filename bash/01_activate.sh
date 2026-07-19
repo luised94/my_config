@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ------------------------------------------------------------------------------
 # TITLE      : MC Activation Engine (01_activate.sh)
 # PURPOSE    : Processes and applies configuration arrays defined in 00_mc_config.sh.
@@ -19,6 +20,7 @@ done
 
 # Apply Environment Variables
 for var in "${MC_ENV_VARS[@]}"; do
+    # shellcheck disable=SC2163  # entries are NAME=VALUE assignments, exported verbatim
     export "$var"
 done
 
@@ -71,6 +73,7 @@ fi
 # Also include your custom completions loop here
 if [[ -d ~/.bash_completion.d ]]; then
     for _comp_file in ~/.bash_completion.d/*; do
+        # shellcheck disable=SC1090  # user-provided completion files; path is dynamic
         [[ -f "$_comp_file" ]] && source "$_comp_file"
     done
     unset _comp_file

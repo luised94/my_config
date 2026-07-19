@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # If not running interactively, don't do anything
 case $- in
@@ -41,6 +42,7 @@ export MC_ROOT
 # We loop through files in the 'core' directory numbered 00-03
 for _file in "${MC_ROOT}"/bash/[0-9][0-9]_*.sh; do
     if [[ -r "$_file" ]]; then
+        # shellcheck disable=SC1090  # numbered chain files; path is dynamic (glob)
         if ! source "$_file"; then
             # Use raw printf here because the logger might not be loaded yet
             printf "[ERROR] MC Framework failed to source: %s\n" "$_file" >&2
@@ -49,6 +51,7 @@ for _file in "${MC_ROOT}"/bash/[0-9][0-9]_*.sh; do
 done
 
 # Device specific settings.
+# shellcheck disable=SC1090  # optional user-local file; path is dynamic
 [[ -f ~/.mc_local ]] && source ~/.mc_local
 
 # Finalize and Report
@@ -70,7 +73,7 @@ unset _MC_TMUX_SESSION _MC_BRANCH _MC_POSSIBLE_ROOT _file
 
 # Switch to home directory if not in Tmux
 if [ -z "$TMUX" ]; then
-  cd "$HOME"
+  cd "$HOME" || return
 
 fi
 

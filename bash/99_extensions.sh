@@ -201,6 +201,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
 
   # Source file
   if [[ -f "$extension" && "$extension" == *.sh ]]; then
+    # shellcheck disable=SC1090  # extension path is dynamic (user-provided)
     if source "$extension"; then
       _MC_LOADED_EXTENSIONS+=("$extension")
     else
@@ -213,6 +214,7 @@ for extension in "$MC_EXTENSIONS_DIR"/*; do
     for candidate in "${extension##*/}.sh" "init.sh" "main.sh"; do
       entry_point="$extension/$candidate"
       if [[ -f $entry_point ]]; then
+        # shellcheck disable=SC1090  # extension entry-point path is dynamic
         if source "$entry_point"; then
           _MC_LOADED_EXTENSIONS+=("$entry_point")
           break

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ============================================================
 # 14_c_utils.sh -- C development utilities
 # ============================================================
@@ -26,7 +27,8 @@ cr() {
         return 1
     fi
 
-    local binary="/tmp/$(basename "$1" .c)"
+    local binary
+    binary="/tmp/$(basename "$1" .c)"
     gcc -std=c99 -Wall -Wextra -g -fsanitize=address,undefined \
         -o "$binary" "$1" && "$binary"
 }

@@ -913,11 +913,16 @@ jobopen() {
     echo "Opening: $(basename "${match}")"
 
     # List other files in the directory so user remembers what's there.
-    local other_files
-    other_files=$(ls "${match}" 2>/dev/null | grep -v '^posting.txt$')
-    if [ -n "${other_files}" ]; then
+    local -a other_files=()
+    local candidate_file
+    for candidate_file in "${match}"/*; do
+        [[ -e "$candidate_file" ]] || continue
+        [[ "${candidate_file##*/}" == "posting.txt" ]] && continue
+        other_files+=("${candidate_file##*/}")
+    done
+    if [[ "${#other_files[@]}" -gt 0 ]]; then
         echo "Also in this directory:"
-        echo "${other_files}" | sed 's/^/  /'
+        printf '  %s\n' "${other_files[@]}"
     fi
 
     local editor

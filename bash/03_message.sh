@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ------------------------------------------------------------------------------
 # TITLE      : _msg (Internal Logging Engine)
 # PURPOSE    : Centralized output handler with level filtering and color support.

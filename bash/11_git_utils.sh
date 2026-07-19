@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ==============================================================================
 # GIT REPOSITORY UTILITIES
 # ==============================================================================
@@ -249,10 +250,12 @@ stash_report() {
 
   for repo_path in "${repo_paths[@]}"; do
     repo_path="${repo_path%/}"
-    local repo_name="$(basename "$repo_path")"
+    local repo_name
+    repo_name="$(basename "$repo_path")"
 
     # usb-sh-controlled; see github luised94/usb-sh docs/design.md
-    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  
+    # shellcheck disable=SC2154  # repo_dir looks like a typo for repo_path; preserving current behavior pending owner review (see C13)
+    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -925,6 +928,7 @@ prune_merged_branches() {
 
     # Current branch (never prune)
     local current_branch
+    # shellcheck disable=SC2034  # computed (with load-bearing || continue) but not yet used in the prune filter; suspected incomplete guard (see C13)
     current_branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
 
     # Find merged branches

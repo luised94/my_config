@@ -11,11 +11,15 @@
 
 # General Preferences
 MC_VERBOSITY=3
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_HIST_CONTROL="ignoreboth"
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_HIST_SIZE=1000
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_HIST_FILESIZE=2000
-MC_COLOR_SUPPORT=1
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_PS1='\u@\h:\w\$ '
+# shellcheck disable=SC2034  # consumed by 02_wsl.sh
 MC_DROPBOX_SUBPATH="MIT Dropbox/Luis Martinez"
 
 # Arrays for Shell Management
@@ -24,6 +28,7 @@ MC_DROPBOX_SUBPATH="MIT Dropbox/Luis Martinez"
 #  Editors (nvim, vim), browsers and wsl/windows binaries are NOT listed here because they are handled
 # dynamically by MC_DEFAULT_EDITORS, MC_DEFAULT_BROWSERS in 01_activate.sh.
 # WSL_DEPS are verified in 04_verify.sh.
+# shellcheck disable=SC2034  # consumed by 04_verify.sh
 MC_REQUIRED_PROGS=(
     # Core Utilities
     "git"
@@ -47,12 +52,14 @@ MC_REQUIRED_PROGS=(
     #"cmake"
 )
 
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_DEFAULT_EDITORS=("nvim" "vim" "nano" "vi")
 
 # --- WSL Specific Dependencies ---
 # WSL Specific Dependencies (Binaries or Absolute Paths)
 # Only checked if running inside WSL.
 # system32 binaries already added to path automatically.
+# shellcheck disable=SC2034  # consumed by 04_verify.sh
 MC_WSL_DEPS=(
     "cmd.exe"
     "powershell.exe"
@@ -61,6 +68,7 @@ MC_WSL_DEPS=(
 )
 
 # Browsers are not in $PATH by default, so we use absolute paths.
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_DEFAULT_BROWSERS=(
     "/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
     "/mnt/c/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
@@ -73,6 +81,7 @@ MC_DEFAULT_BROWSERS=(
 # Format: "Source_Path:Target_Path"
 # Used by 04_verify.sh to validate and 00_bootstrap.sh (future) to create.
 # NOTE: Use $HOME instead of ~ to ensure safe expansion.
+# shellcheck disable=SC2034  # consumed by 04_verify.sh
 MC_SYMLINKS=(
     # Bash Configuration
     "$MC_ROOT/dotfiles/bashrc.sh:$HOME/.bashrc"
@@ -82,6 +91,7 @@ MC_SYMLINKS=(
     "$MC_ROOT/nvim:$HOME/.config/nvim"
 )
 
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_SHELL_OPTIONS=(
     "histappend"
     "checkwinsize"
@@ -90,10 +100,12 @@ MC_SHELL_OPTIONS=(
 # Extra PATH entries, appended in 01_activate.sh. An entry may use a leading ~
 # to mean $HOME (expanded explicitly there); no other variable references are
 # expanded, so write absolute paths or ~-relative paths only.
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_ADDITIONAL_PATHS=(
     "/opt/zig"
 )
 
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_ENV_VARS=(
     #"BROWSER=/mnt/c/Program Files (x86)/BraveSoftware/Brave-Browser/Application/brave.exe"
     "GIT_EDITOR=nvim"
@@ -102,6 +114,7 @@ MC_ENV_VARS=(
     "R_LIBS_USER=/opt/R/library"
 )
 
+# shellcheck disable=SC2034  # consumed by 01_activate.sh
 MC_ALIASES=(
     # --- Basic ---
     "l=ls -CF"
@@ -139,18 +152,21 @@ MC_ALIASES=(
 )
 
 # Consolidation of Exclusion Lists
+# shellcheck disable=SC2034  # consumed by 10_vim_utils.sh
 MC_EXCLUDE_DIRS=(
     ".git" "node_modules" ".next" ".nuxt" ".venv" "venv" "env" "__pycache__"
     "renv" ".Rproj.user" "build" "dist" "target" "out" "bin" "vendor" "deps"
     ".idea" ".ruff_cache" ".vscode" ".cache" "tmp" "temp" "coverage"
 )
 
+# shellcheck disable=SC2034  # consumed by 10_vim_utils.sh
 MC_EXCLUDE_FILES=(
     "*.log" "*.pdf" "*.bib" "*.zip" "*.json" "*.db" "*.git" "*.tmp" "*.bak" "*.swp" "*.swo" "*.pyc" "*.pyo" "*.o" "*.so"
     "*.a" "*.class" ".DS_Store" "Thumbs.db" "*repository_aggregate.md"
     "*.gitignore" "*.Rprofile" "*renv.lock"
 )
 
+# shellcheck disable=SC2034  # consumed by 10_vim_utils.sh
 MC_VIMALL_FILE_LIMIT=150
 # ------------------------------------------------------------------------------
 # [MC_02_COMPUTED_ENV]: Logic for system detection
@@ -183,7 +199,9 @@ fi
 # ------------------------------------------------------------------------------
 # [MC_99_EXTENSIONS]: Extensions configurations
 # ------------------------------------------------------------------------------
+# shellcheck disable=SC2034  # consumed by 99_extensions.sh
 MC_EXTENSIONS_DIR="$HOME/.config/mc_extensions"
+# shellcheck disable=SC2034  # consumed by 99_extensions.sh
 MC_EXTENSION_TYPES_ALLOWED=("sh" "lua")
 _MC_SKIP_EXTENSIONS=()
 _MC_SKIPPED_EXTENSIONS=()

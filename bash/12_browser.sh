@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ------------------------------------------------------------------------------
 # FUNCTION   : view_files
 # PURPOSE    : Browse files in batches using system browser (WSL).
