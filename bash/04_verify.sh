@@ -9,7 +9,6 @@ mc_verify() {
     # 1. Setup Variables
     local cache_dir="$HOME/.cache/mc"
     local cache_file="$cache_dir/verify_success"
-    local config_file="$MC_ROOT/bash/00_config.sh"
     local force_check="false"
 
     # Check for force flag
@@ -30,9 +29,18 @@ mc_verify() {
     elif [[ ! -f "$cache_file" ]]; then
         # No cache exists yet
         run_now="true"
-    elif [[ "$config_file" -nt "$cache_file" ]]; then
-        # Config file is newer than the cache file
-        run_now="true"
+    else
+        # Rerun if ANY framework file changed since the last successful check,
+        # not just 00_config.sh -- edits to any other numbered module would
+        # otherwise be missed until the cache was invalidated for some other
+        # reason.
+        local framework_file
+        for framework_file in "$MC_ROOT"/bash/[0-9][0-9]_*.sh; do
+            if [[ "$framework_file" -nt "$cache_file" ]]; then
+                run_now="true"
+                break
+            fi
+        done
     fi
 
     # 4. Execute checks if necessary
