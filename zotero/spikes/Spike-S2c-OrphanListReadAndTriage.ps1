@@ -92,13 +92,37 @@ if ($nonAscii.Count -gt 0) {
     $nonAscii | Select-Object -First $SamplePerBucket | ForEach-Object { Write-Host "          $_" }
 }
 
-$contractOk = $hasBom -and (-not $bomLeak) -and ($lines.Count -gt 0)
+# Decisive display-vs-data check. A mangled CONSOLE rendering (e.g.
+# "Alegr[..]a" for "Alegria") is only a codepage DISPLAY issue if the
+# in-memory string still resolves on disk. Test-Path a bounded non-ASCII
+# sample: all-present => display-only, and the mover is safe using
+# -LiteralPath. Any absent => the read itself corrupted the bytes; STOP and
+# fix encoding before the mover moves anything.
+$naSample = @($nonAscii | Select-Object -First $SpotCheckCount)
+$naPresent = 0
+$naAbsent = 0
+$naAbsentList = New-Object System.Collections.ArrayList
+foreach ($p in $naSample) {
+    if (Test-Path -LiteralPath $p) { $naPresent++ } else { $naAbsent++; [void]$naAbsentList.Add($p) }
+}
+Write-Host "[TEST]  Non-ASCII resolution ($($naSample.Count) paths): present $naPresent, absent $naAbsent"
+if ($naAbsent -gt 0) {
+    Write-Host "[TEST]  DATA CORRUPTION: some non-ASCII paths do NOT resolve --" -ForegroundColor Red
+    Write-Host "[TEST]  console mangling is not display-only. Fix read encoding before the mover." -ForegroundColor Red
+    $naAbsentList | Select-Object -First 5 | ForEach-Object { Write-Host "          MISSING: $_" }
+} elseif ($naSample.Count -gt 0) {
+    Write-Host "[TEST]  Non-ASCII mangling is DISPLAY-ONLY (all sampled non-ASCII paths resolve)." -ForegroundColor Green
+    Write-Host "[TEST]  Mover is safe on non-ASCII paths with -LiteralPath." -ForegroundColor Green
+}
+
+$contractOk = $hasBom -and (-not $bomLeak) -and ($lines.Count -gt 0) -and ($naAbsent -eq 0)
 Write-Host "[TEST]  CONTRACT: $(if ($contractOk) { 'PASS' } else { 'FAIL -- fix before writing the mover' })" `
     -ForegroundColor $(if ($contractOk) { 'Green' } else { 'Red' })
 
 # --- (2) TRIAGE -------------------------------------------------------------
 # Heuristic buckets (NOT authoritative -- for owner review, not for automated
 # action). A single path can only fall in the first bucket it matches.
+$bOcrPageImage = New-Object System.Collections.ArrayList  # page-NNN.png OCR-my-PDF litter
 $bConflictCopy = New-Object System.Collections.ArrayList  # "... 2.pdf", "... 3.pdf" (Dropbox/OS copies)
 $bClippedExt   = New-Object System.Collections.ArrayList  # ".epu" and other clipped extensions
 $bLowerName    = New-Object System.Collections.ArrayList  # lowercase-surname old scheme
@@ -107,7 +131,14 @@ $bResidual     = New-Object System.Collections.ArrayList  # everything else
 
 foreach ($line in $lines) {
     $leaf = Split-Path -Path $line -Leaf
-    if ($leaf -match ' \d+\.[A-Za-z0-9]+$') {
+    # OCR page images first: "page-001.png" / "page_1.jpg" etc. These are
+    # OCR-my-PDF output that sits beside the one real (matched) PDF; the
+    # leaf is lowercase, so without this bucket they hide in lowercase-name
+    # (confirmed by the Legouve folder: 1 PDF + ~393 page-NNN.png).
+    if ($leaf -match '^page[-_]?\d+\.(png|jpe?g|tiff?|gif|bmp)$') {
+        [void]$bOcrPageImage.Add($line)
+    }
+    elseif ($leaf -match ' \d+\.[A-Za-z0-9]+$') {
         [void]$bConflictCopy.Add($line)
     }
     elseif ($leaf -match '\.(epu|pd|htm|epub_|ep)$') {
@@ -130,6 +161,7 @@ function Show-Bucket {
     Write-Host "[BUCKET] $Name : $($Items.Count)"
     $Items | Select-Object -First $Sample | ForEach-Object { Write-Host "          $_" }
 }
+Show-Bucket -Name "ocr-page-image (page-NNN.png OCR litter; safe)"        -Items $bOcrPageImage -Sample $SamplePerBucket
 Show-Bucket -Name "conflict-copy ( N before ext; safe superseded copies)" -Items $bConflictCopy -Sample $SamplePerBucket
 Show-Bucket -Name "clipped-extension (.epu etc; verify vs matched twins)"  -Items $bClippedExt   -Sample $SamplePerBucket
 Show-Bucket -Name "lowercase-name (old naming scheme; likely superseded)"  -Items $bLowerName    -Sample $SamplePerBucket
@@ -155,6 +187,8 @@ Write-Host "[SUMMARY]"
 Write-Host "  contract_pass    : $contractOk"
 Write-Host "  total_orphans    : $($lines.Count)"
 Write-Host "  non_ascii_lines  : $($nonAscii.Count)"
+Write-Host "  non_ascii_resolve: $naPresent / $($naSample.Count) (absent $naAbsent)"
+Write-Host "  ocr_page_image   : $($bOcrPageImage.Count)"
 Write-Host "  conflict_copy    : $($bConflictCopy.Count)"
 Write-Host "  clipped_ext      : $($bClippedExt.Count)"
 Write-Host "  lowercase_name   : $($bLowerName.Count)"
