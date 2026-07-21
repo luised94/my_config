@@ -6,6 +6,18 @@
 # DATE: 2025-12-23
 # ------------------------------------------------------------------------------
 
+# Local copy of the git-state helper, deliberately duplicated rather than shared
+# with 11_git_utils.sh, so this file stands alone and does not rely on another
+# module's load order. (No shared abstraction yet by design.)
+# Check that user is in git repo.
+_is_inside_git_repo() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # --- Manual Troubleshooting Helper ---
 _mc_vim_utils_health() {
     local status=0
