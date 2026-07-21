@@ -36,20 +36,6 @@ MC_REQUIRED_PROGS=(
     "wget"
     "fzf"
     "tput"
-    #"ripgrep"
-    #"jq"
-
-    # Languages & Runtimes
-    #"python3"
-    #"uv"
-    #"node"
-    #"npm"
-    #"R"
-
-    # Compiled Language Toolchain
-    #"gcc"
-    #"make"
-    #"cmake"
 )
 
 # shellcheck disable=SC2034  # consumed by 01_activate.sh
