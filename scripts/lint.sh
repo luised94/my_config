@@ -35,7 +35,7 @@ shellcheck_skip=(
 )
 
 shellcheck_targets=()
-for candidate in bash/*.sh dotfiles/bashrc.sh scripts/*.sh lib/*.sh; do
+for candidate in bash/*.sh dotfiles/bashrc.sh scripts/*.sh lib/*.sh bootstrap.sh; do
     # Globs such as lib/*.sh may not match yet during the refactor; skip
     # anything that is not an actual file.
     [[ -f "$candidate" ]] || continue
