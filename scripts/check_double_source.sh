@@ -31,13 +31,15 @@ source_chain() {
 
 # Capture the state that must be stable across a re-source: declared variables
 # and aliases, minus volatile bash internals that legitimately change between
-# reads (BASH_*, FUNCNAME, PIPESTATUS, RANDOM, SECONDS, LINENO, and $_).
+# reads or are set by the terminal rather than the framework (BASH_*, FUNCNAME,
+# PIPESTATUS, RANDOM/SRANDOM, SECONDS, EPOCHSECONDS/EPOCHREALTIME, LINENO,
+# HISTCMD, the terminal-size COLUMNS/LINES, and $_).
 snapshot() {
     {
         declare -p
         alias
     } 2>/dev/null \
-        | grep -vE '\b(BASH_[A-Z]+|FUNCNAME|PIPESTATUS|RANDOM|SECONDS|LINENO|_)='
+        | grep -vE '\b(BASH_[A-Z]+|FUNCNAME|PIPESTATUS|RANDOM|SRANDOM|SECONDS|EPOCHSECONDS|EPOCHREALTIME|LINENO|HISTCMD|COLUMNS|LINES|_)='
 }
 
 before_file="$(mktemp)"
