@@ -14,8 +14,19 @@ maintenance capability.
 ## Deliverables
 
 1. console_js/audit_orphan_attachments.js -- detection, report-only.
+   BUILT (v1.0.0). Ramp validated; first full run 2026-07 closed both
+   reconciliation identities. Measurements folded into Verified facts.
 2. powershell/Move-OrphanFiles.ps1 -- quarantine mover, consumes the
    auditor's output list. Ported from Backup-ZoteroStorage.ps1 scaffold.
+   BUILT (v1.0.0). Reads basePath + runStamp from run_summary.json and
+   the list from orphans.txt (-RunFolder interface, ID1). Dry-run by
+   default; -Execute to move. Quarantine is a dated subfolder of
+   "zotero-orphans" beside zotero-storage (same volume, no hydration).
+   Containment + same-volume + no-overwrite checks; stale entries
+   skipped, abort only on consecutive move failures (ID4); UTF-8-BOM
+   manifest written to the run folder. PENDING owner dry-run then run.
+   Input contract verified by S2c (non-ASCII resolves; mojibake is
+   display-only).
 3. This document's "Verified facts" section (DONE below) and finalized
    design (DONE below).
 
