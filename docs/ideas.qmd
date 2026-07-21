@@ -1,2 +1,58 @@
 # Quality of life
 - Use history command to get feedback and then decide what alias to make
+
+# my_config refactor (2026-07): decisions and deferred items
+
+Recorded during the numbered-chain refactor. Notes for future work, not open
+bugs unless marked.
+
+## Deferred latent bugs (fixing changes behavior; left for a deliberate decision)
+- `11_git_utils.sh` prune_merged: the "usb-repos" skip reads `basename
+  "$repo_dir"`, but the loop variable is `repo_path`; `repo_dir` is never set,
+  so the skip never fires. Preserved with an SC2154 directive.
+- `11_git_utils.sh` prune_merged: `current_branch` is computed (with a
+  load-bearing `|| continue`) but never used in the prune filter, so the "never
+  prune current branch" protection is unwired. Preserved with an SC2034 directive.
+- `04_verify.sh`: one branch reads `MC_REPO_ROOT` where the rest of the file
+  uses `MC_ROOT`; that branch is effectively dead (typo).
+- `01_activate.sh`: `VISUAL` is set from a leaked editor-loop variable, not
+  necessarily the chosen `EDITOR`.
+- `00_config.sh`: `MC_REPOS_ROOT` is exported but never defined anywhere.
+- `01_activate.sh`: lesspipe is initialized via `eval` (standard idiom, fixed
+  command; left as-is).
+
+## Deferred: MC_PS1 non-idempotency (external usb-sh)
+On re-source (`mc_reload`) the USB prompt indicator is lost. `00_config.sh` sets
+`MC_PS1` to a constant on each source, and `usb-sh/usb.sh` (sourced by
+`06_usb.sh`) prepends the indicator under a one-time guard that does not
+re-apply after the reset. The my_config side is idempotent; the fix belongs in
+usb-sh (re-apply when the prefix is absent, or drive the indicator from
+`PROMPT_COMMAND`).
+
+## Decisions made during the refactor
+- History variables: `01_activate.sh` now reads the canonical `MC_HIST_*` names.
+  Previously it read `MC_HISTCONTROL`/`MC_HISTSIZE`/`MC_HISTFILESIZE`, which were
+  undefined and exported empty (behavior change).
+- `MC_COLOR_SUPPORT` was removed: dead repo-wide (no consumer).
+- `_is_inside_git_repo` is duplicated in `10_vim_utils.sh` and `11_git_utils.sh`
+  rather than shared, to avoid a cross-file load-order dependency. No shared
+  abstraction was adopted yet.
+- Two toolchain scripts (`miniforge_setup.sh`, `rsync_git_repositories.sh`) are
+  excluded from the lint shellcheck pass via a named skip-list (conda-managed /
+  flagged for review). Alternative: in-place shebang + `[[ && ]]` fixes.
+- The message engine was extracted to `lib/message.sh` (VERSION 1), with
+  `03_message.sh` reduced to a thin shim.
+- Settings use a `##` documentation convention parsed by
+  `lib/config_inspect.awk` and surfaced by `mc_config`. This requires bash 4.3+
+  (namerefs). The command/parser names were reconstructed during the refactor.
+- `setup_symlinks.sh` was retired in favor of `bootstrap.sh`, which creates the
+  symlinks declared in `MC_SYMLINKS`; the `vimrc.vim` link was migrated into
+  `MC_SYMLINKS`.
+- The double-source idempotency check ignores volatile terminal/timer variables
+  (COLUMNS, LINES, EPOCHSECONDS, ...) so only genuine drift is reported.
+
+## Possible follow-ups
+- Consolidate the color palette (defined in both `00_config.sh` and
+  `lib/message.sh`; the latter is guarded, so there is no clobber today).
+- Reconsider whether `vimrc.vim` (`~/.vimrc`) is still wanted now that nvim is
+  primary.
