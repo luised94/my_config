@@ -83,13 +83,16 @@ MC_DEFAULT_BROWSERS=(
 
 # --- Symlink Management ---
 # Format: "Source_Path:Target_Path"
-# Used by 04_verify.sh to validate and 00_bootstrap.sh (future) to create.
+# Used by 04_verify.sh to validate and bootstrap.sh to create.
 # NOTE: Use $HOME instead of ~ to ensure safe expansion.
 ## Source:target symlink pairs validated by mc_verify (and created by bootstrap).
 # shellcheck disable=SC2034  # consumed by 04_verify.sh
 MC_SYMLINKS=(
     # Bash Configuration
     "$MC_ROOT/dotfiles/bashrc.sh:$HOME/.bashrc"
+
+    # Vim Configuration
+    "$MC_ROOT/dotfiles/vimrc.vim:$HOME/.vimrc"
 
     # Neovim Configuration
     # TODO: Verify source path below matches your repo structure
