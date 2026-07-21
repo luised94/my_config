@@ -107,8 +107,9 @@ fi
 # repo is cloned to the same relative path.
 JOB_CONFIG_DIR="${HOME}/personal_repos/usb-repos/kbd/docs/job_applications"
 
-# Dropbox data root (postings + tracker live here).
-JOB_DATA_DIR="/mnt/c/Users/${MC_WINDOWS_USER}/MIT Dropbox/Luis Martinez/Personal/job_applications"
+# Dropbox data root (postings + tracker live here). Derived from MC_DROPBOX_PATH
+# (exported by 02_wsl.sh in WSL); falls back to the literal path when unset.
+JOB_DATA_DIR="${MC_DROPBOX_PATH:-/mnt/c/Users/${MC_WINDOWS_USER}/MIT Dropbox/Luis Martinez}/Personal/job_applications"
 
 # Config paths (kbd).
 JOB_PROMPTS="${JOB_CONFIG_DIR}/prompts"
