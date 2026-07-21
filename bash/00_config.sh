@@ -192,24 +192,9 @@ _MC_OS_TYPE=$(uname -s)
 _MC_WSL_DISTRO="$WSL_DISTRO_NAME"
 
 # ------------------------------------------------------------------------------
-# [MC_03_COLORS]: tput logic with POSIX fallbacks
+# Colors: the _MC_COLOR_* palette now lives in lib/message.sh, the single owner
+# of the message engine and its colors. This file no longer defines them.
 # ------------------------------------------------------------------------------
-
-_MC_COLOR_RESET=$(tput sgr0 2>/dev/null || printf '\033[0m')
-
-if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != "dumb" ]; then
-    _MC_COLOR_ERROR=$(tput setaf 1 2>/dev/null || printf '\033[0;31m')
-    _MC_COLOR_WARN=$(tput setaf 3 2>/dev/null || printf '\033[0;33m')
-    _MC_COLOR_INFO=$(tput setaf 6 2>/dev/null || printf '\033[0;36m')
-    _MC_COLOR_DEBUG=$(tput setaf 8 2>/dev/null || printf '\033[0;90m')
-
-    # Safety check for tput validity
-    if printf "%s" "$_MC_COLOR_RESET" | grep -q 'tput: unknown'; then
-        _MC_COLOR_ERROR='' _MC_COLOR_WARN='' _MC_COLOR_INFO='' _MC_COLOR_DEBUG=''
-    fi
-else
-    _MC_COLOR_ERROR='' _MC_COLOR_WARN='' _MC_COLOR_INFO='' _MC_COLOR_DEBUG=''
-fi
 
 # ------------------------------------------------------------------------------
 # [MC_99_EXTENSIONS]: Extensions configurations
@@ -229,4 +214,3 @@ _MC_FAILED_EXTENSIONS=()
 # Exports for subshells and scripts
 # ------------------------------------------------------------------------------
 export MC_ROOT MC_REPOS_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO
-export _MC_COLOR_RESET _MC_COLOR_ERROR _MC_COLOR_WARN _MC_COLOR_INFO _MC_COLOR_DEBUG

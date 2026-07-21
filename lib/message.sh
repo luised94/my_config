@@ -25,9 +25,10 @@ _MC_LIB_MESSAGE_LOADED=1
 # concrete when the library is sourced on its own.
 : "${MC_VERBOSITY:=3}"
 
-# Color palette. Defined here so the engine is self-contained. Only initialized
-# if not already set, so a palette established earlier in the chain (00_config)
-# is preserved rather than clobbered.
+# Color palette. lib/message.sh is the single owner of the _MC_COLOR_* palette.
+# It is initialized here only if not already set, so a caller may pre-define a
+# palette; the values are exported below (matching the framework's prior
+# behavior, when 00_config.sh defined and exported them).
 if [[ -z "${_MC_COLOR_RESET:-}" ]]; then
     _MC_COLOR_RESET=$(tput sgr0 2>/dev/null || printf '\033[0m')
 
@@ -45,6 +46,9 @@ if [[ -z "${_MC_COLOR_RESET:-}" ]]; then
         _MC_COLOR_ERROR='' _MC_COLOR_WARN='' _MC_COLOR_INFO='' _MC_COLOR_DEBUG=''
     fi
 fi
+
+# Export so subshells inherit the palette (preserves prior 00_config behavior).
+export _MC_COLOR_RESET _MC_COLOR_ERROR _MC_COLOR_WARN _MC_COLOR_INFO _MC_COLOR_DEBUG
 
 # ------------------------------------------------------------------------------
 # TITLE      : _msg (Internal Logging Engine)

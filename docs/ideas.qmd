@@ -52,7 +52,8 @@ usb-sh (re-apply when the prefix is absent, or drive the indicator from
   (COLUMNS, LINES, EPOCHSECONDS, ...) so only genuine drift is reported.
 
 ## Possible follow-ups
-- Consolidate the color palette (defined in both `00_config.sh` and
-  `lib/message.sh`; the latter is guarded, so there is no clobber today).
+- Colors: consolidated into `lib/message.sh` (removed from `00_config.sh`). If
+  colors are later needed independently of the message engine, consider a
+  standalone `lib/colors.sh` that both can source.
 - Reconsider whether `vimrc.vim` (`~/.vimrc`) is still wanted now that nvim is
   primary.
