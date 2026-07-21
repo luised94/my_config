@@ -269,8 +269,7 @@ stash_report() {
     repo_name="$(basename "$repo_path")"
 
     # usb-sh-controlled; see github luised94/usb-sh docs/design.md
-    # shellcheck disable=SC2154  # repo_dir looks like a typo for repo_path; preserving current behavior pending owner review (see C13)
-    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue
+    [[ "$repo_name" == "usb-repos" ]] && continue
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -390,7 +389,7 @@ pull_all_repos() {
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
 
-    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
+    [[ "$repo_name" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -498,7 +497,7 @@ push_all_repos() {
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
 
-    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
+    [[ "$repo_name" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
@@ -898,7 +897,7 @@ prune_merged_branches() {
     repo_path="${repo_path%/}"
     repo_name="$(basename "$repo_path")"
 
-    [[ "$(basename "$repo_dir")" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
+    [[ "$repo_name" == "usb-repos" ]] && continue  # usb-sh-controlled; see usb-sh docs/design.md
 
     # Skip non-git directories
     if ! git -C "$repo_path" rev-parse --git-dir >/dev/null 2>&1; then
