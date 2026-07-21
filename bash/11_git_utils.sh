@@ -940,9 +940,9 @@ prune_merged_branches() {
       continue
     fi
 
-    # Current branch (never prune)
+    # Current branch: never prune it. The branch-marker parse below already
+    # skips the "* " current entry; this name is also used as an explicit guard.
     local current_branch
-    # shellcheck disable=SC2034  # computed (with load-bearing || continue) but not yet used in the prune filter; suspected incomplete guard (see C13)
     current_branch=$(git -C "$repo_path" symbolic-ref --short HEAD 2>/dev/null) || continue
 
     # Find merged branches
@@ -967,8 +967,9 @@ prune_merged_branches() {
       branch="${branch#"${branch%%[![:space:]]*}"}"
       [[ -z "$branch" ]] && continue
 
-      # Skip current branch
+      # Skip current branch (marker-based, plus an explicit name guard)
       [[ "$is_current" == true ]] && continue
+      [[ "$branch" == "$current_branch" ]] && continue
 
       # Skip protected branches
       local is_protected=false
