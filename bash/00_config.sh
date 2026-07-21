@@ -213,4 +213,4 @@ _MC_FAILED_EXTENSIONS=()
 # ------------------------------------------------------------------------------
 # Exports for subshells and scripts
 # ------------------------------------------------------------------------------
-export MC_ROOT MC_REPOS_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO
+export MC_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO

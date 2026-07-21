@@ -80,11 +80,9 @@ if [[ -d ~/.bash_completion.d ]]; then
 fi
 
 # Apply and export Individual Preferences (available in subshells)
-export BROWSER
-export EDITOR
+export BROWSER EDITOR PATH
 export HISTCONTROL="$MC_HIST_CONTROL"
 export HISTFILESIZE="$MC_HIST_FILESIZE"
 export HISTSIZE="$MC_HIST_SIZE"
-export PATH
 export PS1="$MC_PS1"
-export VISUAL="$editor"
+export VISUAL="$EDITOR"

@@ -6,20 +6,28 @@
 Recorded during the numbered-chain refactor. Notes for future work, not open
 bugs unless marked.
 
-## Deferred latent bugs (fixing changes behavior; left for a deliberate decision)
-- `11_git_utils.sh` prune_merged: the "usb-repos" skip reads `basename
-  "$repo_dir"`, but the loop variable is `repo_path`; `repo_dir` is never set,
-  so the skip never fires. Preserved with an SC2154 directive.
-- `11_git_utils.sh` prune_merged: `current_branch` is computed (with a
-  load-bearing `|| continue`) but never used in the prune filter, so the "never
-  prune current branch" protection is unwired. Preserved with an SC2034 directive.
-- `04_verify.sh`: one branch reads `MC_REPO_ROOT` where the rest of the file
-  uses `MC_ROOT`; that branch is effectively dead (typo).
-- `01_activate.sh`: `VISUAL` is set from a leaked editor-loop variable, not
-  necessarily the chosen `EDITOR`.
-- `00_config.sh`: `MC_REPOS_ROOT` is exported but never defined anywhere.
+
+## Latent bugs found during the refactor
+
+Resolved in supplementary patches:
+- `11_git_utils.sh`: the "usb-repos" skip read the never-assigned `repo_dir`
+  (should be `repo_name`) in four functions -- stash_report, pull_all_repos,
+  push_all_repos, prune_merged_branches -- so the skip never fired. Fixed.
+- `11_git_utils.sh` prune_merged: `current_branch` was computed but unused; it is
+  now an explicit guard alongside the existing `* ` marker skip. Fixed.
+- `04_verify.sh`: the symlink-mismatch worktree heuristic read the undefined
+  `MC_REPO_ROOT` (should be `MC_ROOT`), so every mismatch was demoted to a
+  worktree warning and never counted as an error. Fixed.
+- `00_config.sh`: `MC_REPOS_ROOT` was exported but never defined; removed from
+  the export list. (Making the repos root a real, wired setting -- the git
+  helpers currently hardcode `$HOME/personal_repos` -- remains a possible
+  enhancement.)
+- `01_activate.sh`: `VISUAL` was set from the leaked editor-loop variable rather
+  than the chosen `EDITOR`; now set from `$EDITOR`. Fixed.
+
+Still open:
 - `01_activate.sh`: lesspipe is initialized via `eval` (standard idiom, fixed
-  command; left as-is).
+  command; intentionally left as-is).
 
 ## Deferred: MC_PS1 non-idempotency (external usb-sh)
 On re-source (`mc_reload`) the USB prompt indicator is lost. `00_config.sh` sets
