@@ -25,6 +25,22 @@ source "$MC_ROOT/lib/message.sh"
 source "$MC_ROOT/bash/00_config.sh"
 [[ -n "$_bootstrap_verbosity" ]] && MC_VERBOSITY="$_bootstrap_verbosity"
 
+# Install a git pre-commit hook that runs the lint suite. Standalone action.
+_bootstrap_install_git_hook() {
+    local hook_file="$MC_ROOT/.git/hooks/pre-commit"
+    if [[ ! -d "$MC_ROOT/.git" ]]; then
+        msg_error "bootstrap: $MC_ROOT is not a git repository; cannot install hook"
+        return 1
+    fi
+    if [[ -e "$hook_file" ]]; then
+        msg_warn "bootstrap: pre-commit hook already exists, leaving as-is: $hook_file"
+        return 0
+    fi
+    printf '#!/usr/bin/env bash\nexec "$(git rev-parse --show-toplevel)/scripts/lint.sh"\n' > "$hook_file"
+    chmod +x "$hook_file"
+    msg_info "bootstrap: installed pre-commit hook (runs scripts/lint.sh)"
+}
+
 # --- Argument parsing ---------------------------------------------------------
 apply="false"
 for arg in "$@"; do
@@ -32,12 +48,18 @@ for arg in "$@"; do
         --apply)
             apply="true"
             ;;
+        --install-git-hook)
+            if _bootstrap_install_git_hook; then exit 0; fi
+            exit 1
+            ;;
         -h|--help)
             printf 'Usage: bootstrap.sh [--apply]\n'
             printf '  (default)   Dry run: report required programs and show the\n'
             printf '              symlinks that would be created.\n'
             printf '  --apply     Create the symlinks from MC_SYMLINKS, then run\n'
             printf '              mc_verify --force.\n'
+            printf '  --install-git-hook\n'
+            printf '              Install a pre-commit hook that runs scripts/lint.sh.\n'
             exit 0
             ;;
         *)
