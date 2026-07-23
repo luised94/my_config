@@ -70,3 +70,68 @@ usb-sh (re-apply when the prefix is absent, or drive the indicator from
   standalone `lib/colors.sh` that both can source.
 - Reconsider whether `vimrc.vim` (`~/.vimrc`) is still wanted now that nvim is
   primary.
+
+## Tier 2 test hardening (C19-C23): coverage and findings
+
+Characterization/regression tests added as a safety net before the planned
+`11_git_utils.sh` / `15_job_hunt.sh` review. Tests adapt to current behavior;
+nothing below changed runtime code. Items marked "characterization" pin current
+behavior and are load-bearing -- revisit them when behavior changes on purpose.
+
+Coverage added (`bash/test/`):
+- `git_repo_loops.sh` -- stash_report, pull_all_repos, push_all_repos,
+  prune_merged_branches, and the usb-repos skip regression, against real local
+  git fixtures (`fixtures/git_fixtures.sh`).
+- `git_worktrees.sh` -- new_worktree (happy path plus failure paths) and
+  rebase_worktrees_on_main.
+- `friction_awk.sh` -- golden-file tests for
+  `scripts/mc_friction_process_entries.awk` (show no-filter/exact/prefix,
+  stale_before, archive with project+before_date, malformed), with
+  `fixtures/friction/` inputs and committed expected outputs.
+
+Deliberate non-coverage:
+- Network/remote edges of pull/push (auth, offline remotes, non-ff or diverged
+  conflict resolution): fixtures use on-disk bare remotes only.
+- tmux integration: the current worktree functions invoke no tmux, so there is
+  nothing to integrate against.
+- The friction awk stderr summary formatting (percentages, histogram bars): an
+  unspecified implementation detail, asserted only by targeted counts.
+
+Observed behavior worth revisiting (characterization):
+- `11_git_utils.sh` push_all_repos: the "early exit if nothing to push" block
+  has no `return`; the guard arithmetic is discarded and control falls through
+  to the empty push loop. The final return is coincidentally equivalent, but
+  "Found 0 repo(s)" / "Complete: 0/0" still print.
+- usb-repos is skipped by a silent `continue` in all four loop functions -- no
+  skip-notice is emitted. Tests assert the untouched state; the notice check is
+  a SKIP.
+- pull_all_repos auto-stashes only tracked changes (`git diff-index --quiet
+  HEAD`); an untracked-only dirty tree is not stashed, and a stash that
+  conflicts with the pulled commit would leave the pop unresolved (unasserted).
+- new_worktree requires a pre-existing branch; it does not create one. The
+  failure path is an existing destination or a missing branch.
+- rebase_worktrees_on_main ignores its documented `[worktree-root]` argument;
+  worktrees are discovered via `git worktree list` relative to the current
+  directory.
+- friction awk: malformed detection is format-only -- an impossible but
+  well-formed date (e.g. 2026-13-99) is not flagged; only a missing project tag
+  is. `before_date` is exclusive (`entry_date >= before_date` is excluded). The
+  documented `-v today=` variable is accepted but unused.
+
+Test-infra notes:
+- `scripts/lint.sh` does not scan `bash/test/` (its glob is `bash/*.sh
+  dotfiles/bashrc.sh scripts/*.sh lib/*.sh bootstrap.sh`), so test files are not
+  linted by the batch gate; they are kept shellcheck-clean by hand. A
+  pre-existing SC1090 in `config_and_message.sh` was never surfaced for this
+  reason (annotated in C19).
+- `config_and_message.sh` was made self-locating from `BASH_SOURCE` (C19); it
+  still carries a duplicate `#!/bin/bash` on line 2 (inert; left as-is).
+- `bash/test/extension_system.sh` (pre-existing, out of tier scope) writes to
+  the real `~/.config` and sources `~/.bashrc`, contrary to the sandbox rule the
+  new tests follow: HOME is redirected into a mktemp sandbox, no real HOME /
+  global git config / MC_REPOS_ROOT is touched, and git is forced noninteractive
+  (`GIT_TERMINAL_PROMPT=0`, `GIT_EDITOR`/`GIT_SEQUENCE_EDITOR=true`).
+- `13_friction.sh` creates `MC_FRICTION_DIRECTORY` and its `archive` via
+  `mkdir -p` at source time (default path is under `MC_REPOS_ROOT`), a
+  filesystem side effect on sourcing; the friction tests invoke the awk backend
+  directly to avoid it. Future cleanup: lazy-create on first use.
