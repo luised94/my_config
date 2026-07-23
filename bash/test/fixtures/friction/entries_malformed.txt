@@ -1,0 +1,3 @@
+@@ 2026-13-99 10:00 project:ok | impossible date passes format check
+@@ 2026-04-01 11:00 noproject here | missing project tag
+@@ 2026-04-02 12:00 project:good | clean entry

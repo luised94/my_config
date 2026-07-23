@@ -1,0 +1,6 @@
+# friction log preamble (passes through unchanged)
+notes line before first entry
+@@ 2026-01-05 09:15 project:web | first web entry
+  context note for first
+@@ 2026-02-10 14:30 project:web-auth | auth subtopic work
+@@ 2026-03-01 07:00 project:web | boundary-day web entry
