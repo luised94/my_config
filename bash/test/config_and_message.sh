@@ -11,20 +11,20 @@ if [[ -n "$TMUX" ]]; then
     _session=$(tmux display-message -p '#S')
     if [[ "$_session" =~ ^my_config\>(.*) ]]; then
         _possible_root="$HOME/personal_repos/my_config-${BASH_REMATCH[1]}/bash"
-        [[ -d "$_possible_root" ]] && BASH_UTILS_ROOT="$_possible_root"
+        [[ -d "$_possible_root" ]] && mc_bash_directory="$_possible_root"
     fi
 fi
 
-BASH_UTILS_ROOT="${BASH_UTILS_ROOT:-$HOME/personal_repos/my_config/bash}"
-BASH_UTILS_ROOT="${BASH_UTILS_ROOT%/}"
+mc_bash_directory="${mc_bash_directory:-$HOME/personal_repos/my_config/bash}"
+mc_bash_directory="${mc_bash_directory%/}"
 
-[[ ! -d "$BASH_UTILS_ROOT" ]] && { _report "$_ERR" "FAIL" "Root not found: $BASH_UTILS_ROOT"; exit 1; }
+[[ ! -d "$mc_bash_directory" ]] && { _report "$_ERR" "FAIL" "Root not found: $mc_bash_directory"; exit 1; }
 
 # --- 3. SOURCING ---
 FILES_TO_TEST=("00_config.sh" "10_message.sh")
 
 for file in "${FILES_TO_TEST[@]}"; do
-    filepath="$BASH_UTILS_ROOT/$file"
+    filepath="$mc_bash_directory/$file"
     if [[ -f "$filepath" ]] && source "$filepath"; then
         _report "$_OK" "LOAD" "$file"
     else
