@@ -58,6 +58,11 @@ usb-sh (re-apply when the prefix is absent, or drive the indicator from
   `MC_SYMLINKS`.
 - The double-source idempotency check ignores volatile terminal/timer variables
   (COLUMNS, LINES, EPOCHSECONDS, ...) so only genuine drift is reported.
+- The one-time `jobmigrate` migration helper (the 2026-06-23 kbd
+  relocation) was removed from `15_job_hunt.sh` now that the relocation
+  is complete on the owner's machine (C15). The dated design record
+  `docs/260623_job-hunt_kbd-migration.md` is deliberately retained as
+  history and left unmodified.
 
 ## Possible follow-ups
 - Colors: consolidated into `lib/message.sh` (removed from `00_config.sh`). If

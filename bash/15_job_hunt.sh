@@ -30,8 +30,6 @@
 #     portal-ready-info.txt  -> $JOB_CONFIG_DIR
 #   DATA (Dropbox, not committed): postings/, tracker.tsv
 #     -> $JOB_DATA_DIR
-#   Migrating from the old single-root layout? Run `jobmigrate` for
-#   a dry-run set of mv commands.
 #
 # QUICK WORKFLOW:
 #   # Monday morning -- scan career pages
@@ -580,8 +578,6 @@ BOOKMARKS
     echo "  \-- tracker.tsv         $(( $(wc -l < "${JOB_TRACKER}" 2>/dev/null || echo 1) - 1 )) application(s)"
     echo ""
     echo "Run 'jobhelp' for available commands."
-    echo "To relocate existing Dropbox files into kbd, run 'jobmigrate'"
-    echo "(it prints mv commands; it does not move anything itself)."
 }
 
 # ------------------------------------------------------------------
@@ -1314,81 +1310,6 @@ jobdiag() {
 }
 
 # ------------------------------------------------------------------
-# MIGRATION (one-time, dry-run only)
-# ------------------------------------------------------------------
-# jobmigrate: Print the exact shell commands to relocate config and
-# knowledge files from the old single-root Dropbox layout into the
-# kbd config root. This was the 2026-06-23 reorganization: config
-# (alerts/bookmarks/prompts/portal-ready-info.txt) moves to kbd for
-# version control; data (postings/tracker.tsv) stays in Dropbox.
-#
-# SAFETY: This function NEVER moves anything. It only prints commands
-# for you to review and run by hand. It uses `git mv` when the source
-# is inside a git work tree so history is preserved, otherwise plain
-# `mv`. Review every line before running.
-#
-# Usage: jobmigrate            # print the plan
-#        jobmigrate | less     # page through it
-jobmigrate() {
-    # Old layout root: everything used to live under the Dropbox data
-    # root. We migrate the config subset out of it into kbd.
-    local old_root="${JOB_DATA_DIR}"
-
-    echo "# ============================================================"
-    echo "# job_hunt migration plan (DRY RUN -- nothing has been moved)"
-    echo "# Generated: $(date +%Y-%m-%d\ %H:%M)"
-    echo "# ============================================================"
-    echo "#"
-    echo "# Moves CONFIG out of Dropbox into the kbd repo. Data"
-    echo "# (postings/, tracker.tsv) stays in Dropbox and is NOT touched."
-    echo "#"
-    echo "# Review each line, then copy-paste to run. Use 'git mv' lines"
-    echo "# only if the kbd repo is the destination's git work tree."
-    echo "#"
-    echo "# Source (old, Dropbox): ${old_root}"
-    echo "# Dest   (new, kbd):     ${JOB_CONFIG_DIR}"
-    echo ""
-    echo "# --- 1. Ensure kbd config root exists ---"
-    echo "mkdir -p \"${JOB_CONFIG_DIR}\""
-    echo ""
-    echo "# --- 2. Move config directories (alerts, bookmarks, prompts) ---"
-
-    local item
-    for item in alerts bookmarks prompts; do
-        if [ -d "${old_root}/${item}" ]; then
-            echo "mv \"${old_root}/${item}\" \"${JOB_CONFIG_DIR}/${item}\""
-        else
-            echo "# (skip: ${old_root}/${item} not found)"
-        fi
-    done
-
-    echo ""
-    echo "# --- 3. Move portal-ready-info.txt ---"
-    if [ -f "${old_root}/portal-ready-info.txt" ]; then
-        echo "mv \"${old_root}/portal-ready-info.txt\" \"${JOB_CONFIG_DIR}/portal-ready-info.txt\""
-    else
-        echo "# (skip: portal-ready-info.txt not found in ${old_root})"
-    fi
-
-    echo ""
-    echo "# --- 4. STAYS IN DROPBOX (do not move) ---"
-    echo "#   postings/        (bulky raw posting text + tailored docs)"
-    echo "#   tracker.tsv      (working application log)"
-    echo "#   *.jpeg, README.md, jobportal.txt, recruitment_agencies/,"
-    echo "#   reference-emails*, skills-per-job.txt, etc."
-    echo "#   These are intentionally left in: ${old_root}"
-    echo ""
-    echo "# --- 5. After moving, commit the kbd side ---"
-    echo "cd \"${JOB_CONFIG_DIR}\" && git add -A && \\"
-    echo "  git commit -m 'job_hunt: relocate config (alerts/bookmarks/prompts/portal) into kbd'"
-    echo ""
-    echo "# --- 6. Verify ---"
-    echo "jobdiag    # all config paths should read OK"
-    echo ""
-    echo "# End of plan. Nothing above has been executed."
-}
-
-# ------------------------------------------------------------------
 # HELP
 # ------------------------------------------------------------------
 
@@ -1400,8 +1321,6 @@ JOB SEARCH PIPELINE -- COMMAND REFERENCE
 SETUP (run once)
   jobinit             Create directory structure and starter files
   jobdiag             Check setup, find issues
-  jobmigrate          Print mv commands to relocate config into kbd
-                      (dry run -- moves nothing)
   jobcd               cd to kbd config root
   jobcddata           cd to Dropbox data root
 
