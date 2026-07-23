@@ -1,6 +1,6 @@
+#!/bin/bash
 #STATUS: KEEP.
 # Move to code_review_holder.
-#!/bin/bash
 #if [ $# -ne 1 ]; then
 echo "Usage: $0 "
 #fi
@@ -27,7 +27,7 @@ printf "Destination directory: %s\n" "$DEST_DIR"
 find "$SOURCE_DIR" -maxdepth 1 -type d -print0 | while IFS= read -r -d $'\0' dir; do
 
   # Check if the directory is a Git repository
-  if [ -d "$dir/.git" -a "$dir" != "$HOME/.nvm" -a "$dir" != "$HOME/cytolib" ]; then
+  if [[ -d "$dir/.git" && "$dir" != "$HOME/.nvm" && "$dir" != "$HOME/cytolib" ]]; then
     repo_name=$(basename "$dir")
 
     printf "Found Git repository: %s\n" "$dir"

@@ -24,14 +24,12 @@ if ! command -v shellcheck >/dev/null 2>&1; then
     exit 1
 fi
 
-# Pre-existing toolchain/utility scripts that are out of scope for this refactor
-# and are intentionally NOT shellchecked: miniforge_setup.sh is conda-managed
-# boilerplate (entirely commented, no live code) and rsync_git_repositories.sh
-# is owner-flagged for relocation/review. The maintained framework surface is
-# still fully linted.
+# miniforge_setup.sh is the sole permanent exception to the shellcheck pass:
+# it is conda-managed boilerplate (entirely commented, no live code), so there
+# is nothing to check and its contents are not ours to maintain. Every other
+# script in the framework surface is linted.
 shellcheck_skip=(
     "scripts/miniforge_setup.sh"
-    "scripts/rsync_git_repositories.sh"
 )
 
 shellcheck_targets=()
