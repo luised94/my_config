@@ -6,30 +6,26 @@ _ERR='\033[0;31m' _OK='\033[0;32m' _RST='\033[0m'
 _report() { printf "[%b%s%b] %s\n" "$1" "$2" "$_RST" "$3"; }
 
 # --- 2. ENVIRONMENT DISCOVERY ---
-# Determine root based on TMUX worktrees or default
-if [[ -n "$TMUX" ]]; then
-    _session=$(tmux display-message -p '#S')
-    if [[ "$_session" =~ ^my_config\>(.*) ]]; then
-        _possible_root="$HOME/personal_repos/my_config-${BASH_REMATCH[1]}/bash"
-        [[ -d "$_possible_root" ]] && mc_bash_directory="$_possible_root"
-    fi
-fi
+# Self-locating: derive the repo root from this file's own path so the test
+# runs from any checkout (clone, worktree, or arbitrary directory), never from
+# $HOME or a hardcoded path. This file lives at bash/test/, so the repo root is
+# two directories above its own directory.
+_test_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MC_ROOT="$(cd "$_test_directory/../.." && pwd)"
+export MC_ROOT
 
-mc_bash_directory="${mc_bash_directory:-$HOME/personal_repos/my_config/bash}"
-mc_bash_directory="${mc_bash_directory%/}"
+mc_bash_directory="$MC_ROOT/bash"
 
 [[ ! -d "$mc_bash_directory" ]] && { _report "$_ERR" "FAIL" "Root not found: $mc_bash_directory"; exit 1; }
 
-# 03_message.sh sources "$MC_ROOT/lib/message.sh", so MC_ROOT must be the repo
-# root (the parent of the bash/ directory) before the chain is sourced.
-MC_ROOT="$(dirname "$mc_bash_directory")"
-export MC_ROOT
+# 03_message.sh sources "$MC_ROOT/lib/message.sh"; MC_ROOT is set above.
 
 # --- 3. SOURCING ---
 FILES_TO_TEST=("00_config.sh" "03_message.sh")
 
 for file in "${FILES_TO_TEST[@]}"; do
     filepath="$mc_bash_directory/$file"
+    # shellcheck source=/dev/null  # path is built at runtime from FILES_TO_TEST
     if [[ -f "$filepath" ]] && source "$filepath"; then
         _report "$_OK" "LOAD" "$file"
     else
