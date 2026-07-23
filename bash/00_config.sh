@@ -35,6 +35,8 @@ MC_PS1='\u@\h:\w\$ '
 ## Dropbox subpath under the Windows profile; used to build MC_DROPBOX_PATH in WSL.
 # shellcheck disable=SC2034  # consumed by 02_wsl.sh
 MC_DROPBOX_SUBPATH="MIT Dropbox/Luis Martinez"
+## Root directory containing all personal repositories.
+MC_REPOS_ROOT="${MC_REPOS_ROOT:-$HOME/personal_repos}"
 
 # Arrays for Shell Management
 # --- Required Binaries ---
@@ -213,4 +215,4 @@ _MC_FAILED_EXTENSIONS=()
 # ------------------------------------------------------------------------------
 # Exports for subshells and scripts
 # ------------------------------------------------------------------------------
-export MC_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO
+export MC_ROOT MC_REPOS_ROOT MC_VERBOSITY _MC_OS_TYPE _MC_WSL_DISTRO

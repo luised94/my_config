@@ -29,6 +29,7 @@ if [[ -n "$TMUX" ]]; then
 fi
 
 # Cleanup of trailing slashes for the root
+# MC_REPOS_ROOT (from bash/00_config.sh) is unavailable here: this file runs before the numbered chain is sourced, so the personal_repos literals in this file are intentional.
 MC_ROOT="${MC_ROOT:-$HOME/personal_repos/my_config}"
 MC_ROOT="${MC_ROOT%/}"
 

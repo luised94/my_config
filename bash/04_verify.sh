@@ -105,7 +105,7 @@ _mc_perform_checks() {
             # If the expected source contains our worktree path, but the actual link 
             # points to the MAIN repo, that is actually OKAY/EXPECTED.
             # Heuristic: If we are in a worktree, we shouldn't fail global symlinks
-            if [[ "$MC_ROOT" != "$HOME/personal_repos/my_config" ]]; then
+            if [[ "$MC_ROOT" != "${MC_REPOS_ROOT}/my_config" ]]; then
                  msg_warn "Symlink mismatch (Worktree Context): $dst points to $actual_src"
                  # Do NOT increment error_count here. It's a warning.
             else

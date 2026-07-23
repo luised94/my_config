@@ -22,8 +22,8 @@
 GPG_TTY="$(tty)"
 export GPG_TTY
 
-if [[ -f "$HOME/personal_repos/usb-sh/usb.sh" ]]; then
-    source "$HOME/personal_repos/usb-sh/usb.sh"
+if [[ -f "${MC_REPOS_ROOT}/usb-sh/usb.sh" ]]; then
+    source "${MC_REPOS_ROOT}/usb-sh/usb.sh"
 else
     echo "mc/usb: usb.sh file not available."
     export USB_CONNECTED=false

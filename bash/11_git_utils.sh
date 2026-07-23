@@ -7,7 +7,7 @@
 # directory, with first-class support for worktrees.
 #
 # DIRECTORY LAYOUT
-#   $HOME/personal_repos/ (repos_root default.)
+#   $MC_REPOS_ROOT/ (repos_root default.)
 #     reponame/                  Main worktree (holds the .git directory)
 #     reponame--branch_name/     Linked worktree (points back to main's .git)
 #     reponame--scope-branch/    Nested worktree naming is supported
@@ -67,7 +67,7 @@ _is_inside_git_repo() {
 # FUNCTION   : status_all_repos
 # PURPOSE    : Display a compact status overview for all git repos in a directory.
 # USAGE      : status_all_repos [--fetch] [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# ARGS       : directory - Root containing repos (default: $MC_REPOS_ROOT)
 # FLAGS      : --fetch   - Run git fetch --prune before reporting
 # RETURNS    : 0 if all repos are clean and synced, 1 otherwise
 # ------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ status_all_repos() {
     printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
     printf "Display a compact status overview for all git repos in a directory.\n\n"
     printf "Arguments:\n"
-    printf "  directory    Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "  directory    Root containing repos (default: \$MC_REPOS_ROOT)\n\n"
     printf "Options:\n"
     printf "  --fetch      Fetch from remotes before reporting\n"
     printf "  -h, --help   Show this help message\n"
@@ -97,7 +97,7 @@ status_all_repos() {
 
   #     # One-level glob is load-bearing: ~/personal_repos/usb-repos/ is
   #     # usb-sh-controlled (one repo, one transport). Do not recurse.
-  repos_root="${repos_root:-$HOME/personal_repos}"
+  repos_root="${repos_root:-${MC_REPOS_ROOT}}"
 
   # --- Validate directory ---
   if [[ ! -d "$repos_root" ]]; then
@@ -222,7 +222,7 @@ status_all_repos() {
 # FUNCTION   : stash_report
 # PURPOSE    : Report stash entries across all git repositories in a directory.
 # USAGE      : stash_report [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# ARGS       : directory - Root containing repos (default: $MC_REPOS_ROOT)
 # RETURNS    : 0 if no stashes found, 1 if stashes exist
 # ------------------------------------------------------------------------------
 stash_report() {
@@ -231,13 +231,13 @@ stash_report() {
     printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
     printf "Report stash entries across all git repositories in a directory.\n\n"
     printf "Arguments:\n"
-    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "  directory   Root containing repos (default: \$MC_REPOS_ROOT)\n\n"
     printf "Options:\n"
     printf "  -h, --help  Show this help message\n"
     return 0
   fi
 
-  local repos_root="${1:-$HOME/personal_repos}"
+  local repos_root="${1:-${MC_REPOS_ROOT}}"
 
   # --- Validate directory ---
   if [[ ! -d "$repos_root" ]]; then
@@ -344,7 +344,7 @@ stash_report() {
 # FUNCTION   : pull_all_repos
 # PURPOSE    : Pull latest changes for all git repositories in a directory.
 # USAGE      : pull_all_repos [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# ARGS       : directory - Root containing repos (default: $MC_REPOS_ROOT)
 # RETURNS    : 0 if all repos pulled successfully, 1 otherwise
 # ------------------------------------------------------------------------------
 pull_all_repos() {
@@ -353,13 +353,13 @@ pull_all_repos() {
     printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
     printf "Pull latest changes for all git repositories in a directory.\n\n"
     printf "Arguments:\n"
-    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "  directory   Root containing repos (default: \$MC_REPOS_ROOT)\n\n"
     printf "Options:\n"
     printf "  -h, --help  Show this help message\n"
     return 0
   fi
 
-  local repos_root="${1:-$HOME/personal_repos}"
+  local repos_root="${1:-${MC_REPOS_ROOT}}"
 
   # --- Validate directory ---
   if [[ ! -d "$repos_root" ]]; then
@@ -454,7 +454,7 @@ pull_all_repos() {
 # FUNCTION   : push_all_repos
 # PURPOSE    : Push local commits for all git repositories in a directory.
 # USAGE      : push_all_repos [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# ARGS       : directory - Root containing repos (default: $MC_REPOS_ROOT)
 # RETURNS    : 0 if all repos pushed successfully, 1 otherwise
 # ------------------------------------------------------------------------------
 push_all_repos() {
@@ -463,13 +463,13 @@ push_all_repos() {
     printf "Usage: %s [directory]\n\n" "${FUNCNAME[0]}"
     printf "Push local commits for all git repositories in a directory.\n\n"
     printf "Arguments:\n"
-    printf "  directory   Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "  directory   Root containing repos (default: \$MC_REPOS_ROOT)\n\n"
     printf "Options:\n"
     printf "  -h, --help  Show this help message\n"
     return 0
   fi
 
-  local repos_root="${1:-$HOME/personal_repos}"
+  local repos_root="${1:-${MC_REPOS_ROOT}}"
 
   # --- Validate directory ---
   if [[ ! -d "$repos_root" ]]; then
@@ -606,7 +606,7 @@ push_all_repos() {
 # PURPOSE    : Create a git worktree for an existing branch.
 # USAGE      : new_worktree <branch-name> [worktree-root]
 # ARGS       : branch-name   - Name of an existing local branch
-#              worktree-root - Directory for worktrees (default: $HOME/personal_repos)
+#              worktree-root - Directory for worktrees (default: $MC_REPOS_ROOT)
 # RETURNS    : 0 on success, 1 on error
 # ------------------------------------------------------------------------------
 new_worktree() {
@@ -615,7 +615,7 @@ new_worktree() {
     printf "Create a git worktree for an existing branch.\n\n"
     printf "Arguments:\n"
     printf "  branch-name    Name of existing local branch\n"
-    printf "  worktree-root  Directory for worktrees (default: \$HOME/personal_repos)\n\n"
+    printf "  worktree-root  Directory for worktrees (default: \$MC_REPOS_ROOT)\n\n"
     printf "Examples:\n"
     printf "  %s feature/login\n" "${FUNCNAME[0]}"
     printf "  %s bugfix/header ~/work/trees\n" "${FUNCNAME[0]}"
@@ -628,7 +628,7 @@ new_worktree() {
   fi
 
   local branch_name="$1"
-  local worktree_root="${2:-$HOME/personal_repos}"
+  local worktree_root="${2:-${MC_REPOS_ROOT}}"
 
   if [[ -z "$branch_name" ]]; then
     msg_error "Branch name required"
@@ -745,7 +745,7 @@ remove_worktree() {
 # FUNCTION   : rebase_worktrees_on_main
 # PURPOSE    : Rebase all worktrees of current repository onto main branch.
 # USAGE      : rebase_worktrees_on_main [worktree-root]
-# ARGS       : worktree-root - Directory containing worktrees (default: $HOME/personal_repos)
+# ARGS       : worktree-root - Directory containing worktrees (default: $MC_REPOS_ROOT)
 # RETURNS    : 0 on success, 1 on error
 # NOTES      : Uses porcelain discovery.
 # ------------------------------------------------------------------------------
@@ -827,7 +827,7 @@ rebase_worktrees_on_main() {
 # FUNCTION   : prune_merged_branches
 # PURPOSE    : Remove local branches fully merged into their repo's main branch.
 # USAGE      : prune_merged_branches [--delete] [directory]
-# ARGS       : directory - Root containing repos (default: $HOME/personal_repos)
+# ARGS       : directory - Root containing repos (default: $MC_REPOS_ROOT)
 # FLAGS      : --delete  - Actually delete branches (default is dry-run)
 # RETURNS    : 0 if successful, 1 otherwise
 # NOTE       : Does not recurse into submodules. Worktree-linked branches and
@@ -839,7 +839,7 @@ prune_merged_branches() {
     printf "Usage: %s [--delete] [directory]\n\n" "${FUNCNAME[0]}"
     printf "Remove local branches fully merged into their repo's main branch.\n\n"
     printf "Arguments:\n"
-    printf "  directory    Root containing repos (default: \$HOME/personal_repos)\n\n"
+    printf "  directory    Root containing repos (default: \$MC_REPOS_ROOT)\n\n"
     printf "Options:\n"
     printf "  --delete     Actually delete branches (default is dry-run)\n"
     printf "  -h, --help   Show this help message\n"
@@ -857,7 +857,7 @@ prune_merged_branches() {
     esac
   done
 
-  repos_root="${repos_root:-$HOME/personal_repos}"
+  repos_root="${repos_root:-${MC_REPOS_ROOT}}"
 
   # --- Validate directory ---
   if [[ ! -d "$repos_root" ]]; then

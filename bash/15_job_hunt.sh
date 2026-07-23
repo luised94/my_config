@@ -17,7 +17,7 @@
 #   1. Set MC_WINDOWS_USER in your bashrc/profile:
 #        export MC_WINDOWS_USER="Luised94"
 #   2. Clone the kbd repo so the config root exists:
-#        ~/personal_repos/usb-repos/kbd/docs/job_applications/
+#        $MC_REPOS_ROOT/usb-repos/kbd/docs/job_applications/
 #   3. Ensure this file is sourced by bashrc (e.g., placed in a
 #      directory that bashrc loads on startup).
 #   4. Run `jobinit` once to create the directory structure.
@@ -103,7 +103,7 @@ fi
 
 # kbd config root. Uses $HOME so it resolves on any machine where the
 # repo is cloned to the same relative path.
-JOB_CONFIG_DIR="${HOME}/personal_repos/usb-repos/kbd/docs/job_applications"
+JOB_CONFIG_DIR="${MC_REPOS_ROOT}/usb-repos/kbd/docs/job_applications"
 
 # Dropbox data root (postings + tracker live here). Derived from MC_DROPBOX_PATH
 # (exported by 02_wsl.sh in WSL); falls back to the literal path when unset.
@@ -1368,7 +1368,7 @@ WORKFLOW EXAMPLE
 
 DIRECTORY LAYOUT (two roots as of 2026-06-23)
   CONFIG -- kbd repo, version-controlled:
-    ~/personal_repos/usb-repos/kbd/docs/job_applications/
+    $MC_REPOS_ROOT/usb-repos/kbd/docs/job_applications/
       prompts/*.txt                  Prompt templates with CV
       bookmarks/*.txt                URL lists for jobcheck
       alerts/*.txt                   Alert configs and prompts

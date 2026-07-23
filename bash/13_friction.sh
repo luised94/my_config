@@ -86,7 +86,7 @@
 # - bash/ chain load order changed and usb.sh loads after this file
 # - usb.sh was removed from the infrastructure chain
 if [[ "${USB_INITIALIZED:-}" != true ]]; then
-    if [[ -f "$HOME/personal_repos/usb-sh/usb.sh" ]]; then
+    if [[ -f "${MC_REPOS_ROOT}/usb-sh/usb.sh" ]]; then
         echo "friction[WARN]: usb.sh found but not loaded (check bash/ chain load order)"
     else
         echo "friction[WARN]: usb.sh not found, USB features unavailable"
@@ -95,10 +95,10 @@ if [[ "${USB_INITIALIZED:-}" != true ]]; then
 fi
 
 # --- variable setup ---
-MC_FRICTION_DIRECTORY="${USB_FRICTION_LOCAL_DIR:-$HOME/personal_repos/usb-repos/friction}"
+MC_FRICTION_DIRECTORY="${USB_FRICTION_LOCAL_DIR:-${MC_REPOS_ROOT}/usb-repos/friction}"
 MC_FRICTION_FILEPATH="$MC_FRICTION_DIRECTORY/FRICTION.md"
 MC_FRICTION_ARCHIVE="$MC_FRICTION_DIRECTORY/archive"
-MC_FRICTION_AWK_SCRIPT="$HOME/personal_repos/my_config/scripts/mc_friction_process_entries.awk"
+MC_FRICTION_AWK_SCRIPT="$MC_ROOT/scripts/mc_friction_process_entries.awk"
 
 # --- source-time checks ---
 
