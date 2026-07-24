@@ -586,8 +586,8 @@ _job_assert_dir() {
     local dir="$1"
     local name="$2"  # Human-readable name for error message.
     if [ ! -d "${dir}" ]; then
-        echo "ERROR: ${name} directory not found: ${dir}" >&2
-        echo "  Run 'jobinit' to create the directory structure." >&2
+        _job_err "${name} directory not found: ${dir}"
+        _job_err "Run 'jobinit' to create the directory structure."
         return 1
     fi
     return 0
@@ -599,8 +599,8 @@ _job_assert_file() {
     local file="$1"
     local name="$2"  # Human-readable name for error message.
     if [ ! -f "${file}" ]; then
-        echo "ERROR: ${name} not found: ${file}" >&2
-        echo "  Run 'jobinit' to create starter files." >&2
+        _job_err "${name} not found: ${file}"
+        _job_err "Run 'jobinit' to create starter files."
         return 1
     fi
     return 0
@@ -611,8 +611,8 @@ _job_assert_writable() {
     local path="$1"
     local name="$2"
     if [ ! -w "${path}" ]; then
-        echo "ERROR: ${name} is not writable: ${path}" >&2
-        echo "  Check file permissions and Dropbox sync status." >&2
+        _job_err "${name} is not writable: ${path}"
+        _job_err "Check file permissions and Dropbox sync status."
         return 1
     fi
     return 0
@@ -632,8 +632,8 @@ _job_get_editor() {
     elif command -v vi > /dev/null 2>&1; then
         echo "vi"
     else
-        echo "ERROR: No text editor found." >&2
-        echo "  Set EDITOR in your bashrc (e.g., export EDITOR=vim)" >&2
+        _job_err "No text editor found."
+        _job_err "Set EDITOR in your bashrc (e.g., export EDITOR=vim)"
         return 1
     fi
 }
@@ -647,7 +647,7 @@ _job_open_url() {
         xdg-open "${url}" 2>/dev/null &
     else
         # Last resort: print the URL so the user can copy it.
-        echo "  No browser opener found. Copy this URL:" >&2
+        _job_warn "No browser opener found. Copy this URL:"
         echo "  ${url}" >&2
     fi
 }
@@ -663,8 +663,8 @@ _job_read_urls() {
     urls=$(grep -v '^\s*#' "${file}" | grep -v '^\s*$')
 
     if [ -z "${urls}" ]; then
-        echo "WARNING: Bookmark file '$1' contains no URLs." >&2
-        echo "  Edit with: jobbookmarkedit $1" >&2
+        _job_warn "Bookmark file '$1' contains no URLs."
+        _job_warn "Edit with: jobbookmarkedit $1"
         return 1
     fi
 
@@ -677,6 +677,25 @@ _job_read_urls() {
 _job_sanitize_name() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd 'a-z0-9_-'
 }
+
+# ------------------------------------------------------------------
+# NOTIFICATION WRAPPERS
+# ------------------------------------------------------------------
+# Route user-facing notices (status / warning / error) through the
+# framework message engine (msg_* from lib/message.sh, loaded via the
+# 03_message.sh chain entry before this file). These three thin
+# wrappers are the SINGLE point of coupling to the engine: every
+# notice in this file calls _job_info/_job_warn/_job_err, never msg_*
+# directly. If this module is later extracted into a standalone lib,
+# only these three bodies need rewiring, not the call sites. Data
+# output (paths, listings, tables, the portal dump, usage/help blocks)
+# deliberately does NOT go through these: it stays plain stdout echo
+# so it can be piped and copied. Call-time only -- msg_* is reliably
+# defined by the time any job command runs; the source-time env/root
+# guards above stay raw echo for the standalone-source case.
+_job_info() { msg_info "$@"; }
+_job_warn() { msg_warn "$@"; }
+_job_err()  { msg_error "$@"; }
 
 # ------------------------------------------------------------------
 # NAVIGATION
@@ -724,7 +743,7 @@ jobclip() {
     local prompt_file="${JOB_PROMPTS}/${prompt_name}"
 
     if [ ! -f "${prompt_file}" ]; then
-        echo "ERROR: Prompt file not found: ${prompt_name}" >&2
+        _job_err "Prompt file not found: ${prompt_name}"
         echo "Available prompts:" >&2
         ls -1 "${JOB_PROMPTS}/" 2>/dev/null >&2
         if [ "$(ls -1 "${JOB_PROMPTS}/" 2>/dev/null | wc -l)" -eq 0 ]; then
@@ -737,15 +756,15 @@ jobclip() {
         cat "${prompt_file}" | clip.exe
         local line_count
         line_count=$(wc -l < "${prompt_file}")
-        echo "Copied to clipboard: ${prompt_name} (${line_count} lines)"
+        _job_info "Copied to clipboard: ${prompt_name} (${line_count} lines)"
         echo ""
         echo "Next steps:"
         echo "  1. Paste into Claude"
         echo "  2. Add the job posting text at the end"
         echo "  3. Send and review the tailored outputs"
     else
-        echo "WARNING: clip.exe not available (not in WSL?)." >&2
-        echo "Printing prompt to terminal instead. Copy manually." >&2
+        _job_warn "clip.exe not available (not in WSL?)."
+        _job_warn "Printing prompt to terminal instead. Copy manually."
         echo "---" >&2
         cat "${prompt_file}"
     fi
@@ -771,7 +790,7 @@ jobpromptedit() {
     editor=$(_job_get_editor) || return 1
 
     if [ ! -f "${prompt_file}" ]; then
-        echo "Creating new prompt: ${prompt_name}"
+        _job_info "Creating new prompt: ${prompt_name}"
     fi
     ${editor} "${prompt_file}"
 }
@@ -821,8 +840,8 @@ jobsave() {
 
     mkdir -p "${dirpath}" 2>/dev/null
     if [ ! -d "${dirpath}" ]; then
-        echo "ERROR: Could not create directory: ${dirpath}" >&2
-        echo "  Check disk space and permissions." >&2
+        _job_err "Could not create directory: ${dirpath}"
+        _job_err "Check disk space and permissions."
         return 1
     fi
 
@@ -847,11 +866,11 @@ jobsave() {
 # ===================================================
 
 EOF
-        echo "Created: ${dirname}/"
-        echo "  Paste the posting text into the file that opens."
+        _job_info "Created: ${dirname}/"
+        _job_info "Paste the posting text into the file that opens."
     else
-        echo "Already exists: ${dirname}/"
-        echo "  Opening for editing."
+        _job_info "Already exists: ${dirname}/"
+        _job_info "Opening for editing."
     fi
 
     local editor
@@ -892,7 +911,7 @@ jobopen() {
     match=$(ls -dt "${JOB_POSTINGS}"/*"$1"* 2>/dev/null | head -1)
 
     if [ -z "${match}" ]; then
-        echo "No posting found matching: $1" >&2
+        _job_err "No posting found matching: $1"
         echo "Available postings:" >&2
         ls -dt "${JOB_POSTINGS}"/*/ 2>/dev/null | head -10 | while read -r d; do
             echo "  $(basename "${d}")"
@@ -901,7 +920,7 @@ jobopen() {
     fi
 
     local posting_file="${match}/posting.txt"
-    echo "Opening: $(basename "${match}")"
+    _job_info "Opening: $(basename "${match}")"
 
     # List other files in the directory so user remembers what's there.
     local -a other_files=()
@@ -922,8 +941,8 @@ jobopen() {
     if [ -f "${posting_file}" ]; then
         ${editor} "${posting_file}"
     else
-        echo "WARNING: posting.txt not found in ${match}." >&2
-        echo "  Opening directory listing instead." >&2
+        _job_warn "posting.txt not found in ${match}."
+        _job_warn "Opening directory listing instead."
         ls -la "${match}"
     fi
 }
@@ -947,7 +966,7 @@ jobdir() {
     match=$(ls -dt "${JOB_POSTINGS}"/*"$1"* 2>/dev/null | head -1)
 
     if [ -z "${match}" ]; then
-        echo "No posting found matching: $1" >&2
+        _job_err "No posting found matching: $1"
         return 1
     fi
 
@@ -984,7 +1003,7 @@ joblog() {
     # Validate bucket is 1-6.
     local bucket="$3"
     if ! echo "${bucket}" | grep -qE '^[1-6]$'; then
-        echo "ERROR: Bucket must be 1-6. Got: ${bucket}" >&2
+        _job_err "Bucket must be 1-6. Got: ${bucket}"
         echo "  1 = Protein biochemistry / mechanistic" >&2
         echo "  2 = Genetics / screening / functional genomics" >&2
         echo "  3 = Hybrid biochem + genomics (strongest fit)" >&2
@@ -1011,7 +1030,7 @@ joblog() {
     if [ ! -f "${JOB_TRACKER}" ]; then
         printf "Company\tRole\tDate\tBucket\tStatus\tFollow-up\n" \
             > "${JOB_TRACKER}"
-        echo "Created tracker: tracker.tsv"
+        _job_info "Created tracker: tracker.tsv"
     fi
 
     _job_assert_writable "${JOB_TRACKER}" "Tracker" || return 1
@@ -1024,16 +1043,16 @@ joblog() {
     if ! printf "%s\t%s\t%s\t%s\tapplied\t%s\n" \
         "${company}" "${role}" "${today}" "${bucket}" "${followup}" \
         >> "${JOB_TRACKER}"; then
-        echo "ERROR: Failed to write to tracker: ${JOB_TRACKER}" >&2
-        echo "  Application was NOT logged. Check disk space and" >&2
-        echo "  Dropbox sync, then re-run." >&2
+        _job_err "Failed to write to tracker: ${JOB_TRACKER}"
+        _job_err "Application was NOT logged. Check disk space and"
+        _job_err "Dropbox sync, then re-run."
         return 1
     fi
 
     # Confirm with a count so user knows the log is growing.
     local total
     total=$(( $(wc -l < "${JOB_TRACKER}") - 1 ))
-    echo "Logged (#${total}): ${company} | ${role} | B${bucket} | Follow-up: ${followup}"
+    _job_info "Logged (#${total}): ${company} | ${role} | B${bucket} | Follow-up: ${followup}"
 }
 
 # Print tracker as an aligned table.
@@ -1044,8 +1063,8 @@ jobstatus() {
     total=$(( $(wc -l < "${JOB_TRACKER}") - 1 ))
 
     if [ "${total}" -le 0 ]; then
-        echo "No applications logged yet."
-        echo "  Use 'joblog <company> <role> <bucket>' after submitting."
+        _job_info "No applications logged yet."
+        _job_info "Use 'joblog <company> <role> <bucket>' after submitting."
         return 0
     fi
 
@@ -1114,7 +1133,7 @@ jobcheck() {
 
     # Validate batch_size is a positive integer.
     if ! echo "${batch_size}" | grep -qE '^[0-9]+$' || [ "${batch_size}" -eq 0 ]; then
-        echo "ERROR: Batch size must be a positive integer. Got: ${batch_size}" >&2
+        _job_err "Batch size must be a positive integer. Got: ${batch_size}"
         return 1
     fi
 
@@ -1129,12 +1148,12 @@ jobcheck() {
 
     local total=${#urls[@]}
     if [ "${total}" -eq 0 ]; then
-        echo "No URLs found in ${bookmark_file}."
+        _job_info "No URLs found in ${bookmark_file}."
         return 1
     fi
 
-    echo "Opening ${total} career pages from ${bookmark_file}"
-    echo "(${batch_size} at a time -- press Enter between batches)"
+    _job_info "Opening ${total} career pages from ${bookmark_file}"
+    _job_info "(${batch_size} at a time -- press Enter between batches)"
     echo ""
 
     local count=0
@@ -1159,8 +1178,8 @@ jobcheck() {
     done
 
     echo ""
-    echo "Done. Opened ${count} pages."
-    echo "If something fits: jobsave <company> <role>"
+    _job_info "Done. Opened ${count} pages."
+    _job_info "If something fits: jobsave <company> <role>"
 }
 
 # List available bookmark files.
@@ -1196,7 +1215,7 @@ jobalerts() {
     count=$(ls -1 "${JOB_ALERTS}" 2>/dev/null | wc -l)
 
     if [ "${count}" -eq 0 ]; then
-        echo "No alert files found. Run jobinit to create templates."
+        _job_info "No alert files found. Run jobinit to create templates."
         return 0
     fi
 
@@ -1221,7 +1240,7 @@ jobalertedit() {
     editor=$(_job_get_editor) || return 1
 
     if [ ! -f "${filepath}" ]; then
-        echo "Alert file not found: ${file}" >&2
+        _job_err "Alert file not found: ${file}"
         echo "Available files:" >&2
         ls -1 "${JOB_ALERTS}/" 2>/dev/null >&2
         if [ "$(ls -1 "${JOB_ALERTS}/" 2>/dev/null | wc -l)" -eq 0 ]; then
