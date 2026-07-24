@@ -1,3 +1,7 @@
-@@ 2026-13-99 10:00 project:ok | impossible date passes format check
+@@ 2026-13-99 10:00 project:ok | bad month and bad day, well-formed digits
+@@ 2026-00-15 10:30 project:ok | zero month
+@@ 2026-05-00 10:45 project:ok | zero day
+@@ 2026-05-32 11:15 project:ok | day out of range
+@@ 2026-12-31 11:30 project:ok | valid boundary date, must NOT be flagged
 @@ 2026-04-01 11:00 noproject here | missing project tag
 @@ 2026-04-02 12:00 project:good | clean entry

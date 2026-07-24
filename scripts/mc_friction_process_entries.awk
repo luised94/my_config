@@ -17,6 +17,14 @@
 # Entry format:
 #   @@ 2026-03-11 14:30 project:sm2 | description text here
 #
+# Date validation: an entry's date must be YYYY-MM-DD with month 01-12 and
+# day 01-31; anything else is warned as malformed and counted (but still
+# passed through). This is a coarse calendar check by design -- it does NOT
+# validate day-of-month per month or leap years, so an in-range but
+# impossible date like 2026-02-31 or 2026-04-31 is accepted. Recommendation
+# if stricter validation is ever needed: keep it in the awk backend and add
+# per-month/leap-year logic rather than a second validator elsewhere.
+#
 # Non-@@ lines before the first entry are preamble (always passed through).
 # Non-@@ lines after an entry are associated with that entry and travel with it.
 
@@ -60,8 +68,13 @@ BEGIN {
         entry_project = substr($0, RSTART + 8, RLENGTH - 8)
     }
 
-    # validate: date and project must be present
-    if (entry_date !~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ || entry_project == "") {
+    # validate: project present, and date well-formed AND calendar-plausible.
+    # Month is constrained to 01-12 and day to 01-31, which rejects e.g.
+    # 2026-13-99 and 2026-00-15. See the header note: this deliberately does
+    # NOT do per-month or leap-year validation, so an in-range but impossible
+    # day such as 2026-02-31 still passes. mawk-compatible (character classes
+    # and alternation; the {4} interval is supported by this awk).
+    if (entry_date !~ /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/ || entry_project == "") {
         printf "friction[WARN]: malformed entry: %s\n", $0 > "/dev/stderr"
         malformed_count++
     }

@@ -112,19 +112,25 @@ check "archive summary: 2 archived (project:web, before cutoff)" "yes" \
 check "archive summary: 3 remaining" "yes" "$(contains "$archive_err" "remaining: 3 entries")"
 
 # ==============================================================================
-# 6. malformed entries: warned + counted, but still routed to stdout
+# 6. malformed entries: warned + counted, but still routed to stdout.
+#    Date validation is calendar-plausible (month 01-12, day 01-31), so
+#    well-formed-but-out-of-range dates (bad/zero month or day) ARE flagged.
+#    Per-month and leap-year validity are out of scope, so the in-range
+#    boundary date 2026-12-31 is accepted.
 # ==============================================================================
 printf '\n--- malformed handling ---\n'
 awk -f "$awk_script" -v mode=show "$malformed" > "$sandbox/6.out" 2> "$sandbox/6.err"
 golden "malformed entries still pass through to stdout" "$expected/malformed.stdout" "$sandbox/6.out"
 malformed_err="$(cat "$sandbox/6.err")"
 malformed_warns="$(grep 'malformed entry:' "$sandbox/6.err" || true)"
-check "exactly one malformed entry reported" "yes" "$(contains "$malformed_err" "friction[WARN]: 1 malformed entries")"
-check "the missing-project entry is flagged" "yes" "$(contains "$malformed_warns" "noproject here")"
-# The date validation is format-only (4-2-2 digits); an impossible-but-well-
-# formed date is NOT flagged as malformed. Recorded as a finding.
-check "impossible-but-well-formed date is NOT flagged malformed" "no" \
-    "$(contains "$malformed_warns" "2026-13-99")"
+check "5 malformed reported (4 bad dates + 1 missing project)" "yes" \
+    "$(contains "$malformed_err" "friction[WARN]: 5 malformed entries")"
+check "missing-project entry is flagged"          "yes" "$(contains "$malformed_warns" "noproject here")"
+check "bad month+day 2026-13-99 is flagged"       "yes" "$(contains "$malformed_warns" "2026-13-99")"
+check "zero month 2026-00-15 is flagged"          "yes" "$(contains "$malformed_warns" "2026-00-15")"
+check "zero day 2026-05-00 is flagged"            "yes" "$(contains "$malformed_warns" "2026-05-00")"
+check "day-out-of-range 2026-05-32 is flagged"    "yes" "$(contains "$malformed_warns" "2026-05-32")"
+check "in-range boundary 2026-12-31 is NOT flagged" "no" "$(contains "$malformed_warns" "2026-12-31")"
 
 # --- Summary ------------------------------------------------------------------
 printf '\n[friction_awk] %d run, %d failed\n' "$tests_run" "$tests_failed"
