@@ -52,6 +52,13 @@
 #   Optional:  clip.exe (WSL clipboard), wslview (WSL browser),
 #              xdg-open (fallback browser)
 #
+# NOTE (shellcheck SC2012): this file lists and counts files with `ls`
+#   (e.g. `ls | wc -l`) and selects the newest posting with `ls -dt`.
+#   SC2012 (prefer `find`) is deliberately not actioned: the `ls -dt`
+#   time-sort has no clean `find` equivalent, the count/listing cases
+#   are pure churn to rewrite, and the inputs are controlled config and
+#   posting directories. Left as-is rather than sprinkling 18 directives.
+#
 # SEE ALSO: README.md in the job_applications directory.
 # ==================================================================
 
@@ -70,6 +77,7 @@ if [ -z "${MC_WINDOWS_USER}" ]; then
     # Define a stub so commands fail with a clear message instead
     # of cryptic path errors.
     jobhelp() { echo "ERROR: MC_WINDOWS_USER not set. See bashrc." >&2; return 1; }
+    # shellcheck disable=SC2317  # 'exit 0' is the executed-not-sourced fallback; reachable
     return 0 2>/dev/null || exit 0
 fi
 
@@ -753,7 +761,7 @@ jobclip() {
     fi
 
     if command -v clip.exe > /dev/null 2>&1; then
-        cat "${prompt_file}" | clip.exe
+        clip.exe < "${prompt_file}"
         local line_count
         line_count=$(wc -l < "${prompt_file}")
         _job_info "Copied to clipboard: ${prompt_name} (${line_count} lines)"
@@ -1167,7 +1175,7 @@ jobcheck() {
         echo "  [${count}/${total}] ${display_url}..."
 
         # Pause between batches. Skip pause after the last URL.
-        if [ $((count % batch_size)) -eq 0 ] && [ ${count} -lt ${total} ]; then
+        if [ $((count % batch_size)) -eq 0 ] && [ "${count}" -lt "${total}" ]; then
             echo ""
             echo "  --- Batch ${count}/${total} done. Press Enter for next batch ---"
             read -r
