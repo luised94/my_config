@@ -101,7 +101,7 @@ Observed behavior worth revisiting (characterization):
 - `11_git_utils.sh` push_all_repos: the "early exit if nothing to push" block
   has no `return`; the guard arithmetic is discarded and control falls through
   to the empty push loop. The final return is coincidentally equivalent, but
-  "Found 0 repo(s)" / "Complete: 0/0" still print.
+  "Found 0 repo(s)" / "Complete: 0/0" still print. -> Resolved in C27 (Tier 3).
 - usb-repos is skipped by a silent `continue` in all four loop functions -- no
   skip-notice is emitted. Tests assert the untouched state; the notice check is
   a SKIP.
@@ -116,7 +116,10 @@ Observed behavior worth revisiting (characterization):
 - friction awk: malformed detection is format-only -- an impossible but
   well-formed date (e.g. 2026-13-99) is not flagged; only a missing project tag
   is. `before_date` is exclusive (`entry_date >= before_date` is excluded). The
-  documented `-v today=` variable is accepted but unused.
+  documented `-v today=` variable is accepted but unused. -> The format-only
+  date gap is resolved in C28 (Tier 3): month 01-12 / day 01-31 now validated
+  (2026-13-99 is flagged). The missing-project case, exclusive `before_date`,
+  and unused `today` remain as described.
 
 Test-infra notes:
 - `scripts/lint.sh` does not scan `bash/test/` (its glob is `bash/*.sh
@@ -135,3 +138,59 @@ Test-infra notes:
   `mkdir -p` at source time (default path is under `MC_REPOS_ROOT`), a
   filesystem side effect on sourcing; the friction tests invoke the awk backend
   directly to avoid it. Future cleanup: lazy-create on first use.
+
+## Tier 3 job_hunt review + recorded-bug cleanup (C24-C29): outcomes
+
+Acted on the review targets and on the Tier 2 characterization findings. Unlike
+Tier 2 (tests only), this tier changed runtime code; each behavior change was
+pinned by a test in the same commit, or -- for the untested `15_job_hunt.sh`
+module -- verified by inspection and by sourcing at MC_VERBOSITY 0/3/4.
+
+Resolved this tier:
+- job_hunt SETUP documentation was scattered; consolidated to one authoritative
+  copy in the `jobhelp` heredoc, with a pointer from the top comment (C24).
+- `15_job_hunt.sh` made zero `msg_*` calls despite `03_message.sh` loading
+  before it. User-facing notices (status/warning/error) now route through the
+  message engine; data products, reports, interactive prompts, and source-time
+  output stay plain `echo`. Notices are now stderr, `[LEVEL]`-tagged, and
+  MC_VERBOSITY-gated -- so at V=0 even errors are silent, consistent with the
+  engine's level-1 gating (C25).
+- `15_job_hunt.sh` sub-gate shellcheck swept: SC2002 and SC2086 fixed; the 19
+  SC2012 (`ls` vs `find`) documented as a deliberate deferral (the `ls -dt`
+  time-sort has no clean `find` equivalent, and the rest is churn) (C26).
+- push_all_repos "nothing to push" fall-through fixed with an explicit early
+  `return`; return code unchanged, only the bogus "Found 0" / "Complete: 0/0"
+  output removed. The Tier 2 prose NOTE was replaced with a real all-synced
+  scenario that was RED before the fix (C27).
+- friction awk date validation tightened from format-only to a calendar range
+  (month 01-12, day 01-31); malformed count on the expanded fixture went
+  1 -> 5. Per-month/leap-year validity is out of scope by design (2026-02-31
+  still passes); the awk header records the recommendation to extend this
+  backend rather than add a second validator if stricter checking is wanted
+  (C28).
+
+Still open -- carried forward to a cross-repo planning thread:
+Recorded above and unaddressed after Tier 3; grouped here so the next planning
+pass can take them together (several cross the my_config / usb-sh / kbd
+boundary):
+- `13_friction.sh` source-time `mkdir -p` filesystem side effect (lazy-create
+  on first use).
+- `bash/test/extension_system.sh` sandbox violation (writes real `~/.config`,
+  sources `~/.bashrc`) -- bring under the mktemp/HOME-redirect rule the newer
+  tests follow.
+- `config_and_message.sh` duplicate `#!/bin/bash` on line 2 (inert).
+- usb-sh `MC_PS1` non-idempotency on re-source (fix belongs in usb-sh; see the
+  Deferred section above).
+
+Architecture threads raised by the owner (not acted on this tier):
+- job_hunt as a self-contained lib. The instinct is to minimize job_hunt's
+  coupling to the rest of the chain so it could be extracted. This deserves its
+  own scouting/planning thread rather than a bolt-on: an extraction would have
+  to address the two-root env wiring (`MC_REPOS_ROOT` / `MC_DROPBOX_PATH`) and
+  the message-engine dependency, not just move the file.
+- Thin semantic wrappers over dependencies, as a general pattern. C25's
+  `_job_info` / `_job_warn` / `_job_err` (delegating to `msg_*`) is the first
+  instance: a per-consumer seam that concentrates coupling to a shared
+  dependency into a few function bodies, so a later extraction or swap rewires
+  the wrappers rather than every call site. Worth applying wherever a module
+  takes on a shared dependency (the message engine being one such case).
