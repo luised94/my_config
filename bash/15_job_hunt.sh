@@ -14,16 +14,10 @@
 #   batch-opening career pages.
 #
 # SETUP:
-#   1. Set MC_WINDOWS_USER in your bashrc/profile:
-#        export MC_WINDOWS_USER="Luised94"
-#   2. Clone the kbd repo so the config root exists:
-#        $MC_REPOS_ROOT/usb-repos/kbd/docs/job_applications/
-#   3. Ensure this file is sourced by bashrc (e.g., placed in a
-#      directory that bashrc loads on startup).
-#   4. Run `jobinit` once to create the directory structure.
-#   5. Place your prompt template(s) in the kbd prompts/ directory.
-#   6. Place your bookmark URLs in bookmarks/career_pages.txt.
-#   7. Fill in portal-ready-info.txt with your personal details.
+#   Run `jobhelp` for setup prerequisites and the full command
+#   reference; run `jobinit` once to create the directory structure.
+#   (The authoritative setup steps live in the jobhelp SETUP section
+#   so they are accessible at runtime and documented in one place.)
 #
 # LAYOUT (two roots, since 2026-06-23):
 #   CONFIG (kbd, version-controlled): alerts/, bookmarks/, prompts/,
@@ -1319,6 +1313,12 @@ JOB SEARCH PIPELINE -- COMMAND REFERENCE
 ========================================
 
 SETUP (run once)
+  Prerequisites (before jobinit):
+    1. export MC_WINDOWS_USER="YourUsername" in your bashrc/profile
+    2. Clone the kbd repo so the config root exists:
+         $MC_REPOS_ROOT/usb-repos/kbd/docs/job_applications/
+    3. Source this file from bashrc so the commands are available
+  Then:
   jobinit             Create directory structure and starter files
   jobdiag             Check setup, find issues
   jobcd               cd to kbd config root
