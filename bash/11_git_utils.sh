@@ -570,7 +570,12 @@ push_all_repos() {
   # --- Early exit if nothing to push ---
   if (( ${#pushable_repos[@]} == 0 )); then
     msg_info "Nothing to push - all repos are up to date"
+    # Signal success unless some repos have diverged history (then 1),
+    # matching the final summary's status expression. The missing `return`
+    # was the bug: control used to fall through to the empty push loop and
+    # print a bogus "Found 0 repo(s)" / "Complete: 0/0" summary.
     (( ${#diverged_repos[@]} == 0 ))
+    return
   fi
 
   msg_info "Found ${#pushable_repos[@]} repo(s) with unpushed commits"

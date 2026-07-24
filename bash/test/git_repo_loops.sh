@@ -156,11 +156,24 @@ check "push_all_repos returns 0 on success"          "0" "$push_rc"
 check "ahead repo was pushed (bare advanced to local tip)" "$push_b" "$(git -C "$sandbox/rem/push_ahead.git" rev-parse main)"
 check "ahead repo bare actually changed"             "no"  "$([[ "$ahead_bare_before" == "$push_b" ]] && printf yes || printf no)"
 check "synced repo bare left unchanged"              "$synced_bare_before" "$(git -C "$sandbox/rem/push_synced.git" rev-parse main)"
-# NOTE: push_all_repos' "early exit if nothing to push" block (the
-# `(( ${#pushable_repos[@]} == 0 ))` guard) has no `return`, so it does not
-# actually exit early; the arithmetic result is discarded and control falls
-# through to the (empty) push loop. The final return value is coincidentally
-# equivalent, but the "Found 0 repo(s)"/"Complete: 0/0" messages still print.
+# Regression: the "early exit if nothing to push" block computed its status
+# with `(( ${#diverged_repos[@]} == 0 ))` but had no `return`, so control fell
+# through to the empty push loop and printed a bogus "Found 0 repo(s)" and
+# "Complete: 0/0". C27 adds the missing `return`. The return code was always 0
+# in this case, so only the spurious output changed; the assertions below pin
+# that (a root where every repo is already synced -> nothing pushable).
+nopush_root="$sandbox/nopush_root"
+mkdir -p "$nopush_root"
+fixture_make_repo_with_remote "$sandbox/rem/nopush_a.git" "$nopush_root/repo_a" >/dev/null
+fixture_make_repo_with_remote "$sandbox/rem/nopush_b.git" "$nopush_root/repo_b" >/dev/null
+
+rc_of 0 push_all_repos "$nopush_root"; nopush_rc=$?
+check "push_all_repos returns 0 when nothing to push"        "0"   "$nopush_rc"
+
+nopush_out="$(MC_VERBOSITY=3 push_all_repos "$nopush_root" 2>&1)"
+check "nothing-to-push says 'Nothing to push'"               "yes" "$(contains "$nopush_out" "Nothing to push")"
+check "nothing-to-push omits bogus 'Found 0 repo(s)'"        "no"  "$(contains "$nopush_out" "Found 0 repo(s)")"
+check "nothing-to-push omits bogus 'Complete: 0/0'"          "no"  "$(contains "$nopush_out" "Complete: 0/0")"
 
 # ==============================================================================
 # 4. usb-repos skip regression (all four loop functions)
