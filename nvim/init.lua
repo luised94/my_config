@@ -551,4 +551,12 @@ for _, filepath in ipairs(lua_files) do
     end
 end
 
+-- Patch fix to load the nvim-llm lua configuration. Need to update to the plugin system or move into plugin.
+vim.filetype.add({ extension = { conv = "conv" } })
+vim.api.nvim_create_autocmd("Filetype", {
+  pattern = "conv",
+  callback = function()
+    dofile(vim.fn.expand("~/personal_repos/explorations--nvim-llm/nvim-llm/conv.lua"))
+  end,
+})
 -- vim: ts=2 sts=2 sw=2 et
