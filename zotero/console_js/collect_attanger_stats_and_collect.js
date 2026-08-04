@@ -1,8 +1,8 @@
 // =============================================================================
 // ATTANGER MOVE/RENAME STATS + COLLECT CANDIDATES
 // =============================================================================
-// Version: 1.0.0
-// Date:    2026-07
+// Version: 1.1.0
+// Date:    2026-08
 // Purpose: For every live linked-file attachment, compute what Attanger WOULD
 //          do (target folder = destDir + first-author-family subfolder; target
 //          filename = Zotero's native rename template), compare to the current
@@ -14,10 +14,36 @@
 //          DRY_RUN default: reports the plan, writes nothing.
 //          DRY_RUN=false: creates collection(s) + adds parents.
 //
+// Changes in 1.1.0:
+//   - All membership saves now share ONE Zotero.Notifier.Queue, committed once
+//     after all chunks. 1.0.0 fired a notifier batch per chunk (~20 batches at
+//     10k items / 500 chunk), and EACH batch triggered a full tag-selector
+//     reload (~50 s in a large library) plus items-pane refresh. The UI churned
+//     for many minutes after the writes were already committed. One queue ->
+//     one notification batch -> one UI refresh.
+//   - addItems() replaced with a direct per-item addToCollection + save loop,
+//     because addItems in shipped Zotero versions does not reliably forward
+//     save options, and the notifierQueue option must reach item.save() to
+//     work. The loop passes skipDateModifiedUpdate (same lightening addItems
+//     used) plus notifierQueue explicitly, so no forwarding is assumed.
+//   - Queue commit is in a finally block: a mid-run failure still flushes the
+//     notifications for whatever was committed, so the UI does not silently
+//     desynchronize from the database.
+//   - Re-run on the same day now REUSES an existing collection with the same
+//     name instead of creating a duplicate, and skips parents already in it.
+//     This makes the advertised "idempotent and re-runnable" claim true at the
+//     collection level, not just the membership level.
+//   - Removed duplicated CONFIG keys (YIELD_HOLD_MS, HEARTBEAT_EVERY_ITEMS,
+//     REPORT_SAMPLE_MAX appeared twice; values were identical, last-one-wins,
+//     so this is a no-op cleanup).
+//
 // Confidence, honestly stated:
 //   - RENAME target uses Zotero.Attachments.getFileBaseNameFromItem() -- the
 //     SAME native call Attanger uses -- so it is accurate (modulo the
-//     attachmentTitle edge case).
+//     attachmentTitle edge case). CAVEAT: this script then applies its own
+//     sanitizePathComponent() to that base, which may not match Zotero's
+//     internal filename cleaning exactly; disagreement inflates RENAME false
+//     positives only. Safe direction, given the superset design below.
 //   - MOVE target reimplements Attanger's subfolderFormat
 //     ({{ authors name="family" max="1" }} = first author's family name).
 //     This is BEST-EFFORT: diacritic/sanitization rules may differ slightly.
@@ -51,9 +77,6 @@ var CONFIG = {
     YIELD_HOLD_MS: 40,           // time-budget yielding (matches BBT lesson)
     HEARTBEAT_EVERY_ITEMS: 5000,
     REPORT_SAMPLE_MAX: 100,
-    YIELD_HOLD_MS: 40,           // time-budget yielding (matches BBT lesson)
-    HEARTBEAT_EVERY_ITEMS: 5000,
-    REPORT_SAMPLE_MAX: 100,
     WRITE_CHUNK_SIZE: 500,       // membership writes per transaction; bounds txn duration
 
     MIN_ZOTERO_VERSION: '7.0',
@@ -66,7 +89,8 @@ var timing = {
     scriptStart: Date.now(), assertions: 0, scanMs: 0, writeMs: 0,
     yieldCount: 0, linkedFileRows: 0, standalone: 0, sourceMissing: 0,
     alreadyCorrect: 0, wouldMoveOnly: 0, wouldRenameOnly: 0,
-    wouldMoveAndRename: 0, classifyErrors: 0, noCreatorFallbackUnknown: 0
+    wouldMoveAndRename: 0, classifyErrors: 0, noCreatorFallbackUnknown: 0,
+    alreadyMembersSkipped: 0
 };
 var moveParentIDs = new Set();
 var renameParentIDs = new Set();
@@ -94,7 +118,7 @@ function sanitizePathComponent(s) {
 try {
 
 // 4. PRE-FLIGHT
-report(`version 1.0.0 starting, Zotero ${Zotero.version}, DRY_RUN=${CONFIG.DRY_RUN}`);
+report(`version 1.1.0 starting, Zotero ${Zotero.version}, DRY_RUN=${CONFIG.DRY_RUN}`);
 var belowMin = Services.vc.compare(Zotero.version, CONFIG.MIN_ZOTERO_VERSION) < 0;
 var aboveMax = Services.vc.compare(Zotero.version, CONFIG.MAX_ZOTERO_VERSION) > 0;
 if ((belowMin || aboveMax) && !CONFIG.BYPASS_VERSION_CHECK) {
@@ -107,6 +131,11 @@ assert(typeof Zotero.Collection === 'function', 'Zotero.Collection unavailable')
 assert(typeof Zotero.Attachments.getFileBaseNameFromItem === 'function',
     'Zotero.Attachments.getFileBaseNameFromItem unavailable (needed for accurate rename target)');
 assert(typeof IOUtils !== 'undefined' && typeof IOUtils.exists === 'function', 'IOUtils.exists unavailable');
+// New in 1.1.0: the notifier queue is the mechanism that prevents the per-chunk
+// UI refresh storm, so its absence is a hard stop, not a degraded mode.
+assert(typeof Zotero.Notifier === 'object' && typeof Zotero.Notifier.Queue === 'function',
+    'Zotero.Notifier.Queue unavailable (needed to batch UI notifications)');
+assert(typeof Zotero.Notifier.commit === 'function', 'Zotero.Notifier.commit unavailable');
 
 var linkedFileMode = Zotero.Attachments.LINK_MODE_LINKED_FILE;
 var userLibraryID = Zotero.Libraries.userLibraryID;
@@ -291,59 +320,107 @@ if (CONFIG.DRY_RUN) {
     report('DRY_RUN: nothing created. Review sampleEntries. Set DRY_RUN=false to apply.');
 } else {
     var writeStart = Date.now();
+
+    // Reuse a same-named collection if one exists (same-day re-run), so re-running
+    // does not create "Attanger move candidates 2026-08-04" twice. getByLibrary
+    // returns loaded collection objects; name match is exact.
+    var existingCollections = Zotero.Collections.getByLibrary(userLibraryID);
+    for (var existing of existingCollections) {
+        if (existing.name === moveCollectionName) { moveCollection = existing; moveCollectionID = existing.id; }
+        if (existing.name === renameCollectionName) { renameCollection = existing; renameCollectionID = existing.id; }
+    }
+    if (moveCollection !== null) report(`reusing existing "${moveCollectionName}" (id ${moveCollectionID})`);
+    if (renameCollection !== null && CONFIG.INCLUDE_RENAME_COLLECTION) {
+        report(`reusing existing "${renameCollectionName}" (id ${renameCollectionID})`);
+    }
+
     // Collections created first (separate saveTx) so we hold live objects + IDs.
-    if (moveList.length > 0) {
+    if (moveCollection === null && moveList.length > 0) {
         moveCollection = new Zotero.Collection();
         moveCollection.libraryID = userLibraryID; moveCollection.name = moveCollectionName;
         moveCollectionID = await moveCollection.saveTx();
         report(`created "${moveCollectionName}" (id ${moveCollectionID})`);
     }
-    if (CONFIG.INCLUDE_RENAME_COLLECTION && renameList.length > 0) {
+    if (CONFIG.INCLUDE_RENAME_COLLECTION && renameCollection === null && renameList.length > 0) {
         renameCollection = new Zotero.Collection();
         renameCollection.libraryID = userLibraryID; renameCollection.name = renameCollectionName;
         renameCollectionID = await renameCollection.saveTx();
         report(`created "${renameCollectionName}" (id ${renameCollectionID})`);
     }
-    // Membership in CHUNKED transactions, NOT one big transaction. The previous
-    // single-transaction per-item loop ran ~16k full item saves and tripped
-    // Zotero's "Transaction timeout, most likely caused by unresolved pending
-    // work". Collection.addItems() does the same per-item save loop internally,
-    // so it does NOT avoid the timeout on its own -- bounding each transaction
-    // to WRITE_CHUNK_SIZE items is what fixes it. addItems is still used per
-    // chunk because it saves with skipDateModifiedUpdate (lighter).
+    if (!CONFIG.INCLUDE_RENAME_COLLECTION) renameCollection = null;
+
+    // Membership in CHUNKED transactions, NOT one big transaction. A single
+    // transaction over ~16k per-item saves tripped Zotero's "Transaction
+    // timeout, most likely caused by unresolved pending work"; bounding each
+    // transaction to WRITE_CHUNK_SIZE items fixes that.
     //
-    // Trade-off accepted: this is no longer ONE transaction, so a mid-run failure
-    // leaves a partially populated collection. That is safe here -- membership is
-    // idempotent and re-runnable, and no file/path/item data is touched.
+    // 1.1.0: every save shares ONE notifier queue, committed ONCE after all
+    // chunks. Without it, each chunk commit fired its own notification batch,
+    // and each batch triggered a full tag-selector reload (~50 s in a large
+    // library) plus items-pane refresh -- the UI churned for many minutes
+    // after the database writes were long done. One queue -> one batch -> one
+    // refresh. addItems() is NOT used because shipped versions do not reliably
+    // forward save options; the direct addToCollection + save loop guarantees
+    // notifierQueue and skipDateModifiedUpdate actually reach item.save().
+    //
+    // Trade-off accepted: this is no longer ONE transaction, so a mid-run
+    // failure leaves a partially populated collection. That is safe here --
+    // membership is idempotent and re-runnable (already-members are skipped),
+    // and no file/path/item data is touched.
     //
     // Yield to the event loop ONLY BETWEEN chunks, never inside a transaction:
     // awaiting any non-DB promise (setTimeout, maybeYield, etc.) while a
     // transaction is open re-triggers the same timeout and rolls it back.
-    if (moveCollection !== null) {
-        for (var moveChunkStart = 0; moveChunkStart < moveList.length; moveChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
-            var moveChunk = moveList.slice(moveChunkStart, moveChunkStart + CONFIG.WRITE_CHUNK_SIZE);
-            // addItems REQUIRES an open transaction (it calls requireTransaction);
-            // it does NOT open its own. One executeTransaction per chunk keeps each
-            // transaction small enough to clear the timeout.
-            await Zotero.DB.executeTransaction(async function () {
-                await moveCollection.addItems(moveChunk);
-            });
-            await new Promise(function (resolve) { setTimeout(resolve, 0); });
-            timing.yieldCount++;
+    var notifierQueue = new Zotero.Notifier.Queue();
+    try {
+        if (moveCollection !== null) {
+            // Skip parents already in the collection (re-run case): a save on an
+            // already-member item is not free, and 10k pointless saves is exactly
+            // the cost this script exists to avoid.
+            var movePending = moveList.filter(function (parentID) { return !moveCollection.hasItem(parentID); });
+            timing.alreadyMembersSkipped += moveList.length - movePending.length;
+            for (var moveChunkStart = 0; moveChunkStart < movePending.length; moveChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
+                var moveChunk = movePending.slice(moveChunkStart, moveChunkStart + CONFIG.WRITE_CHUNK_SIZE);
+                var moveChunkItems = await Zotero.Items.getAsync(moveChunk);
+                await Zotero.DB.executeTransaction(async function () {
+                    for (var moveItem of moveChunkItems) {
+                        moveItem.addToCollection(moveCollectionID);
+                        await moveItem.save({ skipDateModifiedUpdate: true, notifierQueue: notifierQueue });
+                    }
+                });
+                await new Promise(function (resolve) { setTimeout(resolve, 0); });
+                timing.yieldCount++;
+            }
+            report(`added ${movePending.length} parent(s) to "${moveCollectionName}" ` +
+                `(${moveList.length - movePending.length} already present, skipped)`);
         }
-        report(`added ${moveList.length} parent(s) to "${moveCollectionName}"`);
-    }
-    if (renameCollection !== null) {
-        for (var renameChunkStart = 0; renameChunkStart < renameList.length; renameChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
-            var renameChunk = renameList.slice(renameChunkStart, renameChunkStart + CONFIG.WRITE_CHUNK_SIZE);
-            await Zotero.DB.executeTransaction(async function () {
-                await renameCollection.addItems(renameChunk);
-            });
-            await new Promise(function (resolve) { setTimeout(resolve, 0); });
-            timing.yieldCount++;
+        if (renameCollection !== null) {
+            var renamePending = renameList.filter(function (parentID) { return !renameCollection.hasItem(parentID); });
+            timing.alreadyMembersSkipped += renameList.length - renamePending.length;
+            for (var renameChunkStart = 0; renameChunkStart < renamePending.length; renameChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
+                var renameChunk = renamePending.slice(renameChunkStart, renameChunkStart + CONFIG.WRITE_CHUNK_SIZE);
+                var renameChunkItems = await Zotero.Items.getAsync(renameChunk);
+                await Zotero.DB.executeTransaction(async function () {
+                    for (var renameItem of renameChunkItems) {
+                        renameItem.addToCollection(renameCollectionID);
+                        await renameItem.save({ skipDateModifiedUpdate: true, notifierQueue: notifierQueue });
+                    }
+                });
+                await new Promise(function (resolve) { setTimeout(resolve, 0); });
+                timing.yieldCount++;
+            }
+            report(`added ${renamePending.length} parent(s) to "${renameCollectionName}" ` +
+                `(${renameList.length - renamePending.length} already present, skipped)`);
         }
-        report(`added ${renameList.length} parent(s) to "${renameCollectionName}"`);
+    } finally {
+        // Commit in finally: whatever chunks committed to the database before a
+        // failure must still be announced, or the UI silently desynchronizes
+        // from the database until restart. This is the ONE notification batch;
+        // expect ONE tag reload + ONE items-pane refresh here, and only here.
+        await Zotero.Notifier.commit(notifierQueue);
+        report('notifier queue committed: expect a single UI refresh now');
     }
+
     timing.writeMs = Date.now() - writeStart;
     report(`writes done in ${timing.writeMs} ms`);
     report('Next: select the collection contents, right-click > Attanger > Rename and Move. ' +
@@ -369,6 +446,7 @@ return {
     standaloneUncollectable: timing.standalone,
     noAuthorFallbackUnknown: timing.noCreatorFallbackUnknown,
     classifyErrors: timing.classifyErrors,
+    alreadyMembersSkipped: timing.alreadyMembersSkipped,
     collectableMoveParents: moveList.length,
     collectableRenameParents: renameList.length,
     moveCollectionName, renameCollectionName: CONFIG.INCLUDE_RENAME_COLLECTION ? renameCollectionName : null,
