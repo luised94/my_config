@@ -51,6 +51,10 @@ var CONFIG = {
     YIELD_HOLD_MS: 40,           // time-budget yielding (matches BBT lesson)
     HEARTBEAT_EVERY_ITEMS: 5000,
     REPORT_SAMPLE_MAX: 100,
+    YIELD_HOLD_MS: 40,           // time-budget yielding (matches BBT lesson)
+    HEARTBEAT_EVERY_ITEMS: 5000,
+    REPORT_SAMPLE_MAX: 100,
+    WRITE_CHUNK_SIZE: 500,       // membership writes per transaction; bounds txn duration
 
     MIN_ZOTERO_VERSION: '7.0',
     MAX_ZOTERO_VERSION: '9.0.6',
@@ -280,29 +284,66 @@ report(`  "${moveCollectionName}" <- ${moveList.length} parent(s)`);
 if (CONFIG.INCLUDE_RENAME_COLLECTION) report(`  "${renameCollectionName}" <- ${renameList.length} parent(s)`);
 report('  writes: collection membership only. This script never moves or renames files.');
 
+
+var moveCollection = null, renameCollection = null;
 var moveCollectionID = null, renameCollectionID = null;
 if (CONFIG.DRY_RUN) {
     report('DRY_RUN: nothing created. Review sampleEntries. Set DRY_RUN=false to apply.');
 } else {
     var writeStart = Date.now();
+    // Collections created first (separate saveTx) so we hold live objects + IDs.
     if (moveList.length > 0) {
-        var mc = new Zotero.Collection(); mc.libraryID = userLibraryID; mc.name = moveCollectionName;
-        moveCollectionID = await mc.saveTx();
+        moveCollection = new Zotero.Collection();
+        moveCollection.libraryID = userLibraryID; moveCollection.name = moveCollectionName;
+        moveCollectionID = await moveCollection.saveTx();
         report(`created "${moveCollectionName}" (id ${moveCollectionID})`);
     }
     if (CONFIG.INCLUDE_RENAME_COLLECTION && renameList.length > 0) {
-        var rc = new Zotero.Collection(); rc.libraryID = userLibraryID; rc.name = renameCollectionName;
-        renameCollectionID = await rc.saveTx();
+        renameCollection = new Zotero.Collection();
+        renameCollection.libraryID = userLibraryID; renameCollection.name = renameCollectionName;
+        renameCollectionID = await renameCollection.saveTx();
         report(`created "${renameCollectionName}" (id ${renameCollectionID})`);
     }
-    await Zotero.DB.executeTransaction(async function () {
-        if (moveCollectionID !== null) for (var pid of moveList) {
-            var it = await Zotero.Items.getAsync(pid); it.addToCollection(moveCollectionID); await it.save();
+    // Membership in CHUNKED transactions, NOT one big transaction. The previous
+    // single-transaction per-item loop ran ~16k full item saves and tripped
+    // Zotero's "Transaction timeout, most likely caused by unresolved pending
+    // work". Collection.addItems() does the same per-item save loop internally,
+    // so it does NOT avoid the timeout on its own -- bounding each transaction
+    // to WRITE_CHUNK_SIZE items is what fixes it. addItems is still used per
+    // chunk because it saves with skipDateModifiedUpdate (lighter).
+    //
+    // Trade-off accepted: this is no longer ONE transaction, so a mid-run failure
+    // leaves a partially populated collection. That is safe here -- membership is
+    // idempotent and re-runnable, and no file/path/item data is touched.
+    //
+    // Yield to the event loop ONLY BETWEEN chunks, never inside a transaction:
+    // awaiting any non-DB promise (setTimeout, maybeYield, etc.) while a
+    // transaction is open re-triggers the same timeout and rolls it back.
+    if (moveCollection !== null) {
+        for (var moveChunkStart = 0; moveChunkStart < moveList.length; moveChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
+            var moveChunk = moveList.slice(moveChunkStart, moveChunkStart + CONFIG.WRITE_CHUNK_SIZE);
+            // addItems REQUIRES an open transaction (it calls requireTransaction);
+            // it does NOT open its own. One executeTransaction per chunk keeps each
+            // transaction small enough to clear the timeout.
+            await Zotero.DB.executeTransaction(async function () {
+                await moveCollection.addItems(moveChunk);
+            });
+            await new Promise(function (resolve) { setTimeout(resolve, 0); });
+            timing.yieldCount++;
         }
-        if (renameCollectionID !== null) for (var pid2 of renameList) {
-            var it2 = await Zotero.Items.getAsync(pid2); it2.addToCollection(renameCollectionID); await it2.save();
+        report(`added ${moveList.length} parent(s) to "${moveCollectionName}"`);
+    }
+    if (renameCollection !== null) {
+        for (var renameChunkStart = 0; renameChunkStart < renameList.length; renameChunkStart += CONFIG.WRITE_CHUNK_SIZE) {
+            var renameChunk = renameList.slice(renameChunkStart, renameChunkStart + CONFIG.WRITE_CHUNK_SIZE);
+            await Zotero.DB.executeTransaction(async function () {
+                await renameCollection.addItems(renameChunk);
+            });
+            await new Promise(function (resolve) { setTimeout(resolve, 0); });
+            timing.yieldCount++;
         }
-    });
+        report(`added ${renameList.length} parent(s) to "${renameCollectionName}"`);
+    }
     timing.writeMs = Date.now() - writeStart;
     report(`writes done in ${timing.writeMs} ms`);
     report('Next: select the collection contents, right-click > Attanger > Rename and Move. ' +
