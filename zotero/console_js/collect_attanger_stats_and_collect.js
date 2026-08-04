@@ -1,7 +1,7 @@
 // =============================================================================
 // ATTANGER MOVE/RENAME STATS + COLLECT CANDIDATES
 // =============================================================================
-// Version: 1.1.0
+// Version: 1.2.0
 // Date:    2026-08
 // Purpose: For every live linked-file attachment, compute what Attanger WOULD
 //          do (target folder = destDir + first-author-family subfolder; target
@@ -13,6 +13,31 @@
 // Usage:   Tools > Developer > Run JavaScript.  CHECK "Run as async function".
 //          DRY_RUN default: reports the plan, writes nothing.
 //          DRY_RUN=false: creates collection(s) + adds parents.
+//
+// Changes in 1.2.0 (all three driven by evidence from the 2026-08-04 run):
+//   - Attanger's template is confirmed
+//     {{ authors name="family" join="_" max="1" }} -- AUTHORS ONLY. An item with
+//     editors but no authors renders EMPTY, and Attanger files it under "_".
+//     Confirmed empirically: running Rename and Move on such an item leaves it
+//     in "_". 1.1.0 fell back to creators[0] (any type), so it computed
+//     "Milkov", "Fensel", "Flistad" etc. for editor-only volumes and flagged
+//     ~2000 already-correct items as move candidates. The fallback is removed:
+//     no author now yields the "_" subfolder, matching observed behavior.
+//   - sanitizePathComponent is NO LONGER applied to the rename base.
+//     getFileBaseNameFromItem already returns a sanitized, valid base name;
+//     re-sanitizing stripped legitimate trailing periods, so titles ending in
+//     "R.I.P.", "Ancients.", "1910-66." were reported as rename candidates
+//     against a corrupted target. Sanitization is kept for the author
+//     subfolder, which this script computes itself and Attanger does not hand
+//     back.
+//   - Expected-target collisions are now detected and REPORTED (report only;
+//     nothing is excluded on their account). Attanger re-suffixes on collision
+//     -- confirmed: colliding files became " 2", " 3" and all open correctly,
+//     no data loss -- so a collision is safe, not a hazard. It is reported
+//     because a group of attachments sharing one expected target is the
+//     signature of a duplicate attachment set, which is worth auditing
+//     separately. Note the suffix number does NOT indicate order within the
+//     group; it reflects processing order, not precedence.
 //
 // Changes in 1.1.0:
 //   - All membership saves now share ONE Zotero.Notifier.Queue, committed once
@@ -39,14 +64,17 @@
 //
 // Confidence, honestly stated:
 //   - RENAME target uses Zotero.Attachments.getFileBaseNameFromItem() -- the
-//     SAME native call Attanger uses -- so it is accurate (modulo the
-//     attachmentTitle edge case). CAVEAT: this script then applies its own
-//     sanitizePathComponent() to that base, which may not match Zotero's
-//     internal filename cleaning exactly; disagreement inflates RENAME false
-//     positives only. Safe direction, given the superset design below.
+//     SAME native call Attanger uses -- and is now used VERBATIM, so it is
+//     accurate (modulo the attachmentTitle edge case).
 //   - MOVE target reimplements Attanger's subfolderFormat
-//     ({{ authors name="family" max="1" }} = first author's family name).
-//     This is BEST-EFFORT: diacritic/sanitization rules may differ slightly.
+//     {{ authors name="family" join="_" max="1" }} = first AUTHOR's family
+//     name, or "_" when the item has no author. max="1" means join="_" never
+//     fires (nothing to join), so it is deliberately not implemented here;
+//     if the template is ever widened to max>1 this code must change too.
+//     Still BEST-EFFORT on one axis: diacritic and punctuation handling may
+//     differ. Known open case: a single-field creator name can leave a
+//     trailing comma ("Nash,"), which this sanitizer does not strip and
+//     Attanger may; that inflates MOVE false positives only.
 //   Because running Attanger's move on an already-correct item is a NO-OP,
 //   the collections are a safe SUPERSET: false positives cost a harmless
 //   no-op, so membership is biased toward inclusion.
@@ -89,14 +117,19 @@ var timing = {
     scriptStart: Date.now(), assertions: 0, scanMs: 0, writeMs: 0,
     yieldCount: 0, linkedFileRows: 0, standalone: 0, sourceMissing: 0,
     alreadyCorrect: 0, wouldMoveOnly: 0, wouldRenameOnly: 0,
-    wouldMoveAndRename: 0, classifyErrors: 0, noCreatorFallbackUnknown: 0,
-    alreadyMembersSkipped: 0
+    wouldMoveAndRename: 0, classifyErrors: 0, noAuthorUnderscoreSubfolder: 0,
+    alreadyMembersSkipped: 0, collidingTargets: 0, collidingAttachments: 0
 };
 var moveParentIDs = new Set();
 var renameParentIDs = new Set();
 var sampleEntries = [];        // { attachmentItemID, parentItemID, current, expected, detail }
 var classifyErrorSample = [];  // { attachmentItemID, message }
 var sourceMissingSample = [];
+// normalized expected absolute path -> array of attachment item IDs targeting it.
+// Report only: Attanger re-suffixes on collision, so these are safe, but a
+// shared target marks a probable duplicate attachment set worth auditing.
+var expectedTargetOwners = new Map();
+var collisionSample = [];
 var debugLines = [];
 var lastYieldAt = Date.now();
 
@@ -118,7 +151,7 @@ function sanitizePathComponent(s) {
 try {
 
 // 4. PRE-FLIGHT
-report(`version 1.1.0 starting, Zotero ${Zotero.version}, DRY_RUN=${CONFIG.DRY_RUN}`);
+report(`version 1.2.0 starting, Zotero ${Zotero.version}, DRY_RUN=${CONFIG.DRY_RUN}`);
 var belowMin = Services.vc.compare(Zotero.version, CONFIG.MIN_ZOTERO_VERSION) < 0;
 var aboveMax = Services.vc.compare(Zotero.version, CONFIG.MAX_ZOTERO_VERSION) > 0;
 if ((belowMin || aboveMax) && !CONFIG.BYPASS_VERSION_CHECK) {
@@ -235,32 +268,41 @@ for (var row of rows) {
     try {
         var parentItem = await Zotero.Items.getAsync(row.parentItemID);
 
-        // --- expected subfolder: first author's family name (best-effort) ---
+        // --- expected subfolder: first AUTHOR's family name, or "_" ---
+        // Deliberately no fallback to creators[0]: Attanger's template selects
+        // authors only, so an editor-only volume renders empty and Attanger
+        // files it under "_" (confirmed by running Rename and Move on one --
+        // it stays put). Falling back to the first creator of any type is what
+        // made 1.1.0 flag ~2000 already-correct edited volumes as moves.
         var creators = parentItem.getCreators();
         var firstAuthor = null;
         for (var cr of creators) { if (cr.creatorTypeID === authorTypeID) { firstAuthor = cr; break; } }
-        if (!firstAuthor && creators.length > 0) firstAuthor = creators[0];
-        var subfolder = null;
+        var subfolder = '';
         if (firstAuthor) {
-            subfolder = sanitizePathComponent(firstAuthor.lastName || firstAuthor.firstName || '');
+            // lastName holds the whole string for single-field-mode creators,
+            // so this covers both modes; firstName is not a family name and is
+            // never substituted.
+            subfolder = sanitizePathComponent(firstAuthor.lastName || '');
         }
         if (!subfolder) {
-            timing.noCreatorFallbackUnknown++;
-            // Attanger's no-author fallback is unknown; be conservative -> flag as move candidate.
-            moveParentIDs.add(row.parentItemID);
-            if (sampleEntries.length < CONFIG.REPORT_SAMPLE_MAX) {
-                sampleEntries.push({ attachmentItemID: row.attachmentItemID,
-                    parentItemID: row.parentItemID, current: currentAbsolute,
-                    expected: '(unknown: no author; Attanger fallback undetermined)',
-                    detail: 'no-author fallback unknown' });
-            }
-            continue;
+            subfolder = '_';
+            timing.noAuthorUnderscoreSubfolder++;
         }
         var expectedFolder = destDir + '\\' + subfolder;
 
         // --- expected filename: native rename template (accurate) ---
+        // Used VERBATIM. getFileBaseNameFromItem already returns a sanitized,
+        // filesystem-valid base name; running it through sanitizePathComponent
+        // stripped legitimate trailing periods ("...R.I.P." -> "...R.I.P"),
+        // producing phantom rename candidates against a corrupted target.
         var expectedBase = await Zotero.Attachments.getFileBaseNameFromItem(parentItem);
-        var expectedFilename = (expectedBase ? sanitizePathComponent(expectedBase) : currentFilename.slice(0, dotIdx >= 0 ? dotIdx : undefined)) + ext;
+        var expectedFilename = (expectedBase || currentFilename.slice(0, dotIdx >= 0 ? dotIdx : undefined)) + ext;
+
+        var expectedAbsolute = expectedFolder + '\\' + expectedFilename;
+        var expectedKey = normalizeKey(expectedAbsolute);
+        var priorOwners = expectedTargetOwners.get(expectedKey);
+        if (priorOwners === undefined) expectedTargetOwners.set(expectedKey, [row.attachmentItemID]);
+        else priorOwners.push(row.attachmentItemID);
 
         var folderDiffers = normalizeKey(currentFolder) !== normalizeKey(expectedFolder);
         var nameDiffers = normalizeKey(currentFilename) !== normalizeKey(expectedFilename);
@@ -282,7 +324,7 @@ for (var row of rows) {
         if (detail !== 'already correct' && sampleEntries.length < CONFIG.REPORT_SAMPLE_MAX) {
             sampleEntries.push({ attachmentItemID: row.attachmentItemID,
                 parentItemID: row.parentItemID, current: currentAbsolute,
-                expected: expectedFolder + '\\' + expectedFilename, detail: detail });
+                expected: expectedAbsolute, detail: detail });
         }
     } catch (e) {
         timing.classifyErrors++;
@@ -292,10 +334,27 @@ for (var row of rows) {
     }
 }
 timing.scanMs = Date.now() - scanStart;
+
+// Collision tally. Report only -- nothing is added to or withheld from the
+// collections on this basis. Attanger re-suffixes (" 2", " 3") rather than
+// overwriting, so a shared target is safe; it is surfaced because it reliably
+// marks duplicate attachments on the same parent, or the same document
+// attached under two parents.
+for (var targetEntry of expectedTargetOwners) {
+    if (targetEntry[1].length < 2) continue;
+    timing.collidingTargets++;
+    timing.collidingAttachments += targetEntry[1].length;
+    if (collisionSample.length < CONFIG.REPORT_SAMPLE_MAX) {
+        collisionSample.push({ expectedKey: targetEntry[0], attachmentItemIDs: targetEntry[1].slice() });
+    }
+}
+
 report(`scan done: correct ${timing.alreadyCorrect}, moveOnly ${timing.wouldMoveOnly}, ` +
     `renameOnly ${timing.wouldRenameOnly}, move+rename ${timing.wouldMoveAndRename}, ` +
     `sourceMissing ${timing.sourceMissing}, standalone ${timing.standalone}, ` +
-    `noAuthor ${timing.noCreatorFallbackUnknown}, errors ${timing.classifyErrors}; ${timing.scanMs} ms`);
+    `noAuthorUnderscore ${timing.noAuthorUnderscoreSubfolder}, errors ${timing.classifyErrors}; ${timing.scanMs} ms`);
+report(`collisions: ${timing.collidingTargets} expected target(s) claimed by ` +
+    `${timing.collidingAttachments} attachment(s) -- safe (Attanger re-suffixes), audit-worthy`);
 
 var moveList = Array.from(moveParentIDs);
 var renameList = Array.from(renameParentIDs);
@@ -444,9 +503,11 @@ return {
     wouldMoveAndRename: timing.wouldMoveAndRename,
     sourceMissing: timing.sourceMissing,
     standaloneUncollectable: timing.standalone,
-    noAuthorFallbackUnknown: timing.noCreatorFallbackUnknown,
+    noAuthorUnderscoreSubfolder: timing.noAuthorUnderscoreSubfolder,
     classifyErrors: timing.classifyErrors,
     alreadyMembersSkipped: timing.alreadyMembersSkipped,
+    collidingTargets: timing.collidingTargets,
+    collidingAttachments: timing.collidingAttachments,
     collectableMoveParents: moveList.length,
     collectableRenameParents: renameList.length,
     moveCollectionName, renameCollectionName: CONFIG.INCLUDE_RENAME_COLLECTION ? renameCollectionName : null,
@@ -454,5 +515,6 @@ return {
     sample: sampleEntries,
     classifyErrorSample,
     sourceMissingSample,
+    collisionSample,
     timing: timing
 };
