@@ -129,3 +129,76 @@ VERIFIED 2026-07 (A&T action mechanics, from the first S3 attempt):
   tags (observed: an action adding __unopened plus BBT-sourced subject
   tags on a newly created item). Any S3 re-fire analysis must account
   for OTHER actions' writes as a re-trigger source, not just the probe.
+- Zotero returns parentItemID FALSE (not null) for a top-level item.
+  Any child-vs-top-level test must check both, or it counts every
+  top-level item as a child.
+
+### S3 RESULTS, run 1 (2026-08-05, Zotero 9.0.6, 6 logged fires)
+
+Sample: 6 single-item adds (journalArticle, document, blogPost x2,
+conferencePaper, webpage). No bulk import, no attachment/note adds in the
+logged window. Fires 1-11 of the same session predate the appendOrCreate
+fix and were not logged.
+
+ANSWERED:
+
+- Q1 FIELDS ARE POPULATED AT FIRE TIME (for translator saves). The Nature
+  journalArticle fired with 14 creators, DOI, URL, abstract, and
+  publicationTitle all present. Timing supports it: dateAdded 03:54:50,
+  dateModified 03:54:54, action fired 03:55:02 -- roughly 12s after the
+  item appeared and 8s after its last modification. The event is LATE, not
+  early. CONSEQUENCE: rules MAY read fields at fire time. This removes the
+  need for a deferred/re-check design, which was the main risk to the
+  whole rules approach.
+  Caveat: the empty cases are NOT a race. The "document" item fired with
+  no title/creators/date because it was a genuinely empty manual item; the
+  creator-less blogPost is a blog post without a listed author. Both are
+  real data states, not timing artifacts. Rules must still tolerate empty
+  fields -- just not because of the event timing.
+
+- ACTION SCOPE PERSISTS ACROSS FIRES within a Zotero session: a single
+  sessionID spans fireOrdinal 1..17 over several minutes. CONSEQUENCE for
+  OQ2: an in-memory debounce set IS viable within a session, and does not
+  need to be rebuilt per fire. It is NOT durable across restarts, so it
+  cannot be the only guard for anything that must hold long-term -- but
+  as loop safety (which only needs to span a single write cascade) it is
+  sufficient and is the cheapest option.
+  Side effect that bit this run: session.probeCount also persisted, so the
+  probe cap consumed during the unlogged fires 1-11 blocked every probe in
+  fires 12-17.
+
+- A&T ACTIONS CHAIN, AND LATER ACTIONS SEE EARLIER ONES' WRITES. Every
+  logged fire already carried the __unopened tag at fire time, added by a
+  pre-existing action. CONSEQUENCE: the normalize action cannot assume it
+  is first; R1 ("if no reading-state tag, add __unopened") would be a
+  no-op on these items because another action already did it. Rule order
+  is a cross-ACTION concern, not just an intra-rule one. Decide whether
+  normalize-incoming-item.js SUBSUMES the existing __unopened action
+  rather than racing it.
+
+- Q4 (partial): NO attachment or note fires were observed. All 6 fires
+  were top-level regular items. Note the Nature article logged
+  attachmentCount 0 at fire time even though the connector normally saves
+  a PDF -- so the attachment either had not been created yet or does not
+  fire "Create Item". NOT CONCLUSIVE; see below.
+
+UNANSWERED, needs a second short run:
+
+- Q2 RE-TRIGGER: unresolved. probeAttempted was false on both
+  probeEnabled fires because the persisted probe cap was already spent.
+  Re-run after RESTARTING ZOTERO (fresh scope) or with a raised
+  PROBE_MAX_ITEMS. NOTE: because other actions already write tags on
+  create, a re-fire may be caused by THEIR saves, not the probe -- the
+  __unopened writes are themselves a live instance of the
+  write-inside-create pattern thread 3 must make safe. That no re-fire
+  was observed across 17 fires while another action was writing tags is
+  weak early evidence that tag writes do NOT re-trigger Create Item.
+
+- Q3 BULK BURST: not exercised. Needs one N-item import with N recorded.
+
+- Q4 CHILDREN: needs an explicit attachment add and a child note add.
+
+CLEANUP: up to PROBE_MAX_ITEMS (3) items may carry the
+__spike-s3-probe tag from the unlogged fires. Search that tag and remove
+it; it has no meaning outside the spike.
+
