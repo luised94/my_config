@@ -55,6 +55,19 @@ now; the design should scaffold cleanly for future events.
 ## Spikes to run first (interactive; paste results back)
 
 S3 event semantics (instrumented log-only action):
+BUILT: spikes/spike_s3_event_semantics.js (v1.0.0), PENDING owner run.
+It is an ACTIONS & TAGS ACTION, not a console script -- registration
+steps, the two-pass run protocol (Pass A read-only, Pass B re-trigger
+probe), and a console ANALYZE snippet are all in the script header.
+Appends one JSON line per fire to <data dir>/spike_s3/s3_event_log.jsonl,
+because an action fires across many separate invocations and
+Zotero.debug alone would lose the record and make burst timing
+unmeasurable. Read-only by default; the Q2 probe is opt-in, capped, and
+guarded by a marker tag -- which makes the spike its own first test of
+loop-safety candidate #1 (marker tag). The log also records a per-scope
+sessionID, so "is the action re-evaluated in a fresh scope each fire?"
+(which decides whether an in-memory debounce set is even viable as a
+loop-safety mechanism) is answered as a side effect.
 - When does item-added fire relative to translator metadata population?
   (Log field snapshot at fire time.)
 - Does saveTx inside the handler re-trigger the event / an item-modified
