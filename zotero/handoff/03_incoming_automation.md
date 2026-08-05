@@ -114,3 +114,18 @@ this transport decision -- evaluate in-thread as optional deliverable.
 ## Verified facts (populated by spikes)
 
 (empty -- fill with S3/S4 findings, stamped with Zotero and A&T versions)
+
+VERIFIED 2026-07 (A&T action mechanics, from the first S3 attempt):
+- A&T action registration labels are Event "Create Item" and Operation
+  "Script" (they appear in the debug log as event 1, operation 4).
+- The action DOES fire on item creation and receives a trigger payload
+  logged as {"itemID":NNN,"triggerType":1}.
+- IOUtils write mode 'append' REFUSES TO CREATE a missing file (per the
+  IOUtils WebIDL); use 'appendOrCreate'. This cost the first S3 run: the
+  log directory was created, no file appeared, and the error was only
+  visible in Zotero.debug. Any future file-appending script in this repo
+  must use 'appendOrCreate'.
+- Other A&T actions in the profile fire on the same items and modify
+  tags (observed: an action adding __unopened plus BBT-sourced subject
+  tags on a newly created item). Any S3 re-fire analysis must account
+  for OTHER actions' writes as a re-trigger source, not just the probe.
