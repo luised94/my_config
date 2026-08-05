@@ -6,8 +6,22 @@
 // normalize-incoming-item.js -- especially loop safety (OQ2), which the
 // handoff says must be DESIGNED FROM S3 FINDINGS, NOT ASSUMED.
 //
-// Version: 1.0.1
-// Date:    2026-07
+// Version: 1.0.2
+// Date:    2026-08
+//
+// v1.0.2 fix: parentItemID is normalized (Zotero returns FALSE, not null,
+//          for a top-level item; the v1.0.1 analyzer counted every
+//          top-level item as a child fire). Analyzer also reports
+//          probesAttempted / probeEnabledButBlocked.
+//
+// PROBE CAP AND SCOPE PERSISTENCE: the 2026-08 run proved the action scope
+//          PERSISTS across fires within a Zotero session (one sessionID
+//          spanning fires 1..17). So session.probeCount survives too, and a
+//          probe cap consumed earlier in the session silently blocks all
+//          later probes. To re-run Pass B: RESTART ZOTERO (fresh scope) or
+//          raise PROBE_MAX_ITEMS. Watch probeEnabledButBlocked in the
+//          analyzer output -- nonzero means the cap, not the API, stopped
+//          the probe.
 //
 // v1.0.1 fix: v1.0.0 wrote the log with IOUtils mode 'append', which per the
 //          IOUtils WebIDL REFUSES TO CREATE a missing file. The log
@@ -100,12 +114,17 @@
 //       .map(l => JSON.parse(l));
 //   var byType = {}, emptyTitle = 0, emptyCreators = 0, emptyDate = 0;
 //   var children = 0, repeats = {}, sessions = {};
+//   var probesAttempted = 0, probeBlocked = 0;
 //   for (var e of entries) {
 //       byType[e.itemType] = (byType[e.itemType] || 0) + 1;
 //       if (!e.hasTitle) emptyTitle++;
 //       if (e.creatorCount === 0) emptyCreators++;
 //       if (!e.hasDate) emptyDate++;
-//       if (e.parentItemID !== null) children++;
+//       // Zotero returns FALSE for a top-level item; testing !== null alone
+//       // counts every top-level item as a child.
+//       if (e.parentItemID !== null && e.parentItemID !== false) children++;
+//       if (e.probeAttempted) probesAttempted++;
+//       if (e.probeEnabled && !e.probeAttempted) probeBlocked++;
 //       repeats[e.itemID] = (repeats[e.itemID] || 0) + 1;
 //       sessions[e.sessionID] = (sessions[e.sessionID] || 0) + 1;
 //   }
@@ -113,6 +132,7 @@
 //   return { totalFires: entries.length, byType: byType,
 //       firedWithEmptyTitle: emptyTitle, firedWithNoCreators: emptyCreators,
 //       firedWithNoDate: emptyDate, childItemFires: children,
+//       probesAttempted: probesAttempted, probeEnabledButBlocked: probeBlocked,
 //       itemsFiredMoreThanOnce: refired.length, refiredItemIDs: refired,
 //       distinctScopeSessions: Object.keys(sessions).length,
 //       firstEntry: entries[0], lastEntry: entries[entries.length - 1] };
@@ -232,8 +252,13 @@ try {
             try { noteCount = observedItem.getNotes().length; } catch (childError) { noteCount = -1; }
         }
 
+        // Zotero returns FALSE (not null) for a top-level item's
+        // parentItemID. Normalized to null here so the Q4 test is a plain
+        // null check; comparing against null WITHOUT this normalization
+        // counts every top-level item as a child (the v1.0.1 analyzer bug).
         var parentItemID = null;
-        if (typeof observedItem.parentItemID !== 'undefined') {
+        if (typeof observedItem.parentItemID !== 'undefined' &&
+            observedItem.parentItemID !== false) {
             parentItemID = observedItem.parentItemID;
         }
 
