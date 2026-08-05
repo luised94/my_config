@@ -6,8 +6,20 @@
 // normalize-incoming-item.js -- especially loop safety (OQ2), which the
 // handoff says must be DESIGNED FROM S3 FINDINGS, NOT ASSUMED.
 //
-// Version: 1.0.0
+// Version: 1.0.1
 // Date:    2026-07
+//
+// v1.0.1 fix: v1.0.0 wrote the log with IOUtils mode 'append', which per the
+//          IOUtils WebIDL REFUSES TO CREATE a missing file. The log
+//          directory was created and no file ever appeared. Now
+//          'appendOrCreate'. Every entry is ALSO mirrored to Zotero.debug on
+//          a '[spike_s3_entry]' line, so a write failure can never again
+//          destroy the measurements silently. A&T UI labels corrected to the
+//          verified ones (Create Item / Script).
+//
+// IF THE LOG FILE IS STILL EMPTY: filter Debug Output for '[spike_s3_entry]'
+//          and paste those lines instead -- each one is a complete JSON
+//          entry, so the spike is fully analyzable from debug output alone.
 //
 // THIS IS NOT A CONSOLE SCRIPT. It is an Actions & Tags ACTION, registered
 // once and then fired by Zotero every time an item is added. Setup is in
@@ -49,8 +61,8 @@
 // -----------------------------------------------------------------------------
 // 1. Zotero > Edit > Settings > Actions & Tags > Actions > "+" (new action).
 // 2. Name:      Spike S3 event log
-//    Event:     Add Item        (the item-added trigger)
-//    Operation: Run JavaScript  (script/code operation)
+//    Event:     Create Item    (VERIFIED label, 2026-07; logs as event 1)
+//    Operation: Script         (VERIFIED label, 2026-07; logs as operation 4)
 //    Enabled:   yes
 // 3. Paste this entire file as the action's script body.
 // 4. IMPORTANT -- the WSL/Windows transport caveat (handoff/03, Q5): this
@@ -289,15 +301,30 @@ try {
     // --- Append one JSON line. Fire-and-forget: the action must not block
     // item creation, and awaiting inside an A&T action is unverified (an
     // S3 unknown in its own right).
+    //
+    // mode MUST be 'appendOrCreate', not 'append'. Per the IOUtils WebIDL,
+    // 'append' REFUSES TO CREATE the file if it does not exist, so the very
+    // first fire throws and every later one does too -- producing an empty
+    // log directory and no file at all. That was the v1.0.0 defect
+    // (2026-07); the failure was invisible because it only reached
+    // Zotero.debug. Do not "simplify" this back to 'append'.
     var logDirectory = PathUtils.join(Zotero.DataDirectory.dir, CONFIG.LOG_SUBDIR);
     var logPath = PathUtils.join(logDirectory, CONFIG.LOG_FILE);
     var logLine = JSON.stringify(entry) + '\n';
+
+    // Fallback: the whole entry goes to the debug log too, on a single
+    // greppable line. If file writing fails for any reason, the run is
+    // still recoverable by filtering Debug Output for the prefix below --
+    // a spike that loses its own measurements is worthless.
+    Zotero.debug(`[spike_s3_entry] ${JSON.stringify(entry)}`);
+
     IOUtils.makeDirectory(logDirectory, { createAncestors: true, ignoreExisting: true })
         .then(function () {
-            return IOUtils.writeUTF8(logPath, logLine, { mode: 'append' });
+            return IOUtils.writeUTF8(logPath, logLine, { mode: 'appendOrCreate' });
         })
         .catch(function (writeError) {
-            Zotero.debug(`[spike_s3] log write failed: ${writeError.message}`);
+            Zotero.debug(`[spike_s3] LOG WRITE FAILED (data preserved in the ` +
+                `[spike_s3_entry] line above): ${writeError.message}`);
         });
 
     // Mirror to debug as well, so a single fire is visible live in the
