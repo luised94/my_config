@@ -6,8 +6,13 @@
 // standard) and -- more importantly -- the WRITE STRATEGY of
 // normalize-incoming-item.js.
 //
-// Version: 1.0.1
+// Version: 1.0.2
 // Date:    2026-08
+//
+// v1.0.2: run 2 DISPROVED the isHighRiskCase heuristic (see the comment at
+//         its definition) and settled T2/T3: awaited writes ARE lost and a
+//         single retry recovers them. libraryCatalogAtFire added as the
+//         observed correlate. PROGRESS_WINDOW_MS settled at 3000.
 //
 // v1.0.1: PROGRESS_WINDOW_MS raised from 1500 (owner: "went by a bit
 //         fast"). Each fire is now classified isHighRiskCase, and the
@@ -145,7 +150,7 @@ var CONFIG = {
     RETRY_BACKOFF_MS: 800,
 
     TEST_PROGRESS_WINDOW: true,   // T4 (OQ3)
-    PROGRESS_WINDOW_MS: 4000    // 1500 was too fast to read (owner, 2026-08-06)
+    PROGRESS_WINDOW_MS: 3000    // 1500 too fast, 4000 a touch long (owner, 2026-08-06)
 };
 
 // 2. STATE (persists across fires within a session -- S3 finding)
@@ -186,15 +191,24 @@ try {
         }
     }
 
-    // Classify the fire as HIGH-RISK or CONTROL. The failure S4 exists to
-    // reproduce (S3 run 2) happened on an item that arrived WITH an
-    // attachment and had been modified ~1s before the fire -- i.e. still
-    // actively being written. Quiet, settled items are the easy path and
-    // prove nothing about contention. Recording this per fire prevents an
-    // all-control run from being misread as a passing result, which is
-    // exactly what happened on the 2026-08-06 run.
+    // isHighRiskCase is RETAINED FOR THE LOG FORMAT ONLY. Its heuristic was
+    // DISPROVEN by the 2026-08-06 run 2: both lost writes were on items it
+    // scored false (Google Books books, ~4-5s since modification,
+    // attachmentCountAtFire 0), while both items it scored true landed on
+    // the first try. The heuristic measured PRE-fire settledness, but the
+    // contention window opens AFTER the action fires -- attachmentCountAtFire
+    // 0 on a Google Books save means the attachment has not been created
+    // YET, which is the danger sign, not safety. Fire-time state does not
+    // predict write loss. Do not gate retry logic on this field; retry
+    // unconditionally. libraryCatalog is logged instead as the observed
+    // correlate (Google Books saves failed; journal-translator saves did
+    // not).
     var isHighRiskCase = (attachmentCountAtFire > 0) ||
         (msSinceDateModified !== null && msSinceDateModified < 3000);
+    var libraryCatalogAtFire = '';
+    if (observedItem !== null && typeof observedItem.getField === 'function') {
+        try { libraryCatalogAtFire = observedItem.getField('libraryCatalog') || ''; } catch (catalogError) { libraryCatalogAtFire = ''; }
+    }
 
     var entry = {
         when: new Date().toISOString(),
@@ -205,7 +219,8 @@ try {
         itemType: itemTypeAtFire,
         attachmentCountAtFire: attachmentCountAtFire,
         msSinceDateModified: msSinceDateModified,
-        isHighRiskCase: isHighRiskCase,
+        isHighRiskCase: isHighRiskCase,   // heuristic DISPROVEN; see comment above
+        libraryCatalogAtFire: libraryCatalogAtFire,
         asyncBodyCompleted: false,   // T1
         awaitResolved: false,        // T1
         writeOutcome: 'not_attempted',
