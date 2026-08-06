@@ -74,6 +74,25 @@ loop-safety mechanism) is answered as a side effect.
   event? Does that re-run the action?
 - Bulk import of N items: N events? Burst timing? Any missed events?
 - Does the action receive child attachments/notes as separate "items"?
+S4 write reliability and reporting surfaces:
+BUILT: spikes/spike_s4_write_reliability.js (v1.0.0), PENDING owner run.
+RESCOPED after S3 run 2: the original question was only "which logging
+surface" (OQ3), but the silent-write-loss finding outranks it, so S4 now
+leads with write reliability. It tests, in priority order: whether an
+async body runs to completion inside an action; whether an AWAITED save
+lands on the high-risk case (an item arriving with an attachment, still
+being written); whether read-back verification plus retry recovers a lost
+write; and only then ProgressWindow behaviour (OQ3).
+It deliberately avoids top-level await -- under a non-async host that is
+a PARSE error, which would erase the spike's own evidence -- and puts all
+async work in an async IIFE, with a two-line throwaway action in the
+header for testing top-level await separately.
+DECISION RULE the run produces: landedFirstTry only -> the rules engine
+can simply await. Any landedAfterRetry -> read-back verification and
+retry are MANDATORY. Any lostDespiteRetry -> writes at fire time are
+unsafe and the engine must defer writes out of the handler entirely.
+Original notes below.
+
 S4 logging surfaces:
 - Ergonomics of Zotero.debug vs append-file (IOUtils) vs ProgressWindow
   from inside an A&T action; pick the standard (Q2).
@@ -253,3 +272,36 @@ cap of 3 was reached -- confirming scope persistence a second time.
 
 - parentItemID now logs as null for top-level items, confirming the
   v1.0.2 normalization fix.
+
+### S3 RESULTS, run 3 (2026-08-06): Q4 settled, Q3 deferred
+
+- Q4 ANSWERED (deliberate negative result): CHILD ATTACHMENTS AND NOTES
+  DO NOT RAISE THE CREATE ITEM EVENT. The owner explicitly added a file
+  attachment and a child note to an existing item; NO fire was logged for
+  either. This upgrades run 2's circumstantial evidence (item 248773 had
+  attachmentCount 1 with no corresponding fire) to a tested finding.
+  CONSEQUENCE: normalize-incoming-item.js will only ever receive
+  top-level items, so rules need no attachment/note filtering. The
+  converse also holds and is a REAL LIMIT: any future rule that must act
+  on an attachment or note CANNOT use this event and needs a different
+  trigger. Do not design attachment-touching automation on Create Item.
+
+- Q3 LARGE-BULK: NOT EXECUTED (deferred by the owner). What is known
+  comes only from an incidental 3-item burst in run 2: one event per
+  item, sequential, ~415ms apart, none coalesced or missed.
+  UNKNOWNS THIS LEAVES OPEN, all of which scale with N:
+  * Whether events are DROPPED or THROTTLED at larger N. A rules engine
+    that silently skips items in a 200-item import is a correctness bug
+    that only appears in production.
+  * Whether the ~415ms spacing is a fixed per-item cost or contention.
+    At 415ms x N a large import means minutes of action execution, which
+    interacts with the awaited-write requirement below: slow, serialized,
+    awaited writes over a long burst may degrade the UI.
+  * Whether the persisted action scope accumulates state unboundedly
+    across a large burst (an in-memory debounce set would grow with N).
+  * Whether the silent-write-loss failure (run 2) becomes MORE likely
+    under burst contention, since more writers compete per item.
+  MITIGATION UNTIL RUN: treat large-import behavior as unverified. Do
+  not enable a writing action on a bulk import path before testing it
+  with a recorded N. A read-only logging pass over one real import is
+  enough to close this.
