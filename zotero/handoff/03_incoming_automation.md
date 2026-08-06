@@ -202,3 +202,54 @@ CLEANUP: up to PROBE_MAX_ITEMS (3) items may carry the
 __spike-s3-probe tag from the unlogged fires. Search that tag and remove
 it; it has no meaning outside the spike.
 
+### S3 RESULTS, run 2 (2026-08-06, Zotero 9.0.6, 7 fires, probe active)
+
+Two sessions (a restart between them). Probes attempted on 4 items;
+fires 4-6 of session 2 show probeAttempted false because the per-scope
+cap of 3 was reached -- confirming scope persistence a second time.
+
+- Q2 ANSWERED: A SAVE INSIDE THE HANDLER DOES NOT RE-TRIGGER THE ACTION.
+  4 probes (tag added + saveTx), 0 re-fires across all 7 lines, every
+  carriesMarkerTag false. Corroborated independently by the pre-existing
+  __unopened action, which writes a tag on every created item and has
+  never produced a second fire in 24 logged fires across both runs.
+  CONSEQUENCE for OQ2: loop safety against SELF re-triggering is not
+  required for the Create Item event. A marker tag or debounce set is
+  still worth having as defence in depth and for backfill idempotency,
+  but it is not load-bearing here. (Unverified for item-MODIFY events,
+  which were never wired up; do not extrapolate.)
+
+- CRITICAL, FOUND BY ACCIDENT: AN UNAWAITED WRITE AT FIRE TIME CAN BE
+  SILENTLY LOST. The Google Books book (248773) logged
+  probeAttempted true and probeError null, yet never received the marker
+  tag, while journal items probed seconds later did. The distinguishing
+  feature is concurrency: that item had attachmentCount 1 at fire time
+  and was still being modified (dateModified 00:57:40, fire 00:57:41).
+  The unawaited saveTx raced with the translator/attachment/other-action
+  writes and lost. probeError stayed null because the spike's try/catch
+  is synchronous and the rejection surfaced after the block returned.
+  CONSEQUENCE, and this is the important one for the rules engine:
+  normalize-incoming-item.js MUST await its save and MUST verify the
+  write landed, rather than assuming a fire-and-forget save succeeded.
+  A rule that silently fails to apply is worse than one that throws.
+  Items arriving WITH attachments (connector saves, Google Books) are
+  the high-risk case because they are still being written at fire time.
+  FOLLOW-UP: confirm whether await is permitted in an A&T action body
+  (see S4). If it is not, the action needs a different write strategy --
+  a queued/deferred save, or a retry with verification.
+
+- Q3 PARTIALLY ANSWERED: bulk adds produce ONE EVENT PER ITEM,
+  sequentially, with no coalescing and none missed. Fires 4, 5, 6 share
+  dateAdded 00:59:10 and fired at 00:59:11.282, .696, and 00:59:12.113 --
+  roughly 415ms apart. Small N only (3); a larger import is still worth
+  running to check for throttling or drops at scale.
+
+- Q4 STILL PARTIAL, evidence strengthening: no attachment or note fire
+  has appeared in 13 logged fires. Item 248773 HAD an attachment
+  (attachmentCount 1) at its own fire time, and no separate fire was
+  logged for that attachment. Suggests child attachments do NOT raise
+  Create Item. Not yet conclusive -- a deliberate standalone attachment
+  add and a child note add would settle it.
+
+- parentItemID now logs as null for top-level items, confirming the
+  v1.0.2 normalization fix.
