@@ -385,3 +385,27 @@ import (see "S3 RESULTS, run 3"), which now carries extra weight: since
 retries are mandatory and each adds ~1.2s (800ms backoff + 400ms
 verification), a large import could serialize into minutes of action
 execution. Measure before enabling a writing action on a bulk path.
+
+### DECISION (owner, 2026-08-06): normalize-incoming-item.js SUBSUMES the
+### existing __unopened action
+
+S3 run 1 found that a pre-existing A&T action already adds __unopened to
+every created item, so every logged fire arrived already tagged and draft
+rule R1 ("if no reading-state tag, add __unopened") would have been a
+permanent no-op. OWNER DECISION: normalize-incoming-item.js REPLACES that
+action rather than racing it.
+
+Consequences to carry into implementation:
+- The old __unopened action must be DISABLED (not merely left enabled) as
+  part of deploying normalize-incoming-item.js, or both will write and
+  the no-op condition returns. Deployment is therefore a two-step change,
+  not a pure addition; note it in the deployment steps.
+- R1 becomes live rather than vestigial: the new action is the thing that
+  establishes the initial reading state.
+- The A&T yml backup must be refreshed after the swap (D6).
+- Rollback = re-enable the old action and disable the new one. Keep the
+  old action's script body in the repo before deleting it, so rollback
+  does not depend on the Zotero profile.
+- This does NOT change the S3 finding that actions chain and see each
+  other's writes; other actions may still exist. It only removes this
+  specific overlap.
