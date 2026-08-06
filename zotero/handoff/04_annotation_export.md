@@ -19,6 +19,36 @@ before Verified facts below are populated.
 
 ## Spike S5 (interactive; paste results back)
 
+BUILT: spikes/spike_s5_annotation_introspection.js (v1.0.0), PENDING
+owner run. A CONSOLE script (unlike S3/S4, which are A&T actions): paste
+into Run JavaScript with "Run as async function" CHECKED. Strictly
+read-only -- it writes nothing to the library and nothing to disk, and
+returns its findings directly.
+
+IMPORTANT CAVEAT, unique to this spike: it READS FILE CONTENT, which the
+orphan tooling deliberately never did (S2 used metadata-only calls so
+Dropbox online-only placeholders would not hydrate). Answering "does an
+exported PDF embed the item key" requires inspecting raw bytes, so this
+script WILL hydrate the files it samples. SAMPLE_ATTACHMENT_COUNT is 5
+for that reason; do not raise it casually.
+
+It answers each checklist question below: the API surface is reported by
+enumerating real annotation properties rather than assuming them; DB-vs-
+file storage is decided by comparing the DB annotation count against PDF
+annotation markers in the bytes; the id-embedding hypothesis is tested by
+searching the bytes for the attachment key, the parent key, and a generic
+Zotero marker; write pathways are probed FOR EXISTENCE ONLY (nothing is
+invoked, since invoking an export or import would write); notes are
+checked for annotation-key references; BBT citation key availability is
+reported per sample; and an attachment-content-type census settles OQ4's
+PDF-vs-epub/html scope question with data.
+
+KEY READING: if pdfContainsAttachmentKey and pdfContainsParentKey are
+FALSE across every sample, exported PDFs do NOT carry the Zotero item id
+and the motivating premise of this thread needs revisiting BEFORE any
+design work. That is the single most consequential thing this run can
+tell us.
+
 On a handful of annotated PDFs (highlights, notes, ink if present):
 
 - What do the annotation APIs expose? (attachment.getAnnotations(),
