@@ -442,24 +442,20 @@ repair_attachment_paths.js run dry then applied. Scanned 70,930 rows
 - Remaining 30: 21 conflict-copy (reported, deliberately not repaired),
   8 other (manual relink), 1 repaired.
 
-UNEXPLAINED, and it matters. No repair touched the trailing-dot class,
-yet it healed. Candidate explanations, none verified:
-  (a) other threads' work (Attanger stats/collection, the BBT refresher)
-      re-filed those items;
-  (b) Windows RESOLVES a trailing-dot path by stripping the dot, so the
-      links were never broken at the filesystem level, and the earlier
-      run observed a transient state (Dropbox mid-sync);
-  (c) the owner relinked them manually.
+EXPLAINED (owner, 2026-08-06): the trailing-dot links were REPAIRED
+MANUALLY by the owner after collect_broken_links.js surfaced them. There
+is no self-healing and no mystery. An earlier revision of this document
+recorded this as unexplained and floated a hypothesis that Windows might
+RESOLVE trailing-dot paths (as opposed to only stripping them on write);
+that hypothesis was unnecessary and is withdrawn.
 
-CONSEQUENCE FOR THREAD 6 (trailing-dot prevention, currently ranked
-first): if (b) is true, the trailing-dot problem is NOT about broken
-links at all -- Windows resolves those paths fine -- and is confined to
-FILE LOSS DURING RENAME, which the owner independently reported. That is
-a much narrower problem than the thread-6 write-up assumes, and would
-justify re-ranking it. VERIFY BEFORE INVESTING: Test-Path a dotted path
-(e.g. "...\Hughes Jr.\Hughes_Jr._1995_A_salvo_model...pdf") and list
-the real directory name. Test-Path True against a directory that is
-actually named "Hughes Jr" proves (b). Do this first in thread 6.
+CONSEQUENCE: thread 6 (trailing-dot prevention) keeps its original
+premise and its ranking. It rests on the owner's direct report that
+files with these names "don't get saved sometimes and some are lost
+during renaming" -- i.e. FILE LOSS AT WRITE/RENAME TIME -- which the
+manual repair of the resulting broken links does nothing to address. The
+broken links were the symptom; the loss is the disease. Do not read the
+73 -> 30 drop as evidence that the problem went away.
 
 Also: repair_attachment_paths.js v1.1.0 now reports, for each
 conflict-copy entry, whether the UN-SUFFIXED twin exists on disk
