@@ -305,3 +305,37 @@ cap of 3 was reached -- confirming scope persistence a second time.
   not enable a writing action on a bulk import path before testing it
   with a recorded N. A read-only logging pass over one real import is
   enough to close this.
+
+### S4 RESULTS, run 1 (2026-08-06, 4 fires) -- PARTIAL, controls only
+
+- T1 ANSWERED: AN ASYNC BODY RUNS TO COMPLETION INSIDE AN A&T ACTION AND
+  await RESOLVES. asyncBodyCompleted and awaitResolved were true on all 4
+  fires, and the async work (save, delay, read-back verification, log
+  write) all completed. CONSEQUENCE: normalize-incoming-item.js may be
+  written as an async IIFE performing awaited saves; it does NOT need a
+  deferred-write architecture on account of async support. Top-level
+  await remains untested (the two-line throwaway action in the S4 header
+  tests it if it ever matters; the async IIFE makes it unnecessary).
+
+- T4 ANSWERED (OQ3): Zotero.ProgressWindow WORKS from inside an action
+  (progressWindowOk true on all 4) and the owner found it informative but
+  too brief at 1500ms. PROGRESS_WINDOW_MS raised to 4000 in v1.0.1.
+  Proposed OQ3 standard, pending the burst test: Zotero.debug always
+  (cheap, always available, greppable); an appended JSONL file when a run
+  must be analyzed after the fact (use mode 'appendOrCreate'); and
+  ProgressWindow only for events the user should NOTICE -- not per-item
+  during a bulk import, where N popups would be intolerable.
+
+- T2/T3 NOT ANSWERED. All 4 fires were CONTROLS: attachmentCountAtFire 0
+  and msSinceDateModified 5-10s, i.e. quiet, settled, uncontended items.
+  The failure this spike exists to reproduce (S3 run 2) occurred on an
+  item that arrived WITH an attachment and had been modified ~1s before
+  the fire. Four landed_first_try results on uncontended items prove
+  awaiting works when nothing competes; they say NOTHING about whether
+  awaiting survives contention. DO NOT read this run as clearing the
+  write strategy.
+  v1.0.1 adds isHighRiskCase per fire and a coverageWarning in the
+  analyzer so an all-control run can no longer be misread as a pass.
+  TO CLOSE: re-run with items that arrive WITH attachments -- a Google
+  Books save (the exact case that failed) or a connector save of a
+  PDF-bearing article -- and confirm highRiskFires > 0 in the summary.
