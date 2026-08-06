@@ -147,3 +147,139 @@ Common preamble, used by all of them:
 
     Start by proposing how to re-measure cheaply, then a ranked scope
     with a recommendation. No code that turn.
+
+---
+
+## Dependency structure (2026-08-06)
+
+Distinguish TRUE DEPENDENCIES (B needs A's output; constrains order)
+from RESOURCE CONFLICTS (both mutate the same thing; either order works,
+but not simultaneously).
+
+True dependencies:
+  Q1 -> thread 3 implementation
+  bulk-import measurement -> thread 3 implementation
+  S5 run -> thread 4 design
+  thread 6 investigation -> thread 6 implementation
+  BBT dedup -> key-format work
+  re-measure -> thread 5 scoping
+
+Resource conflicts (schedule apart, any order):
+  thread 6 and key-format work both change generated FILENAMES, so both
+    create fresh orphans; run one orphan sweep after the last of them
+  thread 5 metadata backfill changes citation keys; collides with
+    key-format work
+  only ONE experimental A&T action enabled at a time, or logs interleave
+  any two WRITING operations against the live library
+
+Levels:
+  L0 (startable now, in parallel): consolidation thread; S5 run;
+     Q1 decision; bulk-import spike; BBT dedup; thread 6 investigation
+  L1: thread 3 implementation; thread 6 implementation; key-format
+     redesign; thread 4 design
+  L2: thread 5 scoping; post-rename orphan sweep
+
+Notes: Q1 is a DECISION, not a work thread -- settling it is cheap and
+unblocks the largest deliverable. The consolidation thread is the most
+parallel item on the list: it touches only the two broken-link scripts,
+needs no Zotero run to develop, and blocks nothing. Spike RUNS share one
+Zotero instance even when the threads are independent, so serialize the
+runs, not the threads.
+
+## Consolidation thread: merge collect_broken_links + repair_attachment_paths
+
+    [common preamble]
+
+    This is the CONSOLIDATION thread. Read the two decision blocks at the
+    end of handoff/02_orphan_pipeline.md -- "DECISION: collection-first,
+    repair de-emphasized" and "CONSTRAINT: this CANNOT run at item
+    creation". The design is already agreed; do not relitigate it.
+
+    Task: merge console_js/collect_broken_links.js and
+    console_js/repair_attachment_paths.js into one script with ONE scan
+    and ONE classification pass. They currently duplicate the
+    reconstruct-and-classify logic, which wastes a ~7-8s scan but more
+    importantly risks DRIFT -- two copies will diverge and then disagree
+    about what is broken.
+
+    Agreed design: MODE_REPORT (always on), MODE_COLLECT (normal mode),
+    MODE_REPAIR (default OFF, off the recommended path). Separate gates
+    because they have different reversibility profiles. Anything
+    MODE_REPAIR changes must ALSO be collected into a "repaired, verify"
+    collection so no data change escapes review.
+
+    The real deliverable is REPORTING THAT STATES THE REQUIRED ACTION per
+    item rather than leaving me to infer it -- the four buckets and their
+    fixes are listed in the handoff.
+
+    Two open questions I need you to put to me before building: whether
+    repair-then-collect in one run is desirable (one run would then do
+    both a write and a survey), and whether the old scripts become thin
+    deprecated wrappers or are deleted.
+
+    Start with understanding, strategy, and those questions. No code that
+    turn.
+
+## Bulk-import measurement (small, read-only)
+
+    [common preamble]
+
+    Small scoped task, not a full thread. Read the "S3 RESULTS, run 3"
+    section of handoff/03_incoming_automation.md, specifically the
+    deferred large-bulk unknowns.
+
+    Everything else in thread 3's spike work is done. The one gap is
+    behaviour at large N: whether events are DROPPED or THROTTLED,
+    whether the ~415ms per-item spacing holds at scale, whether the
+    persisted action scope accumulates state unboundedly, and whether
+    the silent-write-loss failure gets MORE likely under burst
+    contention. This matters more than it did because verification and
+    retry are now mandatory and cost ~1.2s per recovered item, so a
+    large import could serialize into minutes.
+
+    Propose the SMALLEST read-only pass that closes this -- likely a
+    stripped-down variant of spike_s4_write_reliability.js with writes
+    disabled. I will run one real import and record N. Do not enable a
+    writing action on a bulk path before this is measured.
+
+## BBT script dedup (small)
+
+    [common preamble]
+
+    Small scoped task. The file inventory in MAINTENANCE_PLAN.md flags
+    two near-identical scripts: bbt_citation_key_refresh.js (346 lines,
+    substantive work 2026-01-23 -- GC batch alignment, START_INDEX and
+    MAX_TO_PROCESS interaction) and bbt_refresh_citation_keys.js (169
+    lines, added 2026-08-03, presumed newer and canonical).
+
+    Read BOTH. Tell me whether the newer one carries the older one's
+    batching, GC, and START_INDEX resume behaviour, or whether that work
+    was lost in the rewrite. Then recommend: delete the old one, port
+    missing behaviour forward first, or keep both with distinct roles.
+
+    Do this BEFORE any citation-key format work, so that work does not
+    get built against the wrong script.
+
+## Citation-key format redesign (owner-initiated, not yet scoped)
+
+    [common preamble]
+
+    I want to redesign the BBT citation key format (more unique and
+    descriptive -- I have hit collisions and ambiguity) and mass-refresh
+    keys. This has never been scoped. Read MAINTENANCE_PLAN.md on thread
+    5 for the load-bearing constraint.
+
+    Before proposing a format, surface the consequences I need to weigh:
+    changing keys BREAKS EXISTING CITATIONS in documents already written;
+    a mass refresh RENAMES ATTACHMENT FILES, which strands the old names
+    as fresh orphans (the thread-2 sweep cleared 7,412 of exactly that
+    kind of sediment); and this collides with both thread 5's metadata
+    backfill and thread 6's path sanitization, all three of which touch
+    generated names.
+
+    Prerequisite: the BBT script dedup task must be done first.
+    Sequencing question I need answered: do the naming/key changes
+    together, then ONE orphan sweep afterwards.
+
+    Start with understanding, the consequence list, and a ranked set of
+    options with a recommendation. No code that turn.
