@@ -467,3 +467,81 @@ decision.
 REMAINING BROKEN LINKS SHOULD USE THE COLLECTION STRATEGY: re-run
 collect_broken_links.js (DRY_RUN first) to surface the ~29 as a dated
 collection for manual repair. No new tooling is needed for this.
+
+### DECISION (owner, 2026-08-06): collection-first, repair de-emphasized
+
+The owner asked whether repair is safe enough to rely on. Honest
+assessment, recorded so it is not re-litigated from memory:
+
+- STALE_BASE is the safer strategy: it preserves the whole relative path
+  and swaps only the base prefix, verifies existence, and has executed
+  successfully once (Devlin, 0 errors). Residual risk: verification
+  confirms A FILE EXISTS at the path, not that it is THE SAME FILE the
+  item meant. With author folder plus full title in the path a wrong
+  match is unlikely, but that is not the same as verified.
+- TRAILING_DOT is LESS TRUSTED: it has NEVER EXECUTED (both runs
+  reported repairableTrailingDot 0), and it removes characters from
+  folder names rather than swapping a prefix, so verification carries
+  more weight. Untested code that rewrites data does not get vouched for.
+- THE DECISIVE ARGUMENT IS VALUE, NOT SAFETY. The broken population is
+  ~29. Automation earns its risk at 7,000 items, not 29. Repair was
+  worth building when the population looked like 73 including 42
+  mechanical cases; at 29 mostly-judgment cases the calculus flipped.
+  Manual repair with clear per-item instructions is tractable and keeps
+  a human on every data change.
+
+DECISION: COLLECTION AND REPORTING IS THE PRIMARY PATH. Repair is
+retained but OFF by default and off the recommended path.
+
+Design agreed for the consolidated script (NEW-THREAD WORK, not yet
+built):
+- One script, ONE scan, ONE classification pass. The current duplication
+  between collect_broken_links.js and repair_attachment_paths.js wastes
+  a ~7-8s scan but, more importantly, risks DRIFT: two copies of the
+  reconstruct-and-classify logic will diverge and then disagree about
+  what is broken.
+- Modes as independent flags, not separate scripts: MODE_REPORT (always
+  on), MODE_COLLECT (normal operating mode), MODE_REPAIR (default OFF).
+  Kept as separate gates because they have different reversibility
+  profiles -- deleting a collection is free, rewriting a path is a data
+  change.
+- OWNER REQUIREMENT: anything MODE_REPAIR changes must ALSO be collected
+  into a "Broken links <date> - repaired, verify" collection, so no data
+  change escapes human review and repair never becomes invisible.
+- Reporting must make the REQUIRED ACTION explicit per item rather than
+  leaving the owner to infer it. Buckets and their stated fixes:
+  * conflict-copy WITH un-suffixed twin present -> relink to the named
+    file (path is already reported as unsuffixedTwinPath)
+  * conflict-copy with NO twin -> file genuinely gone; locate or delete
+    the attachment
+  * stale base -> re-relativize; target exists at a named path
+  * other -> locate manually; no candidate found
+- Open questions for that thread: whether repair-then-collect in a
+  single run is desirable (repair first, then collect only what is still
+  broken -- appealing, but one run then does both a write and a survey);
+  and whether the two existing scripts become thin deprecated wrappers
+  or are deleted.
+
+### CONSTRAINT: this CANNOT run at item creation
+
+The owner proposed normalizing paths at item-creation time. S3 proved
+this is structurally impossible with the Create Item event: CHILD
+ATTACHMENTS AND NOTES DO NOT FIRE IT, only top-level items do, and at
+the moment a top-level item fires its attachment usually does not exist
+yet (S4 observed attachmentCountAtFire 0 even on Google Books saves
+where a file was landing). A Create Item action therefore has no
+attachment path to inspect.
+
+Relocated options, ranked:
+1. Fix at the source (thread 6): sanitize path components in the naming
+   pipeline so unreachable paths are never written. Prevention, no event
+   needed, addresses the file-loss disease rather than the broken-link
+   symptom. RECOMMENDED.
+2. Periodic sweep: the consolidated script run on a schedule or by hand.
+   Cheap, mostly built, catches everything regardless of origin, but
+   always after the fact. RECOMMENDED as the safety net behind 1.
+3. A different trigger: if Actions & Tags exposes an attachment-added or
+   item-modified event, an action there could see the path. UNVERIFIED
+   (S3 tested only Create Item), and item-modify reintroduces the
+   loop-safety question that Create Item let us skip.
+Agreed direction: 1 plus 2.
