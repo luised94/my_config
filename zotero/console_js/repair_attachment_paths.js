@@ -1,7 +1,7 @@
 // =============================================================================
 // REPAIR ATTACHMENT PATHS
 // =============================================================================
-// Version: 1.0.0
+// Version: 1.1.0
 // Date:    2026-07
 // Purpose: Repair broken linked-file attachment paths where the correct file
 //          can be PROVEN to exist on disk. Closes the loop opened by
@@ -44,6 +44,11 @@
 //      with a suffix (Jr., Inc., Ltd., Ph.D.) or a terminal initial. This
 //      script REPAIRS the symptom; the naming pipeline must be fixed
 //      separately to stop producing these paths (see handoff notes).
+//
+// v1.1.0: conflict-copy entries now report whether an UN-SUFFIXED TWIN
+//          exists on disk (unsuffixedTwinExists). Still not repaired --
+//          reported only, so the owner can make one informed bulk decision
+//          instead of many blind manual relinks.
 //
 // Explicitly OUT OF SCOPE: conflict-copy repair. A link pointing at
 //          "Title 2.pdf" whose file is gone may or may not be satisfied by
@@ -107,6 +112,7 @@ var timing = {
     repairableStaleBase: 0,
     repairableTrailingDot: 0,
     unrepairableConflictCopy: 0,
+    conflictCopyWithTwin: 0,
     unrepairableOther: 0,
     written: 0,
     writeErrors: 0
@@ -297,9 +303,28 @@ for (var linkRow of linkRows) {
         var leafName = intendedPath.slice(lastSeparatorIndex + 1);
         if (/ \d+\.[A-Za-z0-9]+$/.test(leafName)) {
             timing.unrepairableConflictCopy = timing.unrepairableConflictCopy + 1;
+            // Report-only twin check. A link to "X 2.html" is very often
+            // satisfiable by "X.html" beside it, but repointing an item at
+            // a file it never referenced is a GUESS, not a repair (see the
+            // header), so this only records whether the twin EXISTS. It
+            // turns 21 blind manual relinks into one informed bulk
+            // decision the owner can make.
+            var twinLeafName = leafName.replace(/ \d+(\.[A-Za-z0-9]+)$/, '$1');
+            var twinPath = intendedPath.slice(0, lastSeparatorIndex + 1) + twinLeafName;
+            var twinExists = false;
+            try {
+                twinExists = await IOUtils.exists(twinPath);
+            } catch (twinError) {
+                twinExists = false;
+            }
             unrepairable.push({ attachmentItemID: linkRow.attachmentItemID,
                 intendedPath: intendedPath,
-                classification: 'conflict-copy name; manual review (not auto-repaired by design)' });
+                classification: 'conflict-copy name; manual review (not auto-repaired by design)',
+                unsuffixedTwinPath: twinPath,
+                unsuffixedTwinExists: twinExists });
+            if (twinExists) {
+                timing.conflictCopyWithTwin = timing.conflictCopyWithTwin + 1;
+            }
         } else {
             timing.unrepairableOther = timing.unrepairableOther + 1;
             unrepairable.push({ attachmentItemID: linkRow.attachmentItemID,
@@ -393,6 +418,7 @@ return {
     repairableStaleBase: timing.repairableStaleBase,
     repairableTrailingDot: timing.repairableTrailingDot,
     unrepairableConflictCopy: timing.unrepairableConflictCopy,
+    conflictCopyWithTwin: timing.conflictCopyWithTwin,
     unrepairableOther: timing.unrepairableOther,
     written: timing.written,
     writeErrors: timing.writeErrors,
