@@ -339,3 +339,49 @@ cap of 3 was reached -- confirming scope persistence a second time.
   TO CLOSE: re-run with items that arrive WITH attachments -- a Google
   Books save (the exact case that failed) or a connector save of a
   PDF-bearing article -- and confirm highRiskFires > 0 in the summary.
+
+### S4 RESULTS, run 2 (2026-08-06, 6 fires) -- T2/T3 SETTLED
+
+Decisive run. 2 of 6 writes were LOST on the first attempt and recovered
+by a single retry (writeOutcome landed_after_retry, retryCount 1). No
+write was lost permanently.
+
+- T2/T3 ANSWERED: AWAITING ALONE IS NOT SUFFICIENT. An awaited saveTx can
+  still be lost. READ-BACK VERIFICATION PLUS RETRY IS MANDATORY for
+  normalize-incoming-item.js. One retry (800ms backoff, 400ms settle
+  before verification) recovered every loss observed; lostDespiteRetry was
+  0, so writes at fire time ARE safe with verification and do NOT need to
+  be deferred out of the handler. Combined with S4 run 1 (async bodies run
+  to completion, await resolves), the write strategy is now settled:
+  async IIFE -> await save -> re-fetch and verify -> retry on failure.
+
+- THE RISK HEURISTIC WAS DISPROVEN, and this is the more useful finding.
+  Both lost writes were on items scored isHighRiskCase FALSE (Google Books
+  "book" items, 5117ms and 4007ms since dateModified,
+  attachmentCountAtFire 0), while BOTH items scored TRUE (790ms, 878ms)
+  landed on the first try. Every journalArticle landed first try; both
+  failures were Google Books saves.
+  Mechanism: the heuristic measured PRE-fire settledness, but the
+  contention window opens AFTER the action fires. attachmentCountAtFire 0
+  on a Google Books save does not mean uncontended -- it means the
+  attachment has not been created YET. A recently-modified item has
+  already finished being written; a quiet one may be about to be written.
+  CONSEQUENCE: fire-time state CANNOT predict which writes will be lost,
+  so verification and retry must be applied UNCONDITIONALLY. Do not build
+  a fast path that skips verification for "safe-looking" items. This is
+  simpler than selective retry as well as more correct.
+  Observed correlate for future investigation only (NOT a gate):
+  libraryCatalog "Google Books" / itemType book. Now logged as
+  libraryCatalogAtFire.
+
+- OQ3 SETTLED: ProgressWindow at 4000ms was "a tad too long" but clearly
+  noticeable; PROGRESS_WINDOW_MS settled at 3000. Standard for the rules
+  engine: Zotero.debug always; appended JSONL (mode 'appendOrCreate')
+  when a run needs after-the-fact analysis; ProgressWindow only for
+  events the user should NOTICE, never per-item during a bulk import.
+
+S4 is COMPLETE. Remaining thread-3 spike gap is the deferred large-bulk
+import (see "S3 RESULTS, run 3"), which now carries extra weight: since
+retries are mandatory and each adds ~1.2s (800ms backoff + 400ms
+verification), a large import could serialize into minutes of action
+execution. Measure before enabling a writing action on a bulk path.
