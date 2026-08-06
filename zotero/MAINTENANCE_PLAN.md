@@ -144,16 +144,40 @@ sub-spike that splits off mid-thread takes a letter suffix (e.g. S2b).
 - Thread 1 (this one): housekeeping and foundations. Documents (this file,
   CONVENTIONS.md, handoff docs), control-character fix, deletions, moves,
   action-script split, README. No spikes, no console pasting.
-- Thread 2: orphan attachment pipeline. Sequence: S1, S2, finalize design
-  into handoff doc (committed), audit_orphan_attachments.js with
-  1000/5000/full validation ramp, Move-OrphanFiles.ps1 dry-run then execute.
-  See handoff/02_orphan_pipeline.md.
-- Thread 3: incoming-item automation, test-first. Sequence: S3, S4, commit
-  findings, then rules-table normalizer (item-added), library-wide backfill
-  runner, tag-hygiene report salvage. Requires Q1 resolved. See
-  handoff/03_incoming_automation.md.
+- Thread 2: orphan attachment pipeline. COMPLETE (2026-07/08). S1, S2,
+  S2b, S2c done; audit_orphan_attachments.js, Move-OrphanFiles.ps1,
+  Restore-OrphanFiles.ps1, collect_broken_links.js, and
+  repair_attachment_paths.js all built. The sweep RAN: 7,412 orphan files
+  quarantined, verified independently on both machines, orphan sediment
+  6,972 -> 1, broken links unchanged at 72 throughout. Full outcome and
+  the findings it surfaced are in handoff/02_orphan_pipeline.md.
+  Residual owner tasks: run repair_attachment_paths.js (dry-run then
+  apply) for the 5 stale-base and ~42 trailing-dot paths; delete the
+  quarantine folder once satisfied.
+- Thread 3: incoming-item automation, test-first. SPIKES COMPLETE
+  (S3, S4 built, run, and written up). Mechanics are now settled by
+  measurement -- see the verified findings in
+  handoff/03_incoming_automation.md, summarized under "Cross-cutting
+  verified facts" below. STILL BLOCKED ON: Q1 (tag taxonomy; owner
+  decision) and the deferred large-bulk-import measurement. Then build
+  the rules-table normalizer, backfill runner, and tag-hygiene report.
 - Thread 4: annotation export. Deliberately under-specified until S5.
-  Independent; can float. See handoff/04_annotation_export.md.
+  S5 IS BUILT (spikes/spike_s5_annotation_introspection.js) and PENDING
+  a run; nothing else in this thread should be designed until its
+  results are pasted into handoff/04_annotation_export.md. Independent;
+  can float.
+- Thread 6 (NEW, unscheduled, HIGH VALUE): path-component sanitization in
+  the file-naming pipeline. Windows silently strips trailing dots and
+  spaces from path components, so every author with a suffix (Jr., Inc.,
+  Ltd., Ph.D.) or a terminal initial produces a stored path that can
+  never resolve. This is ACTIVE DATA LOSS, not historical sediment: the
+  owner reports files "don't get saved sometimes and some are lost during
+  renaming". 42 of 73 broken links share this signature. The REPAIR half
+  exists (repair_attachment_paths.js, TRAILING_DOT strategy); the
+  PREVENTION half does not and belongs with the Attanger/BBT naming work.
+  Read the naming pipeline before proposing a fix. Full write-up under
+  "FINDING: Windows strips trailing dots" in
+  handoff/02_orphan_pipeline.md.
 - Thread 5 (deferred, not yet specified): metadata completeness and
   citation-key integrity. Ensure items carry at least a date and some
   form of author, since citation keys (CONVENTIONS B3) are built from
@@ -166,9 +190,62 @@ sub-spike that splits off mid-thread takes a letter suffix (e.g. S2b).
   attachment folders (B2, Q7). Owner has flagged this as possibly more
   important than it first appears; scope before starting.
 
-Ordering: thread 1 first. Thread 2 next, optionally overlapping thread 3's
-spike phase. Thread 3 implementation after its spikes and Q1. Thread 4 last
-or whenever convenient.
+Ordering (revised 2026-08-06, threads 1 and 2 complete):
+1. Thread 6 (trailing-dot prevention) -- ranked first because it is the
+   only item on this list causing ONGOING loss. Everything else is
+   improvement; this is stopping a leak.
+2. Q1 (tag taxonomy) -- an owner decision, not implementation work, and
+   it is the sole remaining blocker on thread 3's largest deliverable.
+   Cheap to settle, unblocks the most.
+3. Thread 3 implementation, after Q1 and after one bulk-import
+   measurement pass.
+4. Thread 4, after S5 is run. Independent; can float earlier if the
+   annotation work is more motivating.
+5. Thread 5 (metadata completeness) -- now has real seed data from the
+   thread-2 audit (944 missing creator, 1,481 missing date, 942 missing
+   both, plus the "_"/"undefined" degenerate-key population). Note the
+   owner has since done a large MANUAL metadata cleanup, so re-measure
+   before scoping; the numbers above predate it.
+
+Also outstanding, small: resolve the duplicate BBT refresher scripts
+(see the file inventory) and fold in snippets/spikes from other threads
+that have not yet been collected into zotero/console_js.
+
+## 6b. Cross-cutting verified facts (2026-07/08)
+
+Environment truths established by spikes, applicable to ANY script in
+this repository. Recorded here rather than only in a thread handoff
+because each was learned the hard way and is expensive to rediscover.
+
+- IOUtils write mode 'append' REFUSES TO CREATE a missing file; use
+  'appendOrCreate'. This silently produced an empty log directory and no
+  file for a whole spike run (S3).
+- Zotero returns parentItemID FALSE (not null) for a top-level item. A
+  child-vs-top-level test must check both or it counts every top-level
+  item as a child.
+- Windows silently strips trailing dots and spaces from path components
+  (see thread 6). Any code constructing a filesystem path from
+  user/metadata text must sanitize per component.
+- Console mojibake is NOT evidence of data corruption. PowerShell renders
+  UTF-8 through a legacy codepage; verify with Test-Path against the real
+  path before concluding anything is broken (S2c).
+- An A&T action body: fires as event "Create Item" / operation "Script";
+  receives the item as `item`; runs an async IIFE to completion with
+  working await; keeps its scope ACROSS fires within a Zotero session
+  (so module-level counters accumulate); does NOT fire for child
+  attachments or notes; and is NOT re-triggered by its own saves.
+- An awaited saveTx inside an action CAN STILL BE LOST, and fire-time
+  state does NOT predict which writes will be lost. Read-back
+  verification plus retry is mandatory and must be UNCONDITIONAL. One
+  retry recovered every loss observed. Do not build a fast path that
+  skips verification for "safe-looking" items (S4).
+- Reporting standard (OQ3, settled): Zotero.debug always; appended JSONL
+  in the data directory when a run needs after-the-fact analysis;
+  ProgressWindow (~3000ms) only for events the user should NOTICE, never
+  per-item during a bulk import.
+- Reading file METADATA (IOUtils.stat/exists) does not hydrate Dropbox
+  online-only placeholders; reading file CONTENT does. Only S5 reads
+  content, deliberately and with a small sample.
 
 ## 7. Thread 1 commit plan
 
