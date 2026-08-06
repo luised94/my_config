@@ -426,3 +426,48 @@ library-specific measurements below stay here.
   check, quarantine preserving structure, reconciliation, append log.
 - Dropbox online-only placeholders count as "exists"; enumeration must not
   read file contents. (Confirmed by S2.)
+
+### Repair run (2026-08-06) and an UNEXPLAINED change
+
+repair_attachment_paths.js run dry then applied. Scanned 70,930 rows
+(down from 70,949 -- ~19 attachment rows left the library between runs).
+
+- 1 STALE_BASE repair applied and verified (Devlin, old
+  "C:\Users\Luis\Dropbox (MIT)" path, rewritten to a relative
+  attachments: path). 0 write errors.
+- Broken links fell from 73 to 30 WITHOUT a corresponding repair.
+- repairableTrailingDot was 0, and NOT ONE trailing-dot path appears in
+  the unrepairable list either. The entire "Hughes Jr." / "Williams Jr."
+  / "LaRouche Jr." / "Huawei ... Ltd." class simply RESOLVES now.
+- Remaining 30: 21 conflict-copy (reported, deliberately not repaired),
+  8 other (manual relink), 1 repaired.
+
+UNEXPLAINED, and it matters. No repair touched the trailing-dot class,
+yet it healed. Candidate explanations, none verified:
+  (a) other threads' work (Attanger stats/collection, the BBT refresher)
+      re-filed those items;
+  (b) Windows RESOLVES a trailing-dot path by stripping the dot, so the
+      links were never broken at the filesystem level, and the earlier
+      run observed a transient state (Dropbox mid-sync);
+  (c) the owner relinked them manually.
+
+CONSEQUENCE FOR THREAD 6 (trailing-dot prevention, currently ranked
+first): if (b) is true, the trailing-dot problem is NOT about broken
+links at all -- Windows resolves those paths fine -- and is confined to
+FILE LOSS DURING RENAME, which the owner independently reported. That is
+a much narrower problem than the thread-6 write-up assumes, and would
+justify re-ranking it. VERIFY BEFORE INVESTING: Test-Path a dotted path
+(e.g. "...\Hughes Jr.\Hughes_Jr._1995_A_salvo_model...pdf") and list
+the real directory name. Test-Path True against a directory that is
+actually named "Hughes Jr" proves (b). Do this first in thread 6.
+
+Also: repair_attachment_paths.js v1.1.0 now reports, for each
+conflict-copy entry, whether the UN-SUFFIXED twin exists on disk
+(unsuffixedTwinExists, plus a conflictCopyWithTwin count). Still not
+auto-repaired -- repointing an item at a file it never referenced is a
+guess -- but it converts ~21 blind manual relinks into one informed bulk
+decision.
+
+REMAINING BROKEN LINKS SHOULD USE THE COLLECTION STRATEGY: re-run
+collect_broken_links.js (DRY_RUN first) to surface the ~29 as a dated
+collection for manual repair. No new tooling is needed for this.
