@@ -6,8 +6,15 @@
 // standard) and -- more importantly -- the WRITE STRATEGY of
 // normalize-incoming-item.js.
 //
-// Version: 1.0.0
+// Version: 1.0.1
 // Date:    2026-08
+//
+// v1.0.1: PROGRESS_WINDOW_MS raised from 1500 (owner: "went by a bit
+//         fast"). Each fire is now classified isHighRiskCase, and the
+//         analyzer reports coverage, because the 2026-08-06 run consisted
+//         entirely of CONTROL items (no attachments, 5-10s since last
+//         modification) and its four landed_first_try results could be
+//         misread as proving contended writes are safe. They do not.
 //
 // THIS IS NOT A CONSOLE SCRIPT. It is an Actions & Tags ACTION.
 // Registration: Event "Create Item", Operation "Script" (labels verified
@@ -86,7 +93,8 @@
 //   var summary = { totalFires: entries.length, asyncBodyCompleted: 0,
 //       awaitResolved: 0, landedFirstTry: 0, landedAfterRetry: 0,
 //       lostDespiteRetry: 0, probeBlocked: 0, progressWindowOk: 0,
-//       progressWindowFailed: 0, withAttachment: 0, errors: [] };
+//       progressWindowFailed: 0, withAttachment: 0, highRiskFires: 0,
+//       highRiskLandedFirstTry: 0, controlFires: 0, errors: [] };
 //   for (var e of entries) {
 //       if (e.asyncBodyCompleted) summary.asyncBodyCompleted++;
 //       if (e.awaitResolved) summary.awaitResolved++;
@@ -97,10 +105,17 @@
 //       if (e.progressWindowOk === true) summary.progressWindowOk++;
 //       if (e.progressWindowOk === false) summary.progressWindowFailed++;
 //       if (e.attachmentCountAtFire > 0) summary.withAttachment++;
+//       if (e.isHighRiskCase) { summary.highRiskFires++;
+//           if (e.writeOutcome === 'landed_first_try') summary.highRiskLandedFirstTry++; }
+//       else summary.controlFires++;
 //       if (e.errorMessage) summary.errors.push(e.errorMessage);
 //   }
+//   summary.coverageWarning = summary.highRiskFires === 0 ?
+//       'NO high-risk fires: all items were uncontended controls. T2/T3 ' +
+//       'are NOT answered by this run -- add items WITH attachments.' : null;
 //   summary.perFire = entries.map(e => ({ itemID: e.itemID,
-//       attach: e.attachmentCountAtFire, outcome: e.writeOutcome,
+//       attach: e.attachmentCountAtFire, highRisk: e.isHighRiskCase,
+//       outcome: e.writeOutcome,
 //       msSinceModified: e.msSinceDateModified, retries: e.retryCount }));
 //   return summary;
 //
@@ -130,7 +145,7 @@ var CONFIG = {
     RETRY_BACKOFF_MS: 800,
 
     TEST_PROGRESS_WINDOW: true,   // T4 (OQ3)
-    PROGRESS_WINDOW_MS: 1500
+    PROGRESS_WINDOW_MS: 4000    // 1500 was too fast to read (owner, 2026-08-06)
 };
 
 // 2. STATE (persists across fires within a session -- S3 finding)
@@ -171,6 +186,16 @@ try {
         }
     }
 
+    // Classify the fire as HIGH-RISK or CONTROL. The failure S4 exists to
+    // reproduce (S3 run 2) happened on an item that arrived WITH an
+    // attachment and had been modified ~1s before the fire -- i.e. still
+    // actively being written. Quiet, settled items are the easy path and
+    // prove nothing about contention. Recording this per fire prevents an
+    // all-control run from being misread as a passing result, which is
+    // exactly what happened on the 2026-08-06 run.
+    var isHighRiskCase = (attachmentCountAtFire > 0) ||
+        (msSinceDateModified !== null && msSinceDateModified < 3000);
+
     var entry = {
         when: new Date().toISOString(),
         epochMs: Date.now(),
@@ -180,6 +205,7 @@ try {
         itemType: itemTypeAtFire,
         attachmentCountAtFire: attachmentCountAtFire,
         msSinceDateModified: msSinceDateModified,
+        isHighRiskCase: isHighRiskCase,
         asyncBodyCompleted: false,   // T1
         awaitResolved: false,        // T1
         writeOutcome: 'not_attempted',
