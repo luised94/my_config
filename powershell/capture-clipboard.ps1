@@ -16,12 +16,20 @@
 #       -Title and -Source are optional. If given, warns (never blocks) when an
 #       existing file's frontmatter title/source matches -- possible duplicate.
 #
-#   Add-ClipboardCapture                 (FAST path)
+#   Add-ClipboardCapture [-Note "<branch label>"]           (FAST path)
 #       Appends current clipboard text to the open page. Warns if the text is
-#       byte-identical to the previous capture (likely an accidental double).
+#       byte-identical to ANY earlier capture on this page (accidental re-copy
+#       while navigating branches). -Note is optional and lands in the capture's
+#       delimiter line so you can mark branch boundaries as you go.
 #
-#   Add-ClipboardCaptureWithReview       (REVIEW path -- use while testing)
+#   Add-ClipboardCaptureWithReview                          (REVIEW path)
 #       Shows the clipboard, asks y/n, then delegates to Add-ClipboardCapture.
+#       Use while testing; switch to the fast path once confident.
+#
+#   Show-CaptureStatus
+#       Prints the open page's file path, title/source, capture count, bytes so
+#       far, and a head+tail preview of the last capture. Use this to see where
+#       you are after navigating up/down, before the next copy.
 #
 #   Complete-PageCapture
 #       Rewrites frontmatter with the final capture_count and finish timestamp,
@@ -32,16 +40,31 @@
 # TYPICAL SESSION
 #   . .\capture-clipboard.ps1
 #   Start-PageCapture -Title "How to reset the widget" -Source "https://app/threads/482"
-#   Add-ClipboardCapture        # after each copy button
-#   Add-ClipboardCapture
+#   Add-ClipboardCapture                      # after each copy button
+#   Add-ClipboardCapture -Note "branch-A"     # mark a branch boundary
+#   Show-CaptureStatus                        # check where you are
 #   Complete-PageCapture
+#
+# RECOMMENDED WINDOW SETUP (reduces the back-and-forth of a long page)
+#   - Snap the source interface and this PowerShell window side by side:
+#       Win+Left  snaps the active window to the left half
+#       Win+Right snaps the active window to the right half
+#   - Alt+Tab switches between the two without touching the mouse.
+#   - Keep this window focused-enough that after each copy you press Up then
+#     Enter to re-run the last Add-ClipboardCapture (PowerShell command history).
+#   - For branching content: finish one branch fully, then navigate back and
+#     walk the next branch. Use -Note at each branch boundary so the linear file
+#     stays navigable afterward.
 #
 # OUTPUT
 #   Files land in $CaptureOutputFolder (set just below), one flat folder,
 #   named page-001.md, page-002.md, ... auto-numbered from the highest existing.
 #   Files are UTF-8 without BOM.
+#   Attachments are handled manually, outside this script: download them and
+#   save alongside as page-NNN-attachments.zip (or a page-NNN-attachments\
+#   folder if a zip download is not offered).
 #
-# VERSION 1 NOTES AND CONCERNS
+# VERSION 3 NOTES AND CONCERNS
 #   1. NEWLINE NORMALIZATION IS A REAL MUTATION. Captured text has CRLF/CR
 #      converted to LF for consistency across python/R/bash/nvim. This is the
 #      one place your copied content is altered. Remove the normalization line
@@ -52,11 +75,14 @@
 #   3. FORMATTING IS DISCARDED. Get-Clipboard -Raw pulls plain text only; rich
 #      text / HTML formatting from the copy button is not preserved (by design).
 #   4. SINGLE SESSION ASSUMED. Two PowerShell sessions running these commands at
-#      once could both pick the same page-NNN number. Out of scope for v1.
+#      once could both pick the same page-NNN number. Out of scope.
 #   5. STATE IS IN-MEMORY. Captures append to disk immediately (crash-safe for
 #      the body), but the "which page is open" state lives only in this session.
 #      Close the terminal mid-page and you must re-run Complete manually or the
 #      frontmatter keeps its placeholder count. The body is intact regardless.
+#   6. DUPLICATE DETECTION IS EXACT-MATCH ONLY. A re-copied section is flagged
+#      only if byte-identical (after newline normalization) to an earlier
+#      capture this page. Near-duplicates are not detected. Warn, never block.
 # =============================================================================
 
 
@@ -73,7 +99,8 @@ $global:CurrentPageTitle          = $null
 $global:CurrentPageSource         = $null
 $global:CurrentPageStartTimestamp = $null
 $global:CurrentPageCaptureCount   = 0
-$global:PreviousCaptureText       = $null
+$global:LastCaptureText           = $null    # text of most recent capture, for Show-CaptureStatus
+$global:AllCaptureHashesThisPage  = @()      # SHA256 of every capture this page, for exact-match dedup
 
 
 function Start-PageCapture {
@@ -129,7 +156,8 @@ function Start-PageCapture {
     $global:CurrentPageSource         = $Source
     $global:CurrentPageStartTimestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
     $global:CurrentPageCaptureCount   = 0
-    $global:PreviousCaptureText       = $null
+    $global:LastCaptureText           = $null
+    $global:AllCaptureHashesThisPage  = @()
 
     # Frontmatter written now with placeholder count / empty finish; rewritten
     # by Complete-PageCapture. File is on disk immediately so a crash loses nothing.
@@ -150,13 +178,17 @@ function Start-PageCapture {
     $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($global:CurrentCaptureFilePath, $Frontmatter + "`n", $Utf8NoBom)
 
-    Write-Host ("Started {0} (file_number {1}). Now Add-ClipboardCapture per copy, then Complete-PageCapture." -f $FileName, $global:CurrentCaptureFileNumber)
+    Write-Host ("Started {0} (file_number {1})." -f $FileName, $global:CurrentCaptureFileNumber)
+    Write-Host "Next: Add-ClipboardCapture after each copy  |  Show-CaptureStatus to check  |  Complete-PageCapture when done."
 }
 
 
 function Add-ClipboardCapture {
-    param([switch]$Help)
-    Write-Host "Usage: Add-ClipboardCapture   (appends current clipboard text to the open page)"
+    param(
+        [string]$Note = "",
+        [switch]$Help
+    )
+    Write-Host "Usage: Add-ClipboardCapture [-Note '<branch label>']   (appends current clipboard text to the open page)"
     if ($Help) { return }
 
     if (-not $global:CurrentCaptureFilePath) {
@@ -173,27 +205,48 @@ function Add-ClipboardCapture {
     # Normalize to LF so files stay consistent for python/R/bash/nvim.
     $CapturedText = $CapturedText -replace "`r`n","`n" -replace "`r","`n"
 
-    # Within-page guard: identical to the last capture usually means the append
-    # ran twice on one copy. Warn, but still append (real repeats can happen).
-    if ($null -ne $global:PreviousCaptureText -and $CapturedText -eq $global:PreviousCaptureText) {
-        Write-Warning "This clipboard is byte-identical to the previous capture. Appending anyway - check for an accidental double."
+    # Exact-match dedup across ALL captures this page (not just the previous one),
+    # because up/down navigation of branches makes re-copying an earlier section
+    # the real risk. Warn, never block -- shared text across branches is valid.
+    $Sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $CaptureHash = [BitConverter]::ToString($Sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($CapturedText)))
+    $Sha256.Dispose()
+    $PriorIndex = [array]::IndexOf($global:AllCaptureHashesThisPage, $CaptureHash)
+    if ($PriorIndex -ge 0) {
+        Write-Warning ("This clipboard is byte-identical to capture {0} earlier this page. Appending anyway - check for an accidental re-copy." -f ($PriorIndex + 1))
     }
+
+    # A newline in the note would split the single-line delimiter and corrupt the
+    # audit marker, so collapse any CR/LF in the note to spaces.
+    $CleanNote = $Note -replace "`r`n"," " -replace "`r"," " -replace "`n"," "
 
     $global:CurrentPageCaptureCount = $global:CurrentPageCaptureCount + 1
     $Timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-    $DelimiterLine = "@@@ capture {0} {1} @@@" -f $global:CurrentPageCaptureCount, $Timestamp
+    if ($CleanNote -ne "") {
+        $DelimiterLine = "@@@ capture {0} {1} note: {2} @@@" -f $global:CurrentPageCaptureCount, $Timestamp, $CleanNote
+    } else {
+        $DelimiterLine = "@@@ capture {0} {1} @@@" -f $global:CurrentPageCaptureCount, $Timestamp
+    }
 
     $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::AppendAllText($global:CurrentCaptureFilePath, "`n" + $DelimiterLine + "`n" + $CapturedText + "`n", $Utf8NoBom)
 
-    $global:PreviousCaptureText = $CapturedText
-    Write-Host ("Appended capture {0} ({1} chars)." -f $global:CurrentPageCaptureCount, $CapturedText.Length)
+    $global:LastCaptureText          = $CapturedText
+    $global:AllCaptureHashesThisPage += $CaptureHash
+    if ($CleanNote -ne "") {
+        Write-Host ("Appended capture {0} ({1} chars, note: {2})." -f $global:CurrentPageCaptureCount, $CapturedText.Length, $CleanNote)
+    } else {
+        Write-Host ("Appended capture {0} ({1} chars)." -f $global:CurrentPageCaptureCount, $CapturedText.Length)
+    }
 }
 
 
 function Add-ClipboardCaptureWithReview {
-    param([switch]$Help)
-    Write-Host "Usage: Add-ClipboardCaptureWithReview   (shows clipboard, asks to confirm, then appends)"
+    param(
+        [string]$Note = "",
+        [switch]$Help
+    )
+    Write-Host "Usage: Add-ClipboardCaptureWithReview [-Note '<branch label>']   (shows clipboard, asks to confirm, then appends)"
     if ($Help) { return }
 
     if (-not $global:CurrentCaptureFilePath) {
@@ -212,10 +265,49 @@ function Add-ClipboardCaptureWithReview {
     Write-Host "----- end preview -----"
     $Answer = Read-Host "Append this to the open page? (y/n)"
     if ($Answer -ieq "y") {
-        Add-ClipboardCapture   # append logic lives in one place only
+        Add-ClipboardCapture -Note $Note   # append logic lives in one place only
     } else {
         Write-Host "Skipped. Nothing appended."
     }
+}
+
+
+function Show-CaptureStatus {
+    param([switch]$Help)
+    Write-Host "Usage: Show-CaptureStatus   (prints the open page's state and a preview of the last capture)"
+    if ($Help) { return }
+
+    if (-not $global:CurrentCaptureFilePath) {
+        Write-Warning "No page open. Run Start-PageCapture first."
+        return
+    }
+
+    $CurrentBytes = if (Test-Path -LiteralPath $global:CurrentCaptureFilePath) { (Get-Item -LiteralPath $global:CurrentCaptureFilePath).Length } else { 0 }
+
+    Write-Host ("File:     {0}" -f $global:CurrentCaptureFilePath)
+    Write-Host ("Title:    {0}" -f $global:CurrentPageTitle)
+    Write-Host ("Source:   {0}" -f $global:CurrentPageSource)
+    Write-Host ("Started:  {0}" -f $global:CurrentPageStartTimestamp)
+    Write-Host ("Captures: {0}" -f $global:CurrentPageCaptureCount)
+    Write-Host ("Bytes:    {0}" -f $CurrentBytes)
+
+    if ($null -eq $global:LastCaptureText) {
+        Write-Host "Last capture: (none yet)"
+        return
+    }
+
+    # Head+tail preview so you can confirm which section landed last without
+    # dumping a 12k-char capture into the console.
+    $PreviewLength = 200
+    Write-Host "----- last capture preview -----"
+    if ($global:LastCaptureText.Length -le (2 * $PreviewLength)) {
+        Write-Host $global:LastCaptureText
+    } else {
+        Write-Host $global:LastCaptureText.Substring(0, $PreviewLength)
+        Write-Host ("... [{0} chars omitted] ..." -f ($global:LastCaptureText.Length - (2 * $PreviewLength)))
+        Write-Host $global:LastCaptureText.Substring($global:LastCaptureText.Length - $PreviewLength)
+    }
+    Write-Host "----- end preview -----"
 }
 
 
@@ -265,7 +357,9 @@ function Complete-PageCapture {
     $global:CurrentPageSource         = $null
     $global:CurrentPageStartTimestamp = $null
     $global:CurrentPageCaptureCount   = 0
-    $global:PreviousCaptureText       = $null
+    $global:LastCaptureText           = $null
+    $global:AllCaptureHashesThisPage  = @()
 
     Write-Host ("Completed {0}: {1} captures, {2} bytes." -f (Split-Path $CompletedPath -Leaf), $CompletedCount, $CompletedBytes)
+    Write-Host ("Saved in: {0}" -f $global:CaptureOutputFolder)
 }
