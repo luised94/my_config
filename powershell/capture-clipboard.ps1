@@ -57,14 +57,14 @@
 #     stays navigable afterward.
 #
 # OUTPUT
-#   Files land in $CaptureOutputFolder (set just below), one flat folder,
-#   named page-001.md, page-002.md, ... auto-numbered from the highest existing.
-#   Files are UTF-8 without BOM.
+#   Files land in $CaptureOutputFolder (set in CONFIGURATION below), one flat
+#   folder, named page-001.md, page-002.md, ... auto-numbered from the highest
+#   existing. Files are UTF-8 without BOM.
 #   Attachments are handled manually, outside this script: download them and
 #   save alongside as page-NNN-attachments.zip (or a page-NNN-attachments\
 #   folder if a zip download is not offered).
 #
-# VERSION 3 NOTES AND CONCERNS
+# VERSION 3.1 NOTES AND CONCERNS
 #   1. NEWLINE NORMALIZATION IS A REAL MUTATION. Captured text has CRLF/CR
 #      converted to LF for consistency across python/R/bash/nvim. This is the
 #      one place your copied content is altered. Remove the normalization line
@@ -83,16 +83,51 @@
 #   6. DUPLICATE DETECTION IS EXACT-MATCH ONLY. A re-copied section is flagged
 #      only if byte-identical (after newline normalization) to an earlier
 #      capture this page. Near-duplicates are not detected. Warn, never block.
+#   7. FRONTMATTER FIELD NAMES ARE LITERAL IN THREE PLACES that must stay in
+#      sync: the two write blocks (Start and Complete) and the read regexes in
+#      Start. Change a field name in one and update the others. See the sync
+#      comments at each site.
 # =============================================================================
 
 
-# --- EDIT THIS: where captured page files are written ------------------------
-# GetFolderPath('Desktop') resolves the REAL desktop even when OneDrive Known
-# Folder redirection is on; "$HOME\Desktop" would create a wrong second folder.
-$global:CaptureOutputFolder = Join-Path ([Environment]::GetFolderPath('Desktop')) "clipboard-page-captures"
+# =============================================================================
+# CONFIGURATION -- edit these to change output location, naming, format, markers
+# =============================================================================
+
+# Output folder. GetFolderPath('Desktop') resolves the REAL desktop even under
+# OneDrive Known Folder redirection; "$HOME\Desktop" would create a wrong second
+# folder that is not the one shown in Explorer.
+$global:CaptureOutputFolderName = "clipboard-page-captures"
+$global:CaptureOutputFolder     = Join-Path ([Environment]::GetFolderPath('Desktop')) $global:CaptureOutputFolderName
+
+# Page file naming. The write format, listing glob, and number-parsing regex are
+# all DERIVED from the three primitives below so they cannot drift out of sync.
+# Change a primitive and all three follow automatically.
+$global:PageFileNamePrefix     = "page-"
+$global:PageFileExtension      = ".md"
+$global:PageFileNumberPadWidth = 3
+$global:PageFileNameFormat     = $global:PageFileNamePrefix + "{0:D$($global:PageFileNumberPadWidth)}" + $global:PageFileExtension
+$global:PageFileListingGlob    = $global:PageFileNamePrefix + "*" + $global:PageFileExtension
+$global:PageFileNumberRegex    = '^' + [regex]::Escape($global:PageFileNamePrefix) + '(\d+)' + [regex]::Escape($global:PageFileExtension) + '$'
+
+# Timestamp format for captured_start, captured_finish, and delimiter lines.
+$global:TimestampFormat = "yyyy-MM-ddTHH:mm:ss"
+
+# Capture delimiter line. Produces, e.g.:
+#   @@@ capture 3 2025-01-15T14:22:01 @@@
+#   @@@ capture 3 2025-01-15T14:22:01 note: branch-A @@@
+# The same marker string opens and closes the line.
+$global:CaptureDelimiterMarker    = "@@@"
+$global:CaptureDelimiterLabel     = "capture"
+$global:CaptureDelimiterNoteLabel = "note:"
+
+# Head+tail preview size (characters) shown by Show-CaptureStatus.
+$global:LastCapturePreviewCharacterCount = 200
 
 
-# --- session state for the page currently being assembled -------------------
+# =============================================================================
+# SESSION STATE for the page currently being assembled
+# =============================================================================
 $global:CurrentCaptureFilePath    = $null
 $global:CurrentCaptureFileNumber  = $null
 $global:CurrentPageTitle          = $null
@@ -123,8 +158,10 @@ function Start-PageCapture {
 
     # Across-page duplicate check: warn (never block) if an existing file's
     # frontmatter title or source matches what we're about to capture.
+    # SYNC: these two regexes read the field names written by the frontmatter
+    # blocks below and in Complete-PageCapture. Keep 'title:' / 'source:' aligned.
     if ($Title -ne "" -or $Source -ne "") {
-        $ExistingFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter 'page-*.md' -ErrorAction SilentlyContinue
+        $ExistingFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter $global:PageFileListingGlob -ErrorAction SilentlyContinue
         foreach ($ExistingFile in $ExistingFiles) {
             $ExistingText = [System.IO.File]::ReadAllText($ExistingFile.FullName, [System.Text.Encoding]::UTF8)
             $TitleMatch  = [regex]::Match($ExistingText, "(?m)^title:\s*'(.*)'\s*$")
@@ -140,9 +177,9 @@ function Start-PageCapture {
 
     # Auto-number: highest existing page-NNN + 1.
     $HighestFileNumber = 0
-    $NumberedFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter 'page-*.md' -ErrorAction SilentlyContinue
+    $NumberedFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter $global:PageFileListingGlob -ErrorAction SilentlyContinue
     foreach ($NumberedFile in $NumberedFiles) {
-        $NumberMatch = [regex]::Match($NumberedFile.Name, '^page-(\d+)\.md$')
+        $NumberMatch = [regex]::Match($NumberedFile.Name, $global:PageFileNumberRegex)
         if ($NumberMatch.Success) {
             $ThisFileNumber = [int]$NumberMatch.Groups[1].Value
             if ($ThisFileNumber -gt $HighestFileNumber) { $HighestFileNumber = $ThisFileNumber }
@@ -150,17 +187,19 @@ function Start-PageCapture {
     }
     $global:CurrentCaptureFileNumber = $HighestFileNumber + 1
 
-    $FileName = "page-{0:D3}.md" -f $global:CurrentCaptureFileNumber
+    $FileName = $global:PageFileNameFormat -f $global:CurrentCaptureFileNumber
     $global:CurrentCaptureFilePath    = Join-Path $global:CaptureOutputFolder $FileName
     $global:CurrentPageTitle          = $Title
     $global:CurrentPageSource         = $Source
-    $global:CurrentPageStartTimestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    $global:CurrentPageStartTimestamp = (Get-Date).ToString($global:TimestampFormat)
     $global:CurrentPageCaptureCount   = 0
     $global:LastCaptureText           = $null
     $global:AllCaptureHashesThisPage  = @()
 
     # Frontmatter written now with placeholder count / empty finish; rewritten
     # by Complete-PageCapture. File is on disk immediately so a crash loses nothing.
+    # SYNC: field names / '---' fences here must match the block in Complete and
+    # the read regexes above. Left literal by design (templating YAML earns little).
     $TitleYaml  = "'" + ($Title  -replace "'","''") + "'"
     $SourceYaml = "'" + ($Source -replace "'","''") + "'"
     $Frontmatter = @(
@@ -221,11 +260,11 @@ function Add-ClipboardCapture {
     $CleanNote = $Note -replace "`r`n"," " -replace "`r"," " -replace "`n"," "
 
     $global:CurrentPageCaptureCount = $global:CurrentPageCaptureCount + 1
-    $Timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    $Timestamp = (Get-Date).ToString($global:TimestampFormat)
     if ($CleanNote -ne "") {
-        $DelimiterLine = "@@@ capture {0} {1} note: {2} @@@" -f $global:CurrentPageCaptureCount, $Timestamp, $CleanNote
+        $DelimiterLine = "{0} {1} {2} {3} {4} {5} {0}" -f $global:CaptureDelimiterMarker, $global:CaptureDelimiterLabel, $global:CurrentPageCaptureCount, $Timestamp, $global:CaptureDelimiterNoteLabel, $CleanNote
     } else {
-        $DelimiterLine = "@@@ capture {0} {1} @@@" -f $global:CurrentPageCaptureCount, $Timestamp
+        $DelimiterLine = "{0} {1} {2} {3} {0}" -f $global:CaptureDelimiterMarker, $global:CaptureDelimiterLabel, $global:CurrentPageCaptureCount, $Timestamp
     }
 
     $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -297,15 +336,14 @@ function Show-CaptureStatus {
     }
 
     # Head+tail preview so you can confirm which section landed last without
-    # dumping a 12k-char capture into the console.
-    $PreviewLength = 200
+    # dumping a large capture into the console.
     Write-Host "----- last capture preview -----"
-    if ($global:LastCaptureText.Length -le (2 * $PreviewLength)) {
+    if ($global:LastCaptureText.Length -le (2 * $global:LastCapturePreviewCharacterCount)) {
         Write-Host $global:LastCaptureText
     } else {
-        Write-Host $global:LastCaptureText.Substring(0, $PreviewLength)
-        Write-Host ("... [{0} chars omitted] ..." -f ($global:LastCaptureText.Length - (2 * $PreviewLength)))
-        Write-Host $global:LastCaptureText.Substring($global:LastCaptureText.Length - $PreviewLength)
+        Write-Host $global:LastCaptureText.Substring(0, $global:LastCapturePreviewCharacterCount)
+        Write-Host ("... [{0} chars omitted] ..." -f ($global:LastCaptureText.Length - (2 * $global:LastCapturePreviewCharacterCount)))
+        Write-Host $global:LastCaptureText.Substring($global:LastCaptureText.Length - $global:LastCapturePreviewCharacterCount)
     }
     Write-Host "----- end preview -----"
 }
@@ -321,15 +359,18 @@ function Complete-PageCapture {
         return
     }
 
-    $FinishTimestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    $FinishTimestamp = (Get-Date).ToString($global:TimestampFormat)
 
     # Strip the placeholder frontmatter (exactly the first ---...--- block) and
     # keep the body untouched, even if the body itself contains --- lines.
+    # SYNC: the '---' fence here matches the frontmatter blocks. Left literal.
     $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     $FullText  = [System.IO.File]::ReadAllText($global:CurrentCaptureFilePath, [System.Text.Encoding]::UTF8)
     $BodyText  = [regex]::Replace($FullText, "(?s)^---\n.*?\n---\n", "")
     $BodyText  = $BodyText.TrimStart("`n")
 
+    # SYNC: field names / '---' fences must match the block in Start and the read
+    # regexes in Start. Left literal by design.
     $TitleYaml  = "'" + ($global:CurrentPageTitle  -replace "'","''") + "'"
     $SourceYaml = "'" + ($global:CurrentPageSource -replace "'","''") + "'"
     $Frontmatter = @(
