@@ -15,6 +15,7 @@
 #       Creates the next page-NNN.md file and writes placeholder frontmatter.
 #       -Title and -Source are optional. If given, warns (never blocks) when an
 #       existing file's frontmatter title/source matches -- possible duplicate.
+#       Also warns if any incomplete (never-Completed) page files are found.
 #
 #   Add-ClipboardCapture [-Note "<branch label>"]           (FAST path)
 #       Appends current clipboard text to the open page. Warns if the text is
@@ -35,6 +36,16 @@
 #       Rewrites frontmatter with the final capture_count and finish timestamp,
 #       then closes the page so the next Start-PageCapture begins clean.
 #
+#   Resume-PageCapture -FileName <page-NNN.md>
+#       Reopens an incomplete page file (one whose captured_finish is empty --
+#       e.g. the terminal was closed mid-page, or Complete was forgotten) as the
+#       session's current page, so you can keep capturing and then Complete it.
+#
+#   Abandon-PageCapture
+#       Deletes the currently open page file and clears session state, after a
+#       confirmation prompt. Use when a page was started by mistake. To discard
+#       an orphan from a dead terminal: Resume it, then Abandon it.
+#
 #   Any command with -Help prints just its usage line.
 #
 # TYPICAL SESSION
@@ -44,6 +55,13 @@
 #   Add-ClipboardCapture -Note "branch-A"     # mark a branch boundary
 #   Show-CaptureStatus                        # check where you are
 #   Complete-PageCapture
+#
+# RECOVERY (forgot to Complete, or closed the terminal mid-page)
+#   Start-PageCapture will warn and list incomplete files. To continue one:
+#       Resume-PageCapture -FileName page-003.md
+#       Add-ClipboardCapture ...   # numbering continues from the existing count
+#       Complete-PageCapture
+#   To discard it instead: Resume-PageCapture -FileName page-003.md; Abandon-PageCapture
 #
 # RECOMMENDED WINDOW SETUP (reduces the back-and-forth of a long page)
 #   - Snap the source interface and this PowerShell window side by side:
@@ -64,7 +82,7 @@
 #   save alongside as page-NNN-attachments.zip (or a page-NNN-attachments\
 #   folder if a zip download is not offered).
 #
-# VERSION 3.1 NOTES AND CONCERNS
+# VERSION 3.2 NOTES AND CONCERNS
 #   1. NEWLINE NORMALIZATION IS A REAL MUTATION. Captured text has CRLF/CR
 #      converted to LF for consistency across python/R/bash/nvim. This is the
 #      one place your copied content is altered. Remove the normalization line
@@ -76,17 +94,21 @@
 #      text / HTML formatting from the copy button is not preserved (by design).
 #   4. SINGLE SESSION ASSUMED. Two PowerShell sessions running these commands at
 #      once could both pick the same page-NNN number. Out of scope.
-#   5. STATE IS IN-MEMORY. Captures append to disk immediately (crash-safe for
-#      the body), but the "which page is open" state lives only in this session.
-#      Close the terminal mid-page and you must re-run Complete manually or the
-#      frontmatter keeps its placeholder count. The body is intact regardless.
+#   5. INCOMPLETE PAGES ARE RECOVERABLE. Captures append to disk immediately, so
+#      the body is never lost. If Complete is skipped (terminal closed, forgot),
+#      the file keeps its placeholder frontmatter (empty captured_finish). Start
+#      detects and warns; Resume-PageCapture reopens it to finish or Abandon.
 #   6. DUPLICATE DETECTION IS EXACT-MATCH ONLY. A re-copied section is flagged
 #      only if byte-identical (after newline normalization) to an earlier
 #      capture this page. Near-duplicates are not detected. Warn, never block.
-#   7. FRONTMATTER FIELD NAMES ARE LITERAL IN THREE PLACES that must stay in
-#      sync: the two write blocks (Start and Complete) and the read regexes in
-#      Start. Change a field name in one and update the others. See the sync
-#      comments at each site.
+#   7. FRONTMATTER FIELD NAMES ARE LITERAL IN SEVERAL PLACES that must stay in
+#      sync: the write blocks (Start, Complete) and the read regexes (Start's
+#      dup/orphan checks, Resume). Change a field name in one and update all.
+#      See the SYNC comments at each site.
+#   8. AFTER RESUME, DEDUP AND PREVIEW ARE PARTIAL. Resume rebuilds the capture
+#      count (from delimiter lines) reliably, but NOT the per-capture hashes or
+#      last-capture text -- so duplicate detection and Show-CaptureStatus's
+#      preview cover only captures added after the resume, not earlier ones.
 # =============================================================================
 
 
@@ -116,10 +138,13 @@ $global:TimestampFormat = "yyyy-MM-ddTHH:mm:ss"
 # Capture delimiter line. Produces, e.g.:
 #   @@@ capture 3 2025-01-15T14:22:01 @@@
 #   @@@ capture 3 2025-01-15T14:22:01 note: branch-A @@@
-# The same marker string opens and closes the line.
+# The same marker string opens and closes the line. The line regex (used by
+# Resume to count existing captures) is DERIVED from the marker and label so it
+# cannot drift from the builder.
 $global:CaptureDelimiterMarker    = "@@@"
 $global:CaptureDelimiterLabel     = "capture"
 $global:CaptureDelimiterNoteLabel = "note:"
+$global:CaptureDelimiterLineRegex = '(?m)^' + [regex]::Escape($global:CaptureDelimiterMarker) + '\s+' + [regex]::Escape($global:CaptureDelimiterLabel) + '\s+(\d+)\b'
 
 # Head+tail preview size (characters) shown by Show-CaptureStatus.
 $global:LastCapturePreviewCharacterCount = 200
@@ -148,7 +173,7 @@ function Start-PageCapture {
     if ($Help) { return }
 
     if ($global:CurrentCaptureFilePath) {
-        Write-Warning ("A page is already open: {0}. Run Complete-PageCapture first, or that page stays half-finished." -f $global:CurrentCaptureFilePath)
+        Write-Warning ("A page is already open: {0}. Complete or Abandon it first." -f $global:CurrentCaptureFilePath)
         return
     }
 
@@ -156,34 +181,42 @@ function Start-PageCapture {
         New-Item -ItemType Directory -Path $global:CaptureOutputFolder | Out-Null
     }
 
-    # Across-page duplicate check: warn (never block) if an existing file's
-    # frontmatter title or source matches what we're about to capture.
-    # SYNC: these two regexes read the field names written by the frontmatter
-    # blocks below and in Complete-PageCapture. Keep 'title:' / 'source:' aligned.
-    if ($Title -ne "" -or $Source -ne "") {
-        $ExistingFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter $global:PageFileListingGlob -ErrorAction SilentlyContinue
-        foreach ($ExistingFile in $ExistingFiles) {
-            $ExistingText = [System.IO.File]::ReadAllText($ExistingFile.FullName, [System.Text.Encoding]::UTF8)
+    # Single pass over existing page files: find the highest number (for the next
+    # filename), warn on title/source duplicates, and collect incomplete orphans.
+    # NOTE: this reads every file's content on every Start (needed for the orphan
+    # check). Fine at this scale; revisit only if the folder grows very large.
+    # SYNC: the title/source/captured_finish read regexes must match the field
+    # names written by the frontmatter blocks below and in Complete-PageCapture.
+    $HighestFileNumber   = 0
+    $IncompleteFileNames = @()
+    $AllPageFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter $global:PageFileListingGlob -ErrorAction SilentlyContinue
+    foreach ($PageFile in $AllPageFiles) {
+        $NumberMatch = [regex]::Match($PageFile.Name, $global:PageFileNumberRegex)
+        if ($NumberMatch.Success) {
+            $ThisFileNumber = [int]$NumberMatch.Groups[1].Value
+            if ($ThisFileNumber -gt $HighestFileNumber) { $HighestFileNumber = $ThisFileNumber }
+        }
+
+        $ExistingText = [System.IO.File]::ReadAllText($PageFile.FullName, [System.Text.Encoding]::UTF8)
+
+        $FinishMatch = [regex]::Match($ExistingText, "(?m)^captured_finish:\s*(.*)$")
+        if ($FinishMatch.Success -and $FinishMatch.Groups[1].Value.Trim() -eq "") {
+            $IncompleteFileNames += $PageFile.Name
+        }
+
+        if ($Title -ne "" -or $Source -ne "") {
             $TitleMatch  = [regex]::Match($ExistingText, "(?m)^title:\s*'(.*)'\s*$")
             $SourceMatch = [regex]::Match($ExistingText, "(?m)^source:\s*'(.*)'\s*$")
             $ExistingTitle  = if ($TitleMatch.Success)  { $TitleMatch.Groups[1].Value  -replace "''","'" } else { "" }
             $ExistingSource = if ($SourceMatch.Success) { $SourceMatch.Groups[1].Value -replace "''","'" } else { "" }
             if (($Title  -ne "" -and $ExistingTitle  -ieq $Title) -or
                 ($Source -ne "" -and $ExistingSource -ieq $Source)) {
-                Write-Warning ("Possible duplicate of existing file {0} (title/source match). Proceeding with a new file anyway." -f $ExistingFile.Name)
+                Write-Warning ("Possible duplicate of existing file {0} (title/source match). Proceeding with a new file anyway." -f $PageFile.Name)
             }
         }
     }
-
-    # Auto-number: highest existing page-NNN + 1.
-    $HighestFileNumber = 0
-    $NumberedFiles = Get-ChildItem -LiteralPath $global:CaptureOutputFolder -File -Filter $global:PageFileListingGlob -ErrorAction SilentlyContinue
-    foreach ($NumberedFile in $NumberedFiles) {
-        $NumberMatch = [regex]::Match($NumberedFile.Name, $global:PageFileNumberRegex)
-        if ($NumberMatch.Success) {
-            $ThisFileNumber = [int]$NumberMatch.Groups[1].Value
-            if ($ThisFileNumber -gt $HighestFileNumber) { $HighestFileNumber = $ThisFileNumber }
-        }
+    if ($IncompleteFileNames.Count -gt 0) {
+        Write-Warning ("Incomplete page file(s) found (never Completed): {0}. Use Resume-PageCapture -FileName <name> to continue one, then Complete or Abandon it." -f ($IncompleteFileNames -join ", "))
     }
     $global:CurrentCaptureFileNumber = $HighestFileNumber + 1
 
@@ -199,7 +232,7 @@ function Start-PageCapture {
     # Frontmatter written now with placeholder count / empty finish; rewritten
     # by Complete-PageCapture. File is on disk immediately so a crash loses nothing.
     # SYNC: field names / '---' fences here must match the block in Complete and
-    # the read regexes above. Left literal by design (templating YAML earns little).
+    # the read regexes in Start and Resume. Left literal by design.
     $TitleYaml  = "'" + ($Title  -replace "'","''") + "'"
     $SourceYaml = "'" + ($Source -replace "'","''") + "'"
     $Frontmatter = @(
@@ -231,7 +264,7 @@ function Add-ClipboardCapture {
     if ($Help) { return }
 
     if (-not $global:CurrentCaptureFilePath) {
-        Write-Warning "No page open. Run Start-PageCapture first."
+        Write-Warning "No page open. Run Start-PageCapture (or Resume-PageCapture) first."
         return
     }
 
@@ -289,7 +322,7 @@ function Add-ClipboardCaptureWithReview {
     if ($Help) { return }
 
     if (-not $global:CurrentCaptureFilePath) {
-        Write-Warning "No page open. Run Start-PageCapture first."
+        Write-Warning "No page open. Run Start-PageCapture (or Resume-PageCapture) first."
         return
     }
 
@@ -317,7 +350,7 @@ function Show-CaptureStatus {
     if ($Help) { return }
 
     if (-not $global:CurrentCaptureFilePath) {
-        Write-Warning "No page open. Run Start-PageCapture first."
+        Write-Warning "No page open. Run Start-PageCapture (or Resume-PageCapture) first."
         return
     }
 
@@ -331,7 +364,7 @@ function Show-CaptureStatus {
     Write-Host ("Bytes:    {0}" -f $CurrentBytes)
 
     if ($null -eq $global:LastCaptureText) {
-        Write-Host "Last capture: (none yet)"
+        Write-Host "Last capture: (none yet this session; note: preview is empty right after a Resume)"
         return
     }
 
@@ -349,6 +382,113 @@ function Show-CaptureStatus {
 }
 
 
+function Resume-PageCapture {
+    param(
+        [string]$FileName = "",
+        [switch]$Help
+    )
+    Write-Host "Usage: Resume-PageCapture -FileName <page-NNN.md>   (reopens an incomplete page file to keep capturing)"
+    if ($Help) { return }
+
+    if ($global:CurrentCaptureFilePath) {
+        Write-Warning ("A page is already open: {0}. Complete or Abandon it before resuming another." -f $global:CurrentCaptureFilePath)
+        return
+    }
+
+    if ($FileName -eq "") {
+        Write-Warning "Provide -FileName, e.g. Resume-PageCapture -FileName page-003.md"
+        return
+    }
+
+    $ResumePath = Join-Path $global:CaptureOutputFolder $FileName
+    if (-not (Test-Path -LiteralPath $ResumePath)) {
+        Write-Warning ("File not found: {0}" -f $ResumePath)
+        return
+    }
+
+    # The filename is authoritative for the page number; refuse a nonconforming
+    # name because we could not number subsequent captures/files consistently.
+    $NumberMatch = [regex]::Match($FileName, $global:PageFileNumberRegex)
+    if (-not $NumberMatch.Success) {
+        Write-Warning ("'{0}' does not match the page file naming pattern; cannot resume it safely." -f $FileName)
+        return
+    }
+    $ResumedFileNumber = [int]$NumberMatch.Groups[1].Value
+
+    $ResumeText = [System.IO.File]::ReadAllText($ResumePath, [System.Text.Encoding]::UTF8)
+
+    # SYNC: these read regexes must match the frontmatter field names written in
+    # Start-PageCapture and Complete-PageCapture.
+    $TitleMatch  = [regex]::Match($ResumeText, "(?m)^title:\s*'(.*)'\s*$")
+    $SourceMatch = [regex]::Match($ResumeText, "(?m)^source:\s*'(.*)'\s*$")
+    $StartMatch  = [regex]::Match($ResumeText, "(?m)^captured_start:\s*(.*)$")
+    $FinishMatch = [regex]::Match($ResumeText, "(?m)^captured_finish:\s*(.*)$")
+
+    $ResumedTitle  = if ($TitleMatch.Success)  { $TitleMatch.Groups[1].Value  -replace "''","'" } else { "" }
+    $ResumedSource = if ($SourceMatch.Success) { $SourceMatch.Groups[1].Value -replace "''","'" } else { "" }
+    # captured_start should always be present (our own Start writes it); fall back
+    # to the file's creation time only if the frontmatter was hand-mangled.
+    $ResumedStart  = if ($StartMatch.Success -and $StartMatch.Groups[1].Value.Trim() -ne "") { $StartMatch.Groups[1].Value.Trim() } else { (Get-Item -LiteralPath $ResumePath).CreationTime.ToString($global:TimestampFormat) }
+
+    if ($FinishMatch.Success -and $FinishMatch.Groups[1].Value.Trim() -ne "") {
+        Write-Warning "This file was already completed (captured_finish is set). Reopening to add more captures; Complete-PageCapture will refresh it when done."
+    }
+
+    # Capture count = number of delimiter lines already in the body. This is the
+    # value that must be right so the next capture is numbered correctly and the
+    # final capture_count is accurate. (Per-capture hashes / last-capture text are
+    # NOT reconstructed -- see note 8 in the header.)
+    $ExistingCaptureCount = ([regex]::Matches($ResumeText, $global:CaptureDelimiterLineRegex)).Count
+
+    $global:CurrentCaptureFilePath    = $ResumePath
+    $global:CurrentCaptureFileNumber  = $ResumedFileNumber
+    $global:CurrentPageTitle          = $ResumedTitle
+    $global:CurrentPageSource         = $ResumedSource
+    $global:CurrentPageStartTimestamp = $ResumedStart
+    $global:CurrentPageCaptureCount   = $ExistingCaptureCount
+    $global:LastCaptureText           = $null   # preview empty until the next capture
+    $global:AllCaptureHashesThisPage  = @()     # dedup covers only captures added after resume
+
+    Write-Host ("Resumed {0}: {1} existing capture(s), next will be capture {2}." -f $FileName, $ExistingCaptureCount, ($ExistingCaptureCount + 1))
+    Write-Warning "Duplicate detection and the status preview cover only captures added from now on; earlier captures on this page are not compared."
+}
+
+
+function Abandon-PageCapture {
+    param([switch]$Help)
+    Write-Host "Usage: Abandon-PageCapture   (deletes the open page file and clears session state)"
+    if ($Help) { return }
+
+    if (-not $global:CurrentCaptureFilePath) {
+        Write-Warning "No page open. Nothing to abandon."
+        return
+    }
+
+    $AbandonPath = $global:CurrentCaptureFilePath
+    $AbandonName = Split-Path $AbandonPath -Leaf
+    $Answer = Read-Host ("Delete {0} ({1} capture(s)) and discard it? (y/n)" -f $AbandonName, $global:CurrentPageCaptureCount)
+    if (-not ($Answer -ieq "y")) {
+        Write-Host "Kept. Nothing deleted."
+        return
+    }
+
+    if (Test-Path -LiteralPath $AbandonPath) {
+        Remove-Item -LiteralPath $AbandonPath
+    }
+
+    $global:CurrentCaptureFilePath    = $null
+    $global:CurrentCaptureFileNumber  = $null
+    $global:CurrentPageTitle          = $null
+    $global:CurrentPageSource         = $null
+    $global:CurrentPageStartTimestamp = $null
+    $global:CurrentPageCaptureCount   = 0
+    $global:LastCaptureText           = $null
+    $global:AllCaptureHashesThisPage  = @()
+
+    Write-Host ("Abandoned {0}: file deleted, session cleared." -f $AbandonName)
+}
+
+
 function Complete-PageCapture {
     param([switch]$Help)
     Write-Host "Usage: Complete-PageCapture   (rewrites frontmatter with final count/timestamp, closes the page)"
@@ -357,6 +497,25 @@ function Complete-PageCapture {
     if (-not $global:CurrentCaptureFilePath) {
         Write-Warning "No page open. Nothing to complete."
         return
+    }
+
+    # Gap 6: the open file may have been deleted externally since it was opened.
+    # Clear state and bail rather than throw on ReadAllText.
+    if (-not (Test-Path -LiteralPath $global:CurrentCaptureFilePath)) {
+        Write-Warning ("The open page file no longer exists at {0}. Clearing session state; nothing written." -f $global:CurrentCaptureFilePath)
+        $global:CurrentCaptureFilePath    = $null
+        $global:CurrentCaptureFileNumber  = $null
+        $global:CurrentPageTitle          = $null
+        $global:CurrentPageSource         = $null
+        $global:CurrentPageStartTimestamp = $null
+        $global:CurrentPageCaptureCount   = 0
+        $global:LastCaptureText           = $null
+        $global:AllCaptureHashesThisPage  = @()
+        return
+    }
+
+    if ($global:CurrentPageCaptureCount -eq 0) {
+        Write-Warning "This page has no captures. Completing will leave an empty stub file. Consider Abandon-PageCapture instead."
     }
 
     $FinishTimestamp = (Get-Date).ToString($global:TimestampFormat)
@@ -370,7 +529,7 @@ function Complete-PageCapture {
     $BodyText  = $BodyText.TrimStart("`n")
 
     # SYNC: field names / '---' fences must match the block in Start and the read
-    # regexes in Start. Left literal by design.
+    # regexes in Start and Resume. Left literal by design.
     $TitleYaml  = "'" + ($global:CurrentPageTitle  -replace "'","''") + "'"
     $SourceYaml = "'" + ($global:CurrentPageSource -replace "'","''") + "'"
     $Frontmatter = @(
