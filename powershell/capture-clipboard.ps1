@@ -1,21 +1,79 @@
-# capture-clipboard.ps1
-# Dot-source once per PowerShell session:  . .\capture-clipboard.ps1
-# Then:  Start-PageCapture -> Add-ClipboardCapture (repeat) -> Complete-PageCapture
+# =============================================================================
+# capture-clipboard.ps1  --  manual clipboard-to-file page capture
+# =============================================================================
 #
-# Session state lives in $global: variables below, shared across the commands
-# because they run as functions in one loaded session (not fresh processes).
+# PURPOSE
+#   Assemble one Markdown file per page/thread from multiple manual clipboard
+#   copies. You click a copy button in the source interface, then run a command
+#   here that appends the clipboard text to the page file currently open.
+#
+# LOAD (once per PowerShell session -- functions share session state)
+#   . .\capture-clipboard.ps1
+#
+# WORKFLOW
+#   Start-PageCapture -Title "<page title>" -Source "<url or origin>"
+#       Creates the next page-NNN.md file and writes placeholder frontmatter.
+#       -Title and -Source are optional. If given, warns (never blocks) when an
+#       existing file's frontmatter title/source matches -- possible duplicate.
+#
+#   Add-ClipboardCapture                 (FAST path)
+#       Appends current clipboard text to the open page. Warns if the text is
+#       byte-identical to the previous capture (likely an accidental double).
+#
+#   Add-ClipboardCaptureWithReview       (REVIEW path -- use while testing)
+#       Shows the clipboard, asks y/n, then delegates to Add-ClipboardCapture.
+#
+#   Complete-PageCapture
+#       Rewrites frontmatter with the final capture_count and finish timestamp,
+#       then closes the page so the next Start-PageCapture begins clean.
+#
+#   Any command with -Help prints just its usage line.
+#
+# TYPICAL SESSION
+#   . .\capture-clipboard.ps1
+#   Start-PageCapture -Title "How to reset the widget" -Source "https://app/threads/482"
+#   Add-ClipboardCapture        # after each copy button
+#   Add-ClipboardCapture
+#   Complete-PageCapture
+#
+# OUTPUT
+#   Files land in $CaptureOutputFolder (set just below), one flat folder,
+#   named page-001.md, page-002.md, ... auto-numbered from the highest existing.
+#   Files are UTF-8 without BOM.
+#
+# VERSION 1 NOTES AND CONCERNS
+#   1. NEWLINE NORMALIZATION IS A REAL MUTATION. Captured text has CRLF/CR
+#      converted to LF for consistency across python/R/bash/nvim. This is the
+#      one place your copied content is altered. Remove the normalization line
+#      in Add-ClipboardCapture if you need bytes verbatim.
+#   2. FRONTMATTER IS REWRITTEN WHOLESALE FROM SESSION STATE at Complete, not
+#      merged. Do not hand-edit a file's frontmatter before completing it --
+#      those edits are lost. Edit only after completion.
+#   3. FORMATTING IS DISCARDED. Get-Clipboard -Raw pulls plain text only; rich
+#      text / HTML formatting from the copy button is not preserved (by design).
+#   4. SINGLE SESSION ASSUMED. Two PowerShell sessions running these commands at
+#      once could both pick the same page-NNN number. Out of scope for v1.
+#   5. STATE IS IN-MEMORY. Captures append to disk immediately (crash-safe for
+#      the body), but the "which page is open" state lives only in this session.
+#      Close the terminal mid-page and you must re-run Complete manually or the
+#      frontmatter keeps its placeholder count. The body is intact regardless.
+# =============================================================================
 
-# Edit this to wherever the flat output folder should live.
-$global:CaptureOutputFolder = Join-Path $HOME "clipboard-capture"
 
-# --- session state for the page currently being assembled ------------------
-$global:CurrentCaptureFilePath   = $null
-$global:CurrentCaptureFileNumber = $null
-$global:CurrentPageTitle         = $null
-$global:CurrentPageSource        = $null
+# --- EDIT THIS: where captured page files are written ------------------------
+# GetFolderPath('Desktop') resolves the REAL desktop even when OneDrive Known
+# Folder redirection is on; "$HOME\Desktop" would create a wrong second folder.
+$global:CaptureOutputFolder = Join-Path ([Environment]::GetFolderPath('Desktop')) "clipboard-page-captures"
+
+
+# --- session state for the page currently being assembled -------------------
+$global:CurrentCaptureFilePath    = $null
+$global:CurrentCaptureFileNumber  = $null
+$global:CurrentPageTitle          = $null
+$global:CurrentPageSource         = $null
 $global:CurrentPageStartTimestamp = $null
-$global:CurrentPageCaptureCount  = 0
-$global:PreviousCaptureText      = $null
+$global:CurrentPageCaptureCount   = 0
+$global:PreviousCaptureText       = $null
 
 
 function Start-PageCapture {
@@ -66,12 +124,12 @@ function Start-PageCapture {
     $global:CurrentCaptureFileNumber = $HighestFileNumber + 1
 
     $FileName = "page-{0:D3}.md" -f $global:CurrentCaptureFileNumber
-    $global:CurrentCaptureFilePath   = Join-Path $global:CaptureOutputFolder $FileName
-    $global:CurrentPageTitle         = $Title
-    $global:CurrentPageSource        = $Source
+    $global:CurrentCaptureFilePath    = Join-Path $global:CaptureOutputFolder $FileName
+    $global:CurrentPageTitle          = $Title
+    $global:CurrentPageSource         = $Source
     $global:CurrentPageStartTimestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
-    $global:CurrentPageCaptureCount  = 0
-    $global:PreviousCaptureText      = $null
+    $global:CurrentPageCaptureCount   = 0
+    $global:PreviousCaptureText       = $null
 
     # Frontmatter written now with placeholder count / empty finish; rewritten
     # by Complete-PageCapture. File is on disk immediately so a crash loses nothing.
