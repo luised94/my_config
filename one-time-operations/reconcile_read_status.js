@@ -169,24 +169,45 @@ async function loadItemsInBatchesFromIDs(itemIDs) {
     return loaded;
 }
 
-// Save an item's pending tag changes, re-fetch, verify the expected end state,
-// retry once on a miss (S4). Returns true if verified. See migrate_slash_unread
-// for the same idiom; duplicated deliberately -- these are two independent
-// one-time scripts pasted separately into Run JavaScript, so a shared module
-// is not available, and copying the ~25 lines is cheaper than a transport.
+// Save an item's pending tag changes and verify the end state.
+//
+// PERFORMANCE NOTE (learned the hard way, 2026-08-12): the first version of
+// this re-fetched the item with Zotero.Items.getAsync on EVERY verify. That
+// was both slow and wrong. Slow: getAsync triggers a full itemData load, and
+// running ~1,687 of them serially took 2h42m (the Zotero debug log showed
+// single-item loads taking up to 198s under contention). Wrong: getAsync
+// returns the CACHED item object -- the same instance we just saved -- so the
+// re-fetch did expensive DB work only to hand back an object whose in-memory
+// tag state was already correct. It never actually tested persistence.
+//
+// saveTx() updates the in-memory item synchronously (repo idiom: mark-as-read
+// and tag-google-books read fields off the same object right after saveTx), so
+// verifying against `item` itself is free and correct for "did the change take
+// in memory". The common path is therefore: save, verify in memory, done. The
+// rare failure path re-fetches with getAsync (verified idiom) rather than a
+// per-item re-fetch on every item.
 async function saveVerifyRetry(item, expectedPresent, expectedAbsent) {
     await item.saveTx();
-    var verify = async function () {
-        var fresh = await Zotero.Items.getAsync(item.id);
+
+    var verifyInMemory = function (target) {
         for (var pi = 0; pi < expectedPresent.length; pi = pi + 1) {
-            if (!fresh.hasTag(expectedPresent[pi])) { return false; }
+            if (!target.hasTag(expectedPresent[pi])) { return false; }
         }
         for (var ai = 0; ai < expectedAbsent.length; ai = ai + 1) {
-            if (fresh.hasTag(expectedAbsent[ai])) { return false; }
+            if (target.hasTag(expectedAbsent[ai])) { return false; }
         }
         return true;
     };
-    if (await verify()) { return true; }
+
+    // Common path: the in-memory object reflects the save. Free check.
+    if (verifyInMemory(item)) { return true; }
+
+    // Rare miss: the intended change is not present in memory after a
+    // successful saveTx, which should not happen. Treat as an anomaly: back
+    // off, re-fetch a fresh handle (getAsync -- verified, in-repo idiom),
+    // re-apply, save, settle, verify. This path pays getAsync's cost, but only
+    // for genuine failures (the actual run had zero). getAsync returns the
+    // cached object, which after the settle reflects the persisted state.
     result.applied.verifyRetries = result.applied.verifyRetries + 1;
     await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_BACKOFF_MS); });
     var retryItem = await Zotero.Items.getAsync(item.id);
@@ -198,7 +219,7 @@ async function saveVerifyRetry(item, expectedPresent, expectedAbsent) {
     }
     await retryItem.saveTx();
     await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_SETTLE_MS); });
-    return await verify();
+    return verifyInMemory(retryItem);
 }
 
 // 4. PRE-FLIGHT
@@ -246,6 +267,16 @@ try {
 
     var candidates = await loadItemsInBatchesFromIDs(candidateIDs);
     result.candidatesScanned = candidates.length;
+
+    // Index the already-loaded candidate objects by id. The write path reuses
+    // these instead of re-fetching each item with getAsync -- the scan already
+    // paid to load them, and a second load per item is what made the first run
+    // take hours (see saveVerifyRetry perf note). saveTx mutates these same
+    // cached instances, so acting on them is correct.
+    var itemsById = new Map();
+    for (var mi = 0; mi < candidates.length; mi = mi + 1) {
+        itemsById.set(candidates[mi].id, candidates[mi]);
+    }
 
     for (var ci = 0; ci < candidates.length; ci = ci + 1) {
         var item = candidates[ci];
@@ -331,7 +362,11 @@ try {
 
         for (var wi = CONFIG.START_INDEX; wi < end; wi = wi + 1) {
             var entry = writeList[wi];
-            var writeItem = await Zotero.Items.getAsync(entry.itemID);
+            // Reuse the object the scan already loaded. Only fall back to a
+            // load if it is somehow absent (should not happen: every write-list
+            // id came from the scan). The fallback keeps a resumed run correct.
+            var writeItem = itemsById.get(entry.itemID);
+            if (!writeItem) { writeItem = await Zotero.Items.getAsync(entry.itemID); }
 
             // Idempotency: if the mapped tag is already present and (for swaps)
             // __unopened already gone, this item was done on a prior run. Skip
@@ -375,7 +410,10 @@ try {
             result.applied.collectionID = await collection.saveTx();
             await Zotero.DB.executeTransaction(async function () {
                 for (var ti = 0; ti < touchedIDs.length; ti = ti + 1) {
-                    var collItem = await Zotero.Items.getAsync(touchedIDs[ti]);
+                    // Reuse the already-loaded object; only load if absent
+                    // (resumed run whose scan did not cover this id).
+                    var collItem = itemsById.get(touchedIDs[ti]);
+                    if (!collItem) { collItem = await Zotero.Items.getAsync(touchedIDs[ti]); }
                     collItem.addToCollection(result.applied.collectionID);
                     await collItem.save();
                 }

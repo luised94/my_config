@@ -115,31 +115,31 @@ function assert(condition, message) {
     }
 }
 
-// Save an item's pending tag changes, then re-fetch and verify the expected
-// end state actually persisted; retry once on a miss (S4). expectedPresent /
-// expectedAbsent are tag-name arrays checked on the re-fetched item. Returns
-// true if the end state verified (with or without a retry), false if it still
-// failed after the retry. Pure with respect to other items; only touches the
-// one passed in.
+// Save an item's pending tag changes, then verify the end state. saveTx()
+// updates the in-memory item synchronously (repo idiom: mark-as-read /
+// tag-google-books read fields off the same object right after saveTx), so the
+// common-path verify is against `item` itself -- free. Do NOT re-fetch per
+// item: getAsync triggers a full itemData load, and doing that on every item
+// is what made the reconcile run take hours (2026-08-12). The rare failure
+// path re-fetches with getAsync and re-applies (S4: re-applying, not just
+// re-saving, is what recovers a lost write). expectedPresent / expectedAbsent
+// are tag-name arrays. Returns true if verified.
 async function saveVerifyRetry(item, expectedPresent, expectedAbsent) {
     await item.saveTx();
 
-    var verify = async function () {
-        var fresh = await Zotero.Items.getAsync(item.id);
+    var verifyInMemory = function (target) {
         for (var pi = 0; pi < expectedPresent.length; pi = pi + 1) {
-            if (!fresh.hasTag(expectedPresent[pi])) { return false; }
+            if (!target.hasTag(expectedPresent[pi])) { return false; }
         }
         for (var ai = 0; ai < expectedAbsent.length; ai = ai + 1) {
-            if (fresh.hasTag(expectedAbsent[ai])) { return false; }
+            if (target.hasTag(expectedAbsent[ai])) { return false; }
         }
         return true;
     };
 
-    if (await verify()) { return true; }
+    if (verifyInMemory(item)) { return true; }
 
-    // Miss: back off, re-apply the intended changes on a fresh handle, settle,
-    // re-verify. Re-applying (not just re-saving the stale handle) is what S4
-    // found actually recovers a lost write.
+    // Rare miss (expected: zero). Re-fetch, re-apply, save, settle, verify.
     result.applied.verifyRetries = result.applied.verifyRetries + 1;
     await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_BACKOFF_MS); });
     var retryItem = await Zotero.Items.getAsync(item.id);
@@ -151,7 +151,7 @@ async function saveVerifyRetry(item, expectedPresent, expectedAbsent) {
     }
     await retryItem.saveTx();
     await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_SETTLE_MS); });
-    return await verify();
+    return verifyInMemory(retryItem);
 }
 
 // 4. PRE-FLIGHT
