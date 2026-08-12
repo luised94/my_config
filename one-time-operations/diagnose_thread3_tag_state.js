@@ -123,6 +123,7 @@ var CONFIG = {
 
     // Bounded sample sizes (A6).
     SAMPLE_MAX: 50,
+    UNMAPPED_SAMPLE_PER_VALUE: 3,   // titles kept per distinct unmapped Read_Status value
 
     // Batch size for getAsync loads. The sets here are small, but batching
     // keeps a single getAsync from being handed thousands of ids at once and
@@ -164,8 +165,13 @@ var result = {
         itemsWithReadStatusLine: 0,
         agreeWithTags: 0,
         disagreeWithTags: 0,
+        reconcilableDisagree: 0,  // disagree AND only tag is __unopened AND extra maps to in_progress/read -> extra may win
+        tagWinsDisagree: 0,       // disagree but tag is a deliberate state -> tag wins, extra stale
         noCurrentStateTag: 0,     // has Read_Status line but no opened-state tag at all
+        noStateTagButEngaged: 0,  // subset of above where extra maps to in_progress/read -> normalizer would mis-default to __unopened
         unmappedValue: 0,         // Read_Status value not in READ_STATUS_TO_TAG
+        unmappedValueCounts: {},  // raw unmapped Read_Status value -> count (to judge reconcilability)
+        unmappedSampleByValue: {},// raw unmapped value -> up to N { itemID, title } samples
         disagreeSample: []        // { itemID, title, readStatusValue, expectedTag, actualStateTags: [...] }
     }
 };
@@ -378,6 +384,26 @@ try {
         if (!mappedTag) {
             result.check3_readStatus.unmappedValue =
                 result.check3_readStatus.unmappedValue + 1;
+            // Capture the distinct unmapped values and their counts so the
+            // owner can judge reconcilability: a handful of typo/case variants
+            // of "read"/"in progress" is trivially reconcilable (extend the
+            // mapping); free-text or hundreds of distinct values is not worth
+            // it (tags win, per the reconcile disposition 2026-08-11). Keyed on
+            // the raw value verbatim -- case and whitespace preserved, since
+            // that is exactly what distinguishes a typo-variant from noise.
+            var unmappedKey = rawValue;
+            if (result.check3_readStatus.unmappedValueCounts[unmappedKey] === undefined) {
+                result.check3_readStatus.unmappedValueCounts[unmappedKey] = 0;
+                result.check3_readStatus.unmappedSampleByValue[unmappedKey] = [];
+            }
+            result.check3_readStatus.unmappedValueCounts[unmappedKey] =
+                result.check3_readStatus.unmappedValueCounts[unmappedKey] + 1;
+            if (result.check3_readStatus.unmappedSampleByValue[unmappedKey].length < CONFIG.UNMAPPED_SAMPLE_PER_VALUE) {
+                result.check3_readStatus.unmappedSampleByValue[unmappedKey].push({
+                    itemID: rsItem.id,
+                    title: rsItem.getField('title')
+                });
+            }
             continue;
         }
 
@@ -391,12 +417,40 @@ try {
         if (currentStateTags.length === 0) {
             result.check3_readStatus.noCurrentStateTag =
                 result.check3_readStatus.noCurrentStateTag + 1;
+            // No opened-state tag at all. The normalizer WILL add __unopened to
+            // these. If extra says the item was engaged (in_progress/read),
+            // that __unopened will be wrong -- so these are reconcilable too,
+            // and separating the engaged subset tells the owner how many items
+            // the normalizer would mis-default. Counted separately from the
+            // onlyUnopened disagreements because these have no state tag to
+            // replace -- reconciliation here ADDS the mapped tag rather than
+            // swapping __unopened for it.
+            if (mappedTag === '__in_progress' || mappedTag === '__read') {
+                result.check3_readStatus.noStateTagButEngaged =
+                    result.check3_readStatus.noStateTagButEngaged + 1;
+            }
         } else if (currentStateTags.indexOf(mappedTag) !== -1) {
             result.check3_readStatus.agreeWithTags =
                 result.check3_readStatus.agreeWithTags + 1;
         } else {
             result.check3_readStatus.disagreeWithTags =
                 result.check3_readStatus.disagreeWithTags + 1;
+            // The reconcile-relevant split. When the ONLY opened-state tag is
+            // __unopened but extra says the item was engaged (mapped to
+            // __in_progress/__read), __unopened is a never-updated default and
+            // extra is positive evidence -- this is the reconcilable population
+            // (extra could win). When the tag is itself __in_progress/__read
+            // and merely differs from extra's value, the tag is a deliberate
+            // state and wins; extra is stale. Counting these separately is what
+            // tells the owner whether reconciliation is worth a one-time pass.
+            var onlyUnopened = currentStateTags.length === 1 && currentStateTags[0] === '__unopened';
+            if (onlyUnopened && (mappedTag === '__in_progress' || mappedTag === '__read')) {
+                result.check3_readStatus.reconcilableDisagree =
+                    result.check3_readStatus.reconcilableDisagree + 1;
+            } else {
+                result.check3_readStatus.tagWinsDisagree =
+                    result.check3_readStatus.tagWinsDisagree + 1;
+            }
             if (result.check3_readStatus.disagreeSample.length < CONFIG.SAMPLE_MAX) {
                 result.check3_readStatus.disagreeSample.push({
                     itemID: rsItem.id,
@@ -459,8 +513,28 @@ lines.push(`search path: ${result.check3_readStatus.searchPath} (candidates scan
 lines.push(`items with a Read_Status: line: ${result.check3_readStatus.itemsWithReadStatusLine}`);
 lines.push(`  agree with current tags: ${result.check3_readStatus.agreeWithTags}`);
 lines.push(`  DISAGREE with current tags: ${result.check3_readStatus.disagreeWithTags}`);
+lines.push(`    of which reconcilable (only tag is __unopened, extra says engaged): ${result.check3_readStatus.reconcilableDisagree}`);
+lines.push(`    of which tag-wins (tag is a deliberate state, extra stale): ${result.check3_readStatus.tagWinsDisagree}`);
 lines.push(`  have line but no current state tag: ${result.check3_readStatus.noCurrentStateTag}`);
+lines.push(`    of which extra says engaged (normalizer would mis-default to __unopened): ${result.check3_readStatus.noStateTagButEngaged}`);
 lines.push(`  unmapped Read_Status value: ${result.check3_readStatus.unmappedValue}`);
+// The distinct unmapped values, most frequent first, are the signal for
+// whether reconciliation is straightforward. A short list dominated by
+// case/typo variants of read/in-progress means "extend the mapping and
+// reconcile"; a long tail of free-text means "tags win, drop it".
+var unmappedValueEntries = Object.keys(result.check3_readStatus.unmappedValueCounts).map(function (value) {
+    return { value: value, count: result.check3_readStatus.unmappedValueCounts[value] };
+});
+unmappedValueEntries.sort(function (a, b) { return b.count - a.count; });
+lines.push(`  distinct unmapped values: ${unmappedValueEntries.length}`);
+for (var uv = 0; uv < unmappedValueEntries.length; uv = uv + 1) {
+    var entry = unmappedValueEntries[uv];
+    lines.push(`    "${entry.value}" x${entry.count}`);
+    var samples = result.check3_readStatus.unmappedSampleByValue[entry.value];
+    for (var sv = 0; sv < samples.length; sv = sv + 1) {
+        lines.push(`        [${samples[sv].itemID}] ${samples[sv].title}`);
+    }
+}
 for (var s3 = 0; s3 < result.check3_readStatus.disagreeSample.length; s3 = s3 + 1) {
     var ds = result.check3_readStatus.disagreeSample[s3];
     lines.push(`    [${ds.itemID}] Read_Status="${ds.readStatusValue}" expected=${ds.expectedTag} actual=${ds.actualStateTags.join('+')} :: ${ds.title}`);
