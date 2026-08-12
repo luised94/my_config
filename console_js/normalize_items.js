@@ -100,9 +100,22 @@ var CONFIG = {
     UNOPENED_TAG: '__unopened',
     OPENED_STATE_TAGS: ['__unopened', '__in_progress', '__read'],  // R1 guard set (name-match)
 
+    // The tag that flags "this item needs a file attached", and the tags that
+    // mean "a file is NOT APPLICABLE to this item" and therefore suppress the
+    // file flag. __print means the owner holds a physical copy: there is no
+    // file to attach, so flagging __add-file would create a worklist entry that
+    // can never be actioned (owner decision 2026-08-12). __print suppresses
+    // ONLY the file flag, not __add-metadata -- a physical book can still have
+    // incomplete metadata. If __print is later renamed (e.g. __have_in_print),
+    // change it here only. This suppression is used by R2 and will be used by
+    // the future R3 (missing-file), so it lives in CONFIG, not inside a rule.
+    FILE_FLAG_TAG: '__add-file',
+    FILE_NOT_APPLICABLE_TAGS: ['__print'],
+
     // R2 site table. Each entry: match if url includes any urlIncludes OR
     // libraryCatalog (lowercased) includes any catalogIncludes; then add tags.
-    // New sites are new rows here, not new code.
+    // New sites are new rows here, not new code. The file flag among addTags is
+    // suppressed per-item when a FILE_NOT_APPLICABLE_TAGS tag is present.
     SITE_RULES: [
         {
             name: 'google_books',
@@ -191,6 +204,45 @@ async function saveVerifyRetry(item, expectedPresent) {
 
 // --- Rule table (D5). guard reads only; apply mutates tags in memory only. ---
 // Each apply returns the array of tag names it added (for accounting), or [].
+//
+// R2 helper: given an item, compute the set of tags the site rules WOULD add,
+// after removing any that are already present and any file flag suppressed by a
+// file-not-applicable tag (__print). Pure read. Used by both R2's guard ("would
+// this add anything") and R2's apply ("add exactly these"), so the two can
+// never diverge -- the earlier version duplicated the site-match logic in guard
+// and apply, which is exactly where a suppression added to one but not the
+// other would silently break. Extracted per the >=3-call-site rule.
+function computeSiteTagsToAdd(item) {
+    var url = (item.getField('url') || '').toLowerCase();
+    var catalog = (item.getField('libraryCatalog') || '').toLowerCase();
+
+    var fileNotApplicable = false;
+    for (var ni = 0; ni < CONFIG.FILE_NOT_APPLICABLE_TAGS.length; ni = ni + 1) {
+        if (item.hasTag(CONFIG.FILE_NOT_APPLICABLE_TAGS[ni])) { fileNotApplicable = true; break; }
+    }
+
+    var toAdd = [];
+    for (var si = 0; si < CONFIG.SITE_RULES.length; si = si + 1) {
+        var siteRule = CONFIG.SITE_RULES[si];
+        var matches = false;
+        for (var ui = 0; ui < siteRule.urlIncludes.length; ui = ui + 1) {
+            if (url.includes(siteRule.urlIncludes[ui].toLowerCase())) { matches = true; }
+        }
+        for (var cti = 0; cti < siteRule.catalogIncludes.length; cti = cti + 1) {
+            if (catalog.includes(siteRule.catalogIncludes[cti].toLowerCase())) { matches = true; }
+        }
+        if (!matches) { continue; }
+        for (var ti = 0; ti < siteRule.addTags.length; ti = ti + 1) {
+            var tag = siteRule.addTags[ti];
+            // Suppress the file flag on file-not-applicable items (__print).
+            if (tag === CONFIG.FILE_FLAG_TAG && fileNotApplicable) { continue; }
+            if (item.hasTag(tag)) { continue; }               // already present
+            if (toAdd.indexOf(tag) === -1) { toAdd.push(tag); }
+        }
+    }
+    return toAdd;
+}
+
 var RULES = [
     {
         name: 'R1_initial_state',
@@ -208,44 +260,18 @@ var RULES = [
     },
     {
         name: 'R2_site_flags',
-        description: 'flag items from known sites (Google Books) for metadata/file workflows',
+        description: 'flag items from known sites (Google Books) for metadata/file workflows; __print suppresses the file flag',
         guard: function (item) {
-            var url = (item.getField('url') || '').toLowerCase();
-            var catalog = (item.getField('libraryCatalog') || '').toLowerCase();
-            for (var si = 0; si < CONFIG.SITE_RULES.length; si = si + 1) {
-                var siteRule = CONFIG.SITE_RULES[si];
-                for (var ui = 0; ui < siteRule.urlIncludes.length; ui = ui + 1) {
-                    if (url.includes(siteRule.urlIncludes[ui].toLowerCase())) { return true; }
-                }
-                for (var cti = 0; cti < siteRule.catalogIncludes.length; cti = cti + 1) {
-                    if (catalog.includes(siteRule.catalogIncludes[cti].toLowerCase())) { return true; }
-                }
-            }
-            return false;
+            // Match only if there is at least one tag actually left to add after
+            // suppression and already-present filtering. This means a __print
+            // Google Books item that already has __add-metadata does NOT match
+            // (nothing to do), rather than matching and adding nothing.
+            return computeSiteTagsToAdd(item).length > 0;
         },
         apply: function (item) {
-            var url = (item.getField('url') || '').toLowerCase();
-            var catalog = (item.getField('libraryCatalog') || '').toLowerCase();
-            var added = [];
-            for (var si = 0; si < CONFIG.SITE_RULES.length; si = si + 1) {
-                var siteRule = CONFIG.SITE_RULES[si];
-                var matches = false;
-                for (var ui = 0; ui < siteRule.urlIncludes.length; ui = ui + 1) {
-                    if (url.includes(siteRule.urlIncludes[ui].toLowerCase())) { matches = true; }
-                }
-                for (var cti = 0; cti < siteRule.catalogIncludes.length; cti = cti + 1) {
-                    if (catalog.includes(siteRule.catalogIncludes[cti].toLowerCase())) { matches = true; }
-                }
-                if (matches) {
-                    for (var ti = 0; ti < siteRule.addTags.length; ti = ti + 1) {
-                        if (!item.hasTag(siteRule.addTags[ti])) {
-                            item.addTag(siteRule.addTags[ti]);
-                            added.push(siteRule.addTags[ti]);
-                        }
-                    }
-                }
-            }
-            return added;
+            var toAdd = computeSiteTagsToAdd(item);
+            for (var ti = 0; ti < toAdd.length; ti = ti + 1) { item.addTag(toAdd[ti]); }
+            return toAdd;
         }
     }
 ];
