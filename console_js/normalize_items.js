@@ -112,6 +112,16 @@ var CONFIG = {
     FILE_FLAG_TAG: '__add-file',
     FILE_NOT_APPLICABLE_TAGS: ['__print'],
 
+    // R4: an item is missing authorship if it has NO creator whose type is in
+    // AUTHORSHIP_ROLES. Owner decision 2026-08-12: author and/or editor. Types
+    // are compared by NAME (getCreatorJSON returns creatorType as a string like
+    // 'author'/'editor'), so no id resolution is needed. Items with only other
+    // roles (translator, contributor, etc.) and no author/editor are flagged
+    // __add-metadata -- the same tag R2 uses, since both mean "metadata needs
+    // completion".
+    METADATA_FLAG_TAG: '__add-metadata',
+    AUTHORSHIP_ROLES: ['author', 'editor'],
+
     // R2 site table. Each entry: match if url includes any urlIncludes OR
     // libraryCatalog (lowercased) includes any catalogIncludes; then add tags.
     // New sites are new rows here, not new code. The file flag among addTags is
@@ -243,6 +253,20 @@ function computeSiteTagsToAdd(item) {
     return toAdd;
 }
 
+// R4 helper: does the item have at least one creator whose type is an
+// authorship role (author/editor)? getCreatorJSON(i) returns creatorType as a
+// NAME string (Zotero docs), so no id resolution. Pure read. Named because it
+// is used by R4's guard and is a clear predicate; kept out of the guard body
+// so the "missing authorship" logic reads as one line there.
+function itemHasAuthorshipCreator(item) {
+    var count = item.numCreators();
+    for (var i = 0; i < count; i = i + 1) {
+        var creator = item.getCreatorJSON(i);
+        if (creator && CONFIG.AUTHORSHIP_ROLES.indexOf(creator.creatorType) !== -1) { return true; }
+    }
+    return false;
+}
+
 var RULES = [
     {
         name: 'R1_initial_state',
@@ -272,6 +296,19 @@ var RULES = [
             var toAdd = computeSiteTagsToAdd(item);
             for (var ti = 0; ti < toAdd.length; ti = ti + 1) { item.addTag(toAdd[ti]); }
             return toAdd;
+        }
+    },
+    {
+        name: 'R4_missing_authorship',
+        description: 'flag __add-metadata if the item has no author/editor creator',
+        guard: function (item) {
+            // Already flagged -> nothing to do (idempotent).
+            if (item.hasTag(CONFIG.METADATA_FLAG_TAG)) { return false; }
+            return !itemHasAuthorshipCreator(item);
+        },
+        apply: function (item) {
+            item.addTag(CONFIG.METADATA_FLAG_TAG);
+            return [CONFIG.METADATA_FLAG_TAG];
         }
     }
 ];
