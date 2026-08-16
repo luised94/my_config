@@ -69,6 +69,17 @@
 //      getAsync re-fetch + re-apply once (S4 defence-in-depth; expected zero on
 //      settled items).
 //
+// KNOWN PERF ISSUE (open, deferred -- see handoff/03 IMPLEMENTATION LOG): even
+//      with in-memory verify, this makes ONE saveTx per changed item. saveTx is
+//      save() in its own transaction + notifier cascade, so a 5,178-item run
+//      took ~43 min (~504ms/item) purely in transaction+notifier overhead x N.
+//      FIX (future, needs its own pass): wrap the write loop in ONE
+//      Zotero.DB.executeTransaction using item.save() (joins the outer txn)
+//      instead of per-item saveTx, verify the batch after commit. Two live runs
+//      (~6,865 writes) had ZERO retries, confirming S4 loss does not occur on
+//      settled items, so the per-item-transaction insurance is not needed here.
+//      Writes already produced are correct; this is speed only.
+//
 // Idempotent (A7): every guard is "does this need doing", so a re-run over the
 //      same items is a no-op. Safe to run on a cadence and safe to re-run after
 //      a partial pass.

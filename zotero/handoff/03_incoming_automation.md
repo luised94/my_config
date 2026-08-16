@@ -409,3 +409,94 @@ Consequences to carry into implementation:
 - This does NOT change the S3 finding that actions chain and see each
   other's writes; other actions may still exist. It only removes this
   specific overlap.
+
+---
+
+## IMPLEMENTATION LOG (2026-08-12)
+
+Thread-3 deliverables were built and the one-time passes run against the live
+library. Trigger is a MANUAL CONSOLE PASS, not an A&T event action (see the
+separate decision note DECISION_NOTE_thread3_manual_console.md). Files:
+
+- one-time-operations/diagnose_thread3_tag_state.js  (read-only, 3 checks)
+- one-time-operations/migrate_slash_unread.js        (one-time, ran OK)
+- one-time-operations/reconcile_read_status.js       (one-time, ran OK)
+- console_js/normalize_items.js                       (recurring, R1+R2, ran OK)
+
+### Verified facts established during implementation
+
+- Zotero.Search 'tag is X' matches by NAME across BOTH manual and auto tag
+  types (probed: __unopened returned 58,482 = 21,647 manual + 36,835 auto).
+  So the guard's name-match "auto counts" is free -- one condition, no union.
+- item.getTags() elements carry {tag, type}; type 0 = manual, 1 = automatic
+  (confirmed against Zotero source). No item carried the same reading-state
+  name as BOTH types ("both" = 0 across __unopened/__in_progress/__revisit),
+  so the 36,835 auto __unopened are auto-ONLY -- deleting them would strip the
+  only __unopened and the normalizer would re-add it as manual (re-tag cost,
+  not data loss). Deletion hazard, not urgent.
+- saveTx() updates the in-memory item object synchronously. Verifying tag
+  changes against the same object is free and correct for "did the change take
+  in memory". getAsync returns the CACHED object, so a post-save re-fetch does
+  DB work only to hand back an already-correct object -- it does NOT test
+  persistence. Real persistence checks need a cache-bypassing reload (expensive)
+  and are only worth it on a rare failure path.
+- /unread population: 86 items, 84 clean + 2 contradictions (kept their real
+  tag). Read_Status legacy field: 3,556 items; reconciled 1,190 swaps
+  (__unopened -> mapped) + 497 adds; left 46 tag-wins + 319 agree; 1,500
+  "To Read"/"Not Reading" are non-engagement no-ops. Mapping table MUST include
+  'to read'->__to_read and 'not reading'->__not_reading or they miscount as
+  unmapped.
+
+### Run order (LOAD-BEARING)
+
+migrate_slash_unread -> reconcile_read_status -> normalize_items. Reconcile
+gives the 497 no-state-but-engaged items a real state, so R1 leaves them alone
+instead of stamping __unopened. Running the normalizer first would cement 497
+wrong __unopened defaults. Tags-first, normalizer-last.
+
+### OUTSTANDING PERF ISSUE (not yet fixed -- deferred by owner to finish thread)
+
+Two distinct performance problems surfaced, both from per-item DB cost at scale:
+
+1. FIXED (commit "perf: drop per-item re-fetch"): saveVerifyRetry re-fetched
+   each item with getAsync on every verify (+ write/collection loops re-loaded
+   by id) -> ~4 full itemData loads per item, ~6,700 serial loads, single loads
+   up to 198s under contention -> reconcile took 2h42m. Fix: verify in memory,
+   reuse scan-loaded objects. getAsync now only on batched scan load, rare
+   retry, and resume fallback.
+
+2. STILL OPEN: even after fix 1, normalize_items on 5,178 writes took 43 min
+   (~504ms/item). Cause is NOT redundant reads -- it is 5,178 sequential
+   saveTx() calls. saveTx = save() wrapped in its OWN transaction, so each call
+   opens/commits a transaction AND fires the notifier cascade (UI/sync/FTS) for
+   one item. The cost is transaction+notifier overhead x N, serialized.
+
+   FIX DIRECTION (for a future session -- a real write-strategy change across
+   all three write-scripts, wants its own adversarial pass, NOT a hot patch):
+   wrap the per-item writes in ONE Zotero.DB.executeTransaction, using
+   item.save() (joins the outer transaction) instead of item.saveTx() (its own).
+   One commit, one notifier batch, instead of N. This is the collect_broken_links
+   collection-membership pattern, applied to the tag writes too. Verify the
+   whole batch AFTER commit rather than per item -- safe because two live runs
+   (~6,865 writes total) produced ZERO verify retries, confirming the S4 lost-
+   write mode does not occur on SETTLED items (it was a mid-import contention
+   effect, which the manual-pass design avoids by construction). Tradeoff to
+   weigh: one big transaction rolls back wholly on failure -- but for idempotent
+   additive tag writes, a clean re-run is fine, arguably better than partial
+   per-item state. START_INDEX resume still applies for very large batches if
+   the single transaction is itself chunked (e.g. 500/transaction).
+
+   The writes ALREADY DONE are correct; this is forward-looking speed only.
+
+### Scope still open at end of session
+
+- R4 (missing author/editor -> __add-metadata): settled, next patch.
+- R3 (missing-file -> __add-file): needs per-item-type linkMode classification;
+  __print suppression infrastructure (FILE_FLAG_TAG / FILE_NOT_APPLICABLE_TAGS)
+  already in place for it to reuse.
+- R5 (DOI/date): DROPPED. DOI not required; date affects BBT key -> Thread 5.
+- tag_hygiene_report.js (recurring, lean): not yet built.
+- MAINTENANCE_PLAN.md D5 / thread-3 map: update to reflect manual-console-pass
+  decision and the file list above.
+- __print -> __have_in_print rename: optional, out of scope, one CONFIG line if
+  done (FILE_NOT_APPLICABLE_TAGS).
