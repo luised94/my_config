@@ -209,9 +209,14 @@ function Start-PageCapture {
             $SourceMatch = [regex]::Match($ExistingText, "(?m)^source:\s*'(.*)'\s*$")
             $ExistingTitle  = if ($TitleMatch.Success)  { $TitleMatch.Groups[1].Value  -replace "''","'" } else { "" }
             $ExistingSource = if ($SourceMatch.Success) { $SourceMatch.Groups[1].Value -replace "''","'" } else { "" }
-            if (($Title  -ne "" -and $ExistingTitle  -ieq $Title) -or
-                ($Source -ne "" -and $ExistingSource -ieq $Source)) {
-                Write-Warning ("Possible duplicate of existing file {0} (title/source match). Proceeding with a new file anyway." -f $PageFile.Name)
+            # Warn only if EVERY field you supplied matches (AND, not OR). Source
+            # is often a constant app label rather than a unique URL, so matching
+            # on source alone produced a false warning per existing file.
+            $TitleMatches  = ($Title  -eq "" -or $ExistingTitle  -ieq $Title)
+            $SourceMatches = ($Source -eq "" -or $ExistingSource -ieq $Source)
+            if ($TitleMatches -and $SourceMatches) {
+                $MatchedFields = if ($Title -ne "" -and $Source -ne "") { "title and source" } elseif ($Title -ne "") { "title" } else { "source" }
+                Write-Warning ("Possible duplicate of existing file {0} ({1} match). Proceeding with a new file anyway." -f $PageFile.Name, $MatchedFields)
             }
         }
     }
