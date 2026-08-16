@@ -359,32 +359,47 @@ opportunistically, never in bulk sweeps mixed with feature changes.
 Every entry below is DRAFT unless marked CONFIRMED. Inferred from the
 repository; confirm, correct, or extend.
 
-### B1. Workflow tags (DRAFT)
+### B1. Workflow tags (SETTLED 2026-08-11/12; was DRAFT)
 
-Reading-state tags, prefix "__", intended to be mutually exclusive:
+Reading-state tags, prefix "__". Opened-state set = {__unopened,
+__in_progress, __read} (the three that count as "has a reading state";
+matched by NAME so manual and auto tags of the same name both count):
 
 - __unopened     item ingested, file never opened
 - __to_read      queued for reading
-- __in_progress  currently reading (auto-added on file open)
-- __read         finished (replaces __in_progress)
-- __not_reading  deliberately not reading
+- __in_progress  currently reading
+- __read         finished
+
+Exclusivity (SETTLED):
+- __unopened is exclusive with __in_progress and __read (a genuine
+  contradiction if co-present; the tag-hygiene report flags exactly this).
+- __in_progress + __read MAY coexist (a revisit / re-reading in progress).
+- __unopened MAY coexist with __to_read (queued but not opened) and with
+  __not_reading (marked not-reading, may be reconsidered). These are NOT
+  contradictions and are not flagged.
+- __not_reading (deliberately not reading) does NOT count as an opened
+  state, so an item carrying only __not_reading or only __to_read still
+  gets __unopened from the normalizer.
+
 
 Action/maintenance tags, prefix "__", may coexist with reading-state:
 
-- __add-metadata item needs metadata completion (e.g. Google Books)
-- __add-file     item needs a file attached
+- __add-metadata item needs metadata completion (Google Books; or no
+                 author/editor creator -- normalizer R2/R4)
+- __add-file     item needs a file attached (suppressed on __print items,
+                 which have no file to attach -- normalizer R2, future R3)
 
 Ownership tags, prefix "__", orthogonal to reading-state (CONFIRMED):
 
-- __print        physical copy of the item is owned
+- __print        physical copy owned; means "file not applicable", so it
+                 suppresses __add-file. (Rename to __have_in_print is
+                 optional/out of scope; one CONFIG line if done.)
 
-Known open points (Q1 in MAINTENANCE_PLAN.md):
-- Are reading-state tags strictly mutually exclusive, and what is the
-  resolution order when multiple are present? (convert_readstatus_to_tags.js
-  implies: __unopened is replaced by stronger states; __to_read may
-  coexist with __unopened.)
-- Any renames, additions, or retirements desired?
-- Read_Status in the extra field is legacy; tags are the source of truth.
+Legacy (SETTLED): Read_Status in the extra field is legacy; tags are the
+source of truth. The legacy "/unread" tag was migrated to __unopened and
+Read_Status was reconciled into tags where it held engagement state the
+tags had lost (one-time-operations/, 2026-08-12); the extra-field lines
+themselves are left in place (stripping them is a later field-content op).
 
 ### B2. Linked attachments (base path CONFIRMED; rest OBSERVED, thread 2)
 

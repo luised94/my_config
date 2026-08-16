@@ -43,9 +43,9 @@ handoff document so the repository, not any chat transcript, is the record.
 | powershell/Backup-ZoteroStorage.ps1 | KEEP. Reference-quality. Serves as the scaffold for future PS1 tools (e.g. Move-OrphanFiles.ps1). Encoding is plain ASCII; no conversion needed. |
 | console_js/bbt_export.js | KEEP. Flagship script. Fixed: stray non-ASCII byte (0xFB) on line 91 removed (thread 2 ASCII sweep, 2026-07). Open item: incremental-export scaffolding is half built; either finish incremental slicing or freeze as full-export-only with a comment. |
 | console_js/bbt_citation_key_refresh.js | KEEP. Fix one stray 0x1A control character in a comment. Open item: sort item IDs before processing so START_INDEX resume is order-stable. |
+| console_js/convert_readstatus_to_tags.js | SALVAGE, SUPERSEDED. Its replace-__unopened intent was completed by one-time-operations/reconcile_read_status.js (thread 3, 2026-08-12) under detect-then-write discipline; this draft never ran. |
+| console_js/determine_readstatus_and_tag_combinations.js | SALVAGE, SUPERSEDED. Generalized into console_js/tag_hygiene_report.js (recurring, lean) plus one-time-operations/diagnose_thread3_tag_state.js (historically contingent checks). |
 | console_js/adjust_attachment_paths.js | KEEP. Useful whenever a base path changes. Also informs the orphan pipeline (historical base paths). |
-| console_js/convert_readstatus_to_tags.js | SALVAGE. One-time migration, but its tag logic seeds the tag-hygiene report (thread 3). |
-| console_js/determine_readstatus_and_tag_combinations.js | SALVAGE. Generalize into a recurring tag-hygiene report (thread 3). |
 | plugin_actions_and_tag_js/add-google-tag.js | SPLIT. File is an accidental concatenation of three actions (duplicate const declarations, unreachable code). Split into mark-as-read.js and tag-google-books.js; dedupe the in-progress action against the yml backup. |
 | plugin_actions_and_tag_js/actions-zotero.yml | KEEP as backup artifact. Decision: repository .js files are canonical; the yml is an exported backup, refreshed after changes. README states this. |
 | better_notes_templates/*.md | KEEP. No changes planned. |
@@ -64,9 +64,17 @@ handoff document so the repository, not any chat transcript, is the record.
 - D4: Orphan quarantine location: a sibling folder "zotero-orphans/" next
   to the linked base (mirrors the existing pdf_to_delete pattern). Moves
   preserve relative subfolder structure so restore is trivial.
-- D5: Automation starts with the item-added event only, via Actions & Tags.
-  Rules are a data-driven table of {name, guard, apply}, idempotent, with
-  cheap guards first. LOG_ONLY is the default mode.
+- D5: Automation rules are a data-driven table of {name, guard, apply},
+  idempotent, with cheap guards first; LOG_ONLY (DRY_RUN) is the default
+  mode. TRIGGER SUPERSEDED (owner, 2026-08-11, see
+  DECISION_NOTE_thread3_manual_console.md and handoff/03 IMPLEMENTATION
+  LOG): the thread-3 normalizer is a MANUAL CONSOLE PASS scoped by input
+  set, not an item-added Actions & Tags event action. Running after imports
+  settle removes the write-contention window that forced mandatory
+  per-item retries and risked bulk serialization; it also collapsed the
+  former event-action + backfill-runner into one script
+  (console_js/normalize_items.js). The rules-table philosophy above is
+  unchanged; only the trigger changed.
 - D6: js files in this repository are canonical for Actions & Tags actions;
   actions-zotero.yml is a backup export.
 - D7: Delivery model: work is batched per thread; each commit is delivered
@@ -83,13 +91,18 @@ handoff document so the repository, not any chat transcript, is the record.
 
 ## 4. Open questions
 
-- Q1: Tag taxonomy refinement. Current __ workflow tags need review.
-  Owner: user. Recorded as DRAFT in CONVENTIONS.md Part B. Blocks the final
-  rule set in thread 3; blocks nothing in thread 2.
-- Q2: Reporting standard for automatic actions. Proposal pending spike S4:
-  Zotero.debug always; append-file in the data directory for run records;
-  Zotero.ProgressWindow only for brief user-facing summaries. Confirm in
-  thread 3.
+- Q1: Tag taxonomy refinement. RESOLVED (owner, 2026-08-11/12; folded into
+  CONVENTIONS.md Part B, no longer DRAFT). Settled: opened-state set is
+  {__unopened, __in_progress, __read} (name-match, auto counts); __unopened
+  is exclusive with __in_progress/__read; __in_progress + __read may coexist
+  (revisit); __unopened may coexist with __to_read and with __not_reading;
+  __print is orthogonal ownership and marks "file not applicable". The
+  normalizer's R1 guard and the tag-hygiene report's contradiction check are
+  built on exactly these rules.
+- Q2: Reporting standard for automatic actions. RESOLVED (S4, thread 3):
+  Zotero.debug always; appended JSONL for run records needing later
+  analysis; Zotero.ProgressWindow only for brief user-facing summaries,
+  never per-item in a bulk pass. The thread-3 scripts follow this.
 - Q3: bbt_export incremental mode: finish or freeze. Decide opportunistically.
 - Q4: Fate of duplicate detection: likely a future console JS report by
   DOI/ISBN/normalized title. Not scheduled.
