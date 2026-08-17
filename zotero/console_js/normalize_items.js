@@ -69,16 +69,19 @@
 //      getAsync re-fetch + re-apply once (S4 defence-in-depth; expected zero on
 //      settled items).
 //
-// KNOWN PERF ISSUE (open, deferred -- see handoff/03 IMPLEMENTATION LOG): even
-//      with in-memory verify, this makes ONE saveTx per changed item. saveTx is
-//      save() in its own transaction + notifier cascade, so a 5,178-item run
-//      took ~43 min (~504ms/item) purely in transaction+notifier overhead x N.
-//      FIX (future, needs its own pass): wrap the write loop in ONE
-//      Zotero.DB.executeTransaction using item.save() (joins the outer txn)
-//      instead of per-item saveTx, verify the batch after commit. Two live runs
-//      (~6,865 writes) had ZERO retries, confirming S4 loss does not occur on
-//      settled items, so the per-item-transaction insurance is not needed here.
-//      Writes already produced are correct; this is speed only.
+// WRITE PERF (FIXED 2026-08-13): the write loop no longer does one saveTx per
+//      changed item. It commits in chunks of CONFIG.WRITE_CHUNK_SIZE items inside
+//      ONE Zotero.DB.executeTransaction via item.save() (joins the txn), then
+//      verifies each chunk against DISK by a single SQL read. The P3 probe found
+//      per-item saveTx cost ~1747ms median, of which ~1728ms (99%) was the
+//      transaction boundary paid once PER ITEM; amortizing the boundary across a
+//      chunk drops it to ~41ms/item (~42x). The boundary, not the notifier
+//      cascade, was the cost, so no notifier batching was needed. A 5,178-item
+//      backfill projects from ~151 min to ~4 min. Rollback on a thrown commit was
+//      verified (rollback probe: a cached-object read had earlier masqueraded as a
+//      failed rollback, so verification now reads disk truth via SQL, not
+//      item.hasTag). A verify miss is REPORTED for an idempotent re-run, not
+//      retried in-transaction. See zotero/probe/ for the probes and their results.
 //
 // Idempotent (A7): every guard is "does this need doing", so a re-run over the
 //      same items is a no-op. Safe to run on a cadence and safe to re-run after
@@ -146,15 +149,18 @@ var CONFIG = {
         }
     ],
 
-    // Write-verify-retry (S4 defence-in-depth; common path verifies in memory).
-    RETRY_BACKOFF_MS: 800,
-    RETRY_SETTLE_MS: 400,
 
     // A5 scale treatment.
     LOAD_BATCH_SIZE: 500,
     YIELD_MS: 10,
     CHECKPOINT_EVERY: 500,
-    MAX_CONSECUTIVE_FAILURES: 20,
+    // M1 (2026-08-13): the write loop commits in chunks of this many items inside
+    // ONE executeTransaction instead of one saveTx per item (see WRITE PERF in the
+    // header). 500 matches LOAD_BATCH_SIZE/CHECKPOINT_EVERY. Smaller bounds the
+    // rollback blast radius and keeps START_INDEX resume on a chunk boundary;
+    // larger is marginally faster. Rollback on a thrown commit is confirmed, so a
+    // failed chunk leaves nothing partial.
+    WRITE_CHUNK_SIZE: 500,
     START_INDEX: 0,                   // resume a partial apply
     MAX_WRITES: 0,                    // 0 = no cap; set 1000/5000 to ramp
     DRY_RUN_SAMPLE_MAX: 40,
@@ -175,9 +181,12 @@ var result = {
     planSample: [],                   // { itemID, rules: [names] } bounded
     applied: {
         itemsChanged: 0,
-        tagsAddedByRule: {},          // ruleName -> tags added count
-        verifyRetries: 0,
-        verifyFailuresAfterRetry: [],
+        tagsAddedByRule: {},          // ruleName -> tags added count (committed chunks only)
+        // M1: verification is post-commit and per-chunk (disk-truth SQL). There is no
+        // in-transaction retry -- you cannot re-save mid-transaction, and misses were
+        // expected-zero over ~6,865 settled-item writes. A miss is REPORTED here for an
+        // idempotent re-run to reconcile, not retried. { itemID, missing: [tagNames] }.
+        verifyMisses: [],
         aborted: false,
         abortReason: null
     }
@@ -199,29 +208,14 @@ async function loadItemsInBatchesFromIDs(itemIDs) {
     return loaded;
 }
 
-// Save pending tag changes, verify IN MEMORY (free -- saveTx updates the
-// in-memory object synchronously), retry once via getAsync on the rare miss.
-// expectedPresent is the set of tag names that must be present after the write.
-// The normalizer only ADDS tags, so there is no expectedAbsent.
-async function saveVerifyRetry(item, expectedPresent) {
-    await item.saveTx();
-    var verifyInMemory = function (target) {
-        for (var pi = 0; pi < expectedPresent.length; pi = pi + 1) {
-            if (!target.hasTag(expectedPresent[pi])) { return false; }
-        }
-        return true;
-    };
-    if (verifyInMemory(item)) { return true; }
-    result.applied.verifyRetries = result.applied.verifyRetries + 1;
-    await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_BACKOFF_MS); });
-    var retryItem = await Zotero.Items.getAsync(item.id);
-    for (var rp = 0; rp < expectedPresent.length; rp = rp + 1) {
-        if (!retryItem.hasTag(expectedPresent[rp])) { retryItem.addTag(expectedPresent[rp]); }
-    }
-    await retryItem.saveTx();
-    await new Promise(function (r) { setTimeout(r, CONFIG.RETRY_SETTLE_MS); });
-    return verifyInMemory(retryItem);
-}
+// (M1, 2026-08-13) The former per-item saveVerifyRetry is gone. It did one saveTx
+// per item -- the transaction boundary the P3 probe found was 99% of the ~1747ms
+// per-item cost -- and verified IN MEMORY, which the rollback probe proved
+// unreliable (a stale cached object disagreed with committed disk state). Writes
+// now happen in chunked transactions with a post-commit disk-truth SQL verify;
+// see the write loop in MAIN. No in-transaction retry exists: you cannot re-save
+// mid-transaction, and the idempotent re-run is the reconciliation path for the
+// (expected-zero) miss.
 
 // --- Rule table (D5). guard reads only; apply mutates tags in memory only. ---
 // Each apply returns the array of tag names it added (for accounting), or [].
@@ -413,54 +407,121 @@ try {
         var writeStart = Date.now();
         var end = workList.length;
         if (CONFIG.MAX_WRITES > 0) { end = Math.min(end, CONFIG.START_INDEX + CONFIG.MAX_WRITES); }
-        var consecutiveFailures = 0;
 
-        for (var wi = CONFIG.START_INDEX; wi < end; wi = wi + 1) {
-            var work = workList[wi];
-            var writeItem = itemsById.get(work.itemID);
-            if (!writeItem) { writeItem = await Zotero.Items.getAsync(work.itemID); }
+        // Chunked single-transaction writes (M1). Each chunk of up to
+        // CONFIG.WRITE_CHUNK_SIZE items is applied in memory, committed in ONE
+        // executeTransaction via item.save() (joins the txn), then verified against
+        // DISK by a single SQL read per chunk. Continue-and-report on a verify miss:
+        // owner decision 2026-08-13, since misses were expected-zero over ~6,865
+        // settled-item writes and the pass is idempotent (a re-run reconciles). There
+        // is no abort path and no per-item retry.
+        for (var chunkStart = CONFIG.START_INDEX; chunkStart < end; chunkStart = chunkStart + CONFIG.WRITE_CHUNK_SIZE) {
+            var chunkEnd = Math.min(chunkStart + CONFIG.WRITE_CHUNK_SIZE, end);
 
-            // Apply each matched rule (re-checking its guard on the current
-            // object, so a re-run or concurrent change cannot double-apply).
-            // Collect the union of tags the rules expect present, for verify.
-            var expectedPresent = [];
-            for (var rl = 0; rl < RULES.length; rl = rl + 1) {
-                if (work.ruleNames.indexOf(RULES[rl].name) === -1) { continue; }
-                if (!RULES[rl].guard(writeItem)) { continue; }   // already satisfied (idempotent)
-                var addedTags = RULES[rl].apply(writeItem);
-                for (var at = 0; at < addedTags.length; at = at + 1) {
-                    if (expectedPresent.indexOf(addedTags[at]) === -1) { expectedPresent.push(addedTags[at]); }
-                    result.applied.tagsAddedByRule[RULES[rl].name] = result.applied.tagsAddedByRule[RULES[rl].name] + 1;
+            // Per-item expected tags for THIS chunk, captured during apply so the
+            // post-commit disk verify knows what to check. Keyed by itemID.
+            var expectedByItemID = new Map();
+            var chunkItemIDs = [];
+
+            // Per-rule tag counts held CHUNK-LOCAL and folded into the global result
+            // only if the chunk commits. A chunk whose commit throws rolls back whole
+            // (rollback confirmed), so its counts must not leak into the totals --
+            // holding them local keeps tagsAddedByRule honest rather than an upper bound.
+            var chunkTagCountByRule = {};
+            for (var rk = 0; rk < RULES.length; rk = rk + 1) { chunkTagCountByRule[RULES[rk].name] = 0; }
+
+            // Apply all matched rules for every item in the chunk, in memory, inside
+            // one transaction, then commit once. save() joins the open transaction.
+            try {
+                await Zotero.DB.executeTransaction(async function () {
+                    for (var wi = chunkStart; wi < chunkEnd; wi = wi + 1) {
+                        var work = workList[wi];
+                        var writeItem = itemsById.get(work.itemID);
+                        if (!writeItem) { writeItem = await Zotero.Items.getAsync(work.itemID); }
+
+                        // Re-check each rule's guard on the current object, so a re-run
+                        // or concurrent change cannot double-apply (idempotent).
+                        var expectedPresent = [];
+                        for (var rl = 0; rl < RULES.length; rl = rl + 1) {
+                            if (work.ruleNames.indexOf(RULES[rl].name) === -1) { continue; }
+                            if (!RULES[rl].guard(writeItem)) { continue; }   // already satisfied
+                            var addedTags = RULES[rl].apply(writeItem);
+                            for (var at = 0; at < addedTags.length; at = at + 1) {
+                                if (expectedPresent.indexOf(addedTags[at]) === -1) { expectedPresent.push(addedTags[at]); }
+                                chunkTagCountByRule[RULES[rl].name] = chunkTagCountByRule[RULES[rl].name] + 1;
+                            }
+                        }
+
+                        if (expectedPresent.length > 0) {
+                            expectedByItemID.set(work.itemID, expectedPresent);
+                            chunkItemIDs.push(work.itemID);
+                            await writeItem.save();   // joins the outer txn; boundary amortized
+                        }
+                    }
+                });
+            } catch (commitError) {
+                // Rollback works (rollback probe Cases A/B, verified against disk): a
+                // thrown commit rolled the whole chunk back, nothing partial persisted.
+                // Chunk-local counts are discarded (never folded in). Report and let the
+                // idempotent re-run redo the chunk. Not an abort -- a recoverable failure.
+                Zotero.debug(`normalize_items: chunk [${chunkStart},${chunkEnd}) commit failed and rolled back: ${commitError.message}. Re-run (idempotent) to redo this chunk. Resume hint START_INDEX=${chunkStart}.`);
+                continue;
+            }
+
+            // Chunk committed: fold its per-rule counts into the global totals now.
+            for (var fk = 0; fk < RULES.length; fk = fk + 1) {
+                result.applied.tagsAddedByRule[RULES[fk].name] =
+                    result.applied.tagsAddedByRule[RULES[fk].name] + chunkTagCountByRule[RULES[fk].name];
+            }
+
+            if (chunkItemIDs.length === 0) { continue; }   // nothing was written this chunk
+
+            // ---- Disk-truth verify: ONE SQL read for the whole chunk. ----
+            // Read every tag currently on disk for the chunk's items, then reconcile in
+            // memory against expectedByItemID. One round-trip per chunk, not per item
+            // (killing per-item round-trips is the whole point of the fix). In-memory
+            // hasTag is NOT used: the rollback probe showed a cached object can disagree
+            // with disk. Bound params: one placeholder per itemID (ids are integers we
+            // control, but binding is the house convention and handles types correctly).
+            var placeholders = [];
+            for (var ph = 0; ph < chunkItemIDs.length; ph = ph + 1) { placeholders.push('?'); }
+            var verifySql = 'SELECT itemTags.itemID AS itemID, tags.name AS name '
+                + 'FROM itemTags JOIN tags ON tags.tagID = itemTags.tagID '
+                + `WHERE itemTags.itemID IN (${placeholders.join(',')})`;
+            var diskRows = await Zotero.DB.queryAsync(verifySql, chunkItemIDs);
+
+            // Build itemID -> Set(tag names on disk).
+            var diskTagsByItemID = new Map();
+            for (var dr = 0; dr < diskRows.length; dr = dr + 1) {
+                var row = diskRows[dr];
+                if (!diskTagsByItemID.has(row.itemID)) { diskTagsByItemID.set(row.itemID, new Set()); }
+                diskTagsByItemID.get(row.itemID).add(row.name);
+            }
+
+            for (var ci = 0; ci < chunkItemIDs.length; ci = ci + 1) {
+                var verifyItemID = chunkItemIDs[ci];
+                var expected = expectedByItemID.get(verifyItemID);
+                var onDisk = diskTagsByItemID.get(verifyItemID) || new Set();
+                var missingTags = [];
+                for (var ei = 0; ei < expected.length; ei = ei + 1) {
+                    if (!onDisk.has(expected[ei])) { missingTags.push(expected[ei]); }
+                }
+                if (missingTags.length > 0) {
+                    result.applied.verifyMisses.push({ itemID: verifyItemID, missing: missingTags });
+                } else {
+                    result.applied.itemsChanged = result.applied.itemsChanged + 1;
                 }
             }
 
-            if (expectedPresent.length === 0) { continue; }   // nothing to do (idempotent skip)
-
-            var ok = await saveVerifyRetry(writeItem, expectedPresent);
-            if (ok) {
-                result.applied.itemsChanged = result.applied.itemsChanged + 1;
-                consecutiveFailures = 0;
-            } else {
-                result.applied.verifyFailuresAfterRetry.push(work.itemID);
-                consecutiveFailures = consecutiveFailures + 1;
-                if (consecutiveFailures >= CONFIG.MAX_CONSECUTIVE_FAILURES) {
-                    result.applied.aborted = true;
-                    result.applied.abortReason = `${consecutiveFailures} consecutive verification failures at index ${wi}; resume with START_INDEX=${wi}.`;
-                    Zotero.debug(`normalize_items ABORT: ${result.applied.abortReason}`);
-                    break;
-                }
-            }
-
-            if ((wi - CONFIG.START_INDEX + 1) % CONFIG.CHECKPOINT_EVERY === 0) {
-                Zotero.debug(`normalize_items: ${wi - CONFIG.START_INDEX + 1} processed (index ${wi}), changed=${result.applied.itemsChanged}, retries=${result.applied.verifyRetries}`);
-                await new Promise(function (r) { setTimeout(r, CONFIG.YIELD_MS); });
+            Zotero.debug(`normalize_items: chunk [${chunkStart},${chunkEnd}) committed; changed so far=${result.applied.itemsChanged}, verifyMisses so far=${result.applied.verifyMisses.length}`);
+            await new Promise(function (r) { setTimeout(r, CONFIG.YIELD_MS); });
             }
         }
 
         timing.writeMs = Date.now() - writeStart;
         Zotero.debug(`normalize_items: writes done in ${timing.writeMs} ms. itemsChanged=${result.applied.itemsChanged}`);
-        if (result.applied.verifyFailuresAfterRetry.length > 0) {
-            Zotero.debug(`WARNING: ${result.applied.verifyFailuresAfterRetry.length} item(s) failed verification after retry: ${result.applied.verifyFailuresAfterRetry.slice(0, 50).join(', ')}. Re-run (idempotent) to reconcile.`);
+        if (result.applied.verifyMisses.length > 0) {
+            Zotero.debug(`WARNING: ${result.applied.verifyMisses.length} item(s) had a verify miss on disk: ${JSON.stringify(result.applied.verifyMisses.slice(0, 50))}. Re-run (idempotent) to reconcile.`);
         }
     }
 } catch (error) {
