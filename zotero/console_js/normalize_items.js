@@ -127,14 +127,31 @@ var CONFIG = {
     FILE_NOT_APPLICABLE_TAGS: ['__print'],
 
     // R4: an item is missing authorship if it has NO creator whose type is in
-    // AUTHORSHIP_ROLES. Owner decision 2026-08-12: author and/or editor. Types
-    // are compared by NAME (getCreatorJSON returns creatorType as a string like
-    // 'author'/'editor'), so no id resolution is needed. Items with only other
-    // roles (translator, contributor, etc.) and no author/editor are flagged
-    // __add-metadata -- the same tag R2 uses, since both mean "metadata needs
-    // completion".
+    // AUTHORSHIP_ROLES. Types are compared by NAME (getCreatorJSON returns
+    // creatorType as a lowercase string like 'author'/'editor' on this build,
+    // verified 2026-08-13 via resolve_items against real items), so no id
+    // resolution is needed. Items with only other roles (translator, contributor,
+    // etc.) and no authorship-role creator are flagged __add-metadata -- the same
+    // tag R2 uses, since both mean "metadata needs completion".
+    //
+    // Roles (owner decision 2026-08-13, widened from the original ['author',
+    // 'editor']): the primary-responsibility creator differs by item type, and any
+    // of these MEANS the item has a real author for completeness purposes --
+    //   author     books, journal articles
+    //   editor     edited volumes
+    //   creator    videoRecording where a person is credited as the maker (the
+    //              non-director credit -- see below)
+    //   programmer computerProgram (R packages, code items)
+    //   artist     artwork
+    // 'director' is DELIBERATELY EXCLUDED. On videoRecording it is often a channel
+    // or uploader (e.g. 'director:OaklandLYM', 'director:thoughtbot'), not the
+    // authoring person, so counting it would mark genuinely-incomplete items as
+    // complete. Where a director IS the real author (many presentations/talks), the
+    // owner promotes that creator director->creator by hand on the specific item,
+    // rather than encoding a director-counts-sometimes rule here. Keeping the rule
+    // a flat role-membership test is the point; the per-item judgment stays manual.
     METADATA_FLAG_TAG: '__add-metadata',
-    AUTHORSHIP_ROLES: ['author', 'editor'],
+    AUTHORSHIP_ROLES: ['author', 'editor', 'creator', 'programmer', 'artist'],
 
     // R2 site table. Each entry: match if url includes any urlIncludes OR
     // libraryCatalog (lowercased) includes any catalogIncludes; then add tags.
@@ -220,12 +237,26 @@ async function loadItemsInBatchesFromIDs(itemIDs) {
 // Each apply returns the array of tag names it added (for accounting), or [].
 //
 // R2 helper: given an item, compute the set of tags the site rules WOULD add,
-// after removing any that are already present and any file flag suppressed by a
-// file-not-applicable tag (__print). Pure read. Used by both R2's guard ("would
-// this add anything") and R2's apply ("add exactly these"), so the two can
+// after removing (a) any already present, (b) the file flag when a
+// file-not-applicable tag (__print) is set, and (c) the metadata flag when the
+// item already has an authorship-role creator. Pure read. Used by both R2's guard
+// ("would this add anything") and R2's apply ("add exactly these"), so the two can
 // never diverge -- the earlier version duplicated the site-match logic in guard
 // and apply, which is exactly where a suppression added to one but not the
 // other would silently break. Extracted per the >=3-call-site rule.
+//
+// Suppression (c) fixes the reported bug: R2 matched Google Books items on URL /
+// libraryCatalog alone and flagged __add-metadata unconditionally, so authored
+// books already complete (verified 2026-08-13: the flagged set was full of
+// 'author:...' books) got a spurious worklist entry. R2 and R4 both mean
+// __add-metadata as "authorship metadata missing", so R2 reuses R4's predicate
+// itemHasAuthorshipCreator -- the two rules now share ONE definition of "missing"
+// and cannot disagree on the same item. itemHasAuthorshipCreator is declared below
+// this function; JS hoists function declarations, so the forward reference is fine.
+// NOTE (scope, 2026-08-13): only __add-metadata is guarded here. The __add-file
+// flag is still added whenever the site matches (minus __print); a real
+// "item has a file attachment" guard is R3's held-out linkMode work and is NOT in
+// this patch. So a complete Google Books book still gets __add-file until R3 lands.
 function computeSiteTagsToAdd(item) {
     var url = (item.getField('url') || '').toLowerCase();
     var catalog = (item.getField('libraryCatalog') || '').toLowerCase();
@@ -250,6 +281,12 @@ function computeSiteTagsToAdd(item) {
             var tag = siteRule.addTags[ti];
             // Suppress the file flag on file-not-applicable items (__print).
             if (tag === CONFIG.FILE_FLAG_TAG && fileNotApplicable) { continue; }
+            // Suppress the metadata flag when the item already has an authorship
+            // creator: the site match says "from Google Books", not "incomplete".
+            // Reuses R4's predicate so R2 and R4 share one definition of missing
+            // metadata (bug fix 2026-08-13). __add-file is intentionally NOT guarded
+            // this way -- file completeness is R3's linkMode scope, held out here.
+            if (tag === CONFIG.METADATA_FLAG_TAG && itemHasAuthorshipCreator(item)) { continue; }
             if (item.hasTag(tag)) { continue; }               // already present
             if (toAdd.indexOf(tag) === -1) { toAdd.push(tag); }
         }
