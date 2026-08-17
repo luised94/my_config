@@ -149,7 +149,6 @@ var CONFIG = {
         }
     ],
 
-
     // A5 scale treatment.
     LOAD_BATCH_SIZE: 500,
     YIELD_MS: 10,
@@ -549,7 +548,6 @@ try {
 
             Zotero.debug(`normalize_items: chunk [${chunkStart},${chunkEnd}) committed; changed so far=${result.applied.itemsChanged}, verifyMisses so far=${result.applied.verifyMisses.length}`);
             await new Promise(function (r) { setTimeout(r, CONFIG.YIELD_MS); });
-            }
         }
 
         timing.writeMs = Date.now() - writeStart;
