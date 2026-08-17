@@ -258,16 +258,50 @@ function computeSiteTagsToAdd(item) {
     return toAdd;
 }
 
-// R4 helper: does the item have at least one creator whose type is an
-// authorship role (author/editor)? getCreatorJSON(i) returns creatorType as a
-// NAME string (Zotero docs), so no id resolution. Pure read. Named because it
-// is used by R4's guard and is a clear predicate; kept out of the guard body
-// so the "missing authorship" logic reads as one line there.
+// R4 helper: does the item have at least one creator whose type is an authorship
+// role (author/editor)? Pure read. Named because it is used by R4's guard and is a
+// clear predicate; kept out of the guard body so the "missing authorship" logic
+// reads as one line there.
+//
+// The type match is ROBUST to how getCreatorJSON reports creatorType on a given
+// build (this bit us: items with a visible author -- Abbott, Abrash -- were flagged
+// __add-metadata because the raw creatorType did not === 'author'). The old code
+// compared creator.creatorType directly against ['author','editor'], which fails if
+// the build returns a capitalized/localized string ('Author') or a numeric
+// creatorTypeID instead of the lowercase name. Resolution order:
+//   1. If creatorType is a usable string, lowercase it and compare.
+//   2. Else resolve creatorTypeID -> name via Zotero.CreatorTypes.getName() (guarded;
+//      if that API is absent or throws, skip this creator rather than crash).
+// An undeterminable type falls through to "not authorship" -- we never treat "could
+// not determine" as a match, so genuinely authorless items are still flagged.
+// AUTHORSHIP_ROLES stays ['author','editor']: the bug was matching, not membership.
 function itemHasAuthorshipCreator(item) {
+    // Lowercase the configured roles once for case-insensitive comparison.
+    var roles = [];
+    for (var ri = 0; ri < CONFIG.AUTHORSHIP_ROLES.length; ri = ri + 1) {
+        roles.push(String(CONFIG.AUTHORSHIP_ROLES[ri]).toLowerCase());
+    }
     var count = item.numCreators();
     for (var i = 0; i < count; i = i + 1) {
         var creator = item.getCreatorJSON(i);
-        if (creator && CONFIG.AUTHORSHIP_ROLES.indexOf(creator.creatorType) !== -1) { return true; }
+        if (!creator) { continue; }
+        // 1. creatorType as a string (the common case).
+        var typeName = null;
+        if (typeof creator.creatorType === 'string' && creator.creatorType.length > 0) {
+            typeName = creator.creatorType.toLowerCase();
+        } else if (creator.creatorTypeID !== undefined && creator.creatorTypeID !== null) {
+            // 2. Resolve numeric id -> name, guarded: the CreatorTypes API is an
+            //    assumption; if it is missing or throws, skip rather than crash.
+            try {
+                if (typeof Zotero.CreatorTypes !== 'undefined' && typeof Zotero.CreatorTypes.getName === 'function') {
+                    var resolved = Zotero.CreatorTypes.getName(creator.creatorTypeID);
+                    if (typeof resolved === 'string' && resolved.length > 0) { typeName = resolved.toLowerCase(); }
+                }
+            } catch (e) {
+                // leave typeName null -> this creator does not count; do not throw.
+            }
+        }
+        if (typeName !== null && roles.indexOf(typeName) !== -1) { return true; }
     }
     return false;
 }
