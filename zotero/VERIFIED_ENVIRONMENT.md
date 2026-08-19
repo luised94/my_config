@@ -78,3 +78,22 @@ Tested: Zotero 9.0.6; Windows 11 Pro (25H2) or Windows 10 + Dropbox desktop (260
 - attrib +U (Cloud Filter "free up space") as a dehydration trigger:
   UNTESTED on a hydrated file (the S2b probe target was already
   dehydrated). Do not rely on it without a fresh spike.
+
+## Zotero install path and PowerShell-from-WSL bridge
+
+Tested: Zotero 9.0.6; Windows (profile via $env:USERPROFILE); WSL (citation-key-collision Slice 0, 2026-08).
+
+- application.ini lives under the `app\` subdirectory of the install root,
+  not the install root itself: `C:\Program Files\Zotero\app\application.ini`
+  (also check `${env:ProgramFiles(x86)}\Zotero\app\` and
+  `$env:LOCALAPPDATA\Zotero\Zotero\app\`). The version line is `Version=9.0.6`.
+- powershell.exe is invocable from WSL and returns output across the boundary.
+  `Get-Process zotero -ErrorAction SilentlyContinue` returns a count that is
+  nonzero while Zotero runs and 0 when closed -- usable as the cold-copy
+  process guard from the WSL side without a Windows-side helper.
+- Cross-boundary file metadata is best emitted as UTC Unix epoch seconds
+  (`[DateTimeOffset]::new($item.LastWriteTimeUtc).ToUnixTimeSeconds()`), not a
+  formatted date, to stay locale-independent and comparable across devices.
+- Non-trivial PowerShell run from WSL should be written to a .ps1 and invoked
+  with `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w ...)"`
+  to avoid the bash->powershell quoting layer.

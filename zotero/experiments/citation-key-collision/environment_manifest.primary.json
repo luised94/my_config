@@ -1,0 +1,17 @@
+{
+  "manifest_schema": "citation-key-collision/environment/v1",
+  "device": "primary",
+  "wsl_user": "luis",
+  "windows_user": "Luised94",
+  "repo_path_wsl": "/home/luis/personal_repos/my_config/zotero/experiments/citation-key-collision",
+  "uv_version": "0.11.1",
+  "python_version": "3.12.12",
+  "zotero_version": "9.0.6",
+  "zotero_application_ini_path": "C:\\Program Files\\Zotero\\app\\application.ini",
+  "zotero_data_directory": "C:\\Users\\Luised94\\Zotero",
+  "zotero_sqlite_path": "C:\\Users\\Luised94\\Zotero\\zotero.sqlite",
+  "zotero_sqlite_size_bytes": 2981036032,
+  "zotero_sqlite_mtime_epoch_utc": 1787165115,
+  "copy_mechanism": "powershell-from-wsl",
+  "powershell_from_wsl_reachable": true
+}
