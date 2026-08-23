@@ -8,7 +8,10 @@
 #   here that appends the clipboard text to the page file currently open.
 #
 # LOAD (once per PowerShell session -- functions share session state)
+#   If file is in the local windows directory:
 #   . .\capture-clipboard.ps1
+#   Or point to the wsl path:
+#   . "\\wsl.localhost\Ubuntu-22.04\home\lius\personal_repos\my_config\powershell\capture-clipboard.ps1"
 #
 # WORKFLOW
 #   Start-PageCapture -Title "<page title>" -Source "<url or origin>"
