@@ -36,6 +36,10 @@ PARAMETERS:
                       over-limit folders. Default 8. If a folder is still over the
                       limit at this depth, it is emitted as one over-limit batch
                       with a warning rather than descending further.
+  -TimingLogPath      CSV path for per-batch timing (copy/dehydrate seconds, MB/s).
+                      Default: <DestinationRoot>\Archive-DropboxTree-timing.csv.
+                      Append-only with a run id column; safe across resumes. This is
+                      the data used to decide whether robocopy /MT is worth adding.
   -Help               Print this help and exit.
 
 WHY IT WORKS THIS WAY (the constraints we verified by testing, not assumption):
@@ -79,6 +83,7 @@ param(
     [double]$CFreeFloorGB = 15,
     [switch]$Execute,
     [int]$MaxRecursionDepth = 8,
+    [string]$TimingLogPath = "",
     [switch]$Help
 )
 
@@ -117,6 +122,13 @@ $BatchSizeLimitBytes = [Int64]($BatchSizeLimitGB * 1GB)
 # to keep waiting or skip. Named here so the loop and its warning read one source.
 $DehydrationPollIntervalSeconds = 5
 $DehydrationPollTimeoutSeconds = 900
+
+# Minimum number of completed copying batches before showing a numeric ETA. One
+# batch is a single noisy throughput sample, so below this we print "calibrating"
+# rather than a wild estimate. ETA covers COPY time only, never the human-paced
+# manual dehydration pauses, which are not a function of size and cannot be
+# predicted from throughput.
+$MinBatchesForEta = 2
 
 # --- Stage 1: validation ---
 if (-not $WindowsUser) {
@@ -454,12 +466,52 @@ Write-Host ""
 # them, so the progress line reflects true bytes-on-destination, not just this run.
 $CumulativeCopiedBytes = [Int64]0
 
+# ETA accumulators. These sum only THIS run's freshly-copied batches (not resume
+# fast-forwards, whose copy time is near-zero confirm-scans and would inflate the
+# observed rate). Observed copy rate = copied bytes / copy seconds, used to project
+# remaining copy time. Deliberately excludes dehydration pauses (human-paced).
+$RunCopiedBytes = [Int64]0
+$RunCopySeconds = 0.0
+$RunCopiedBatchCount = 0
+
+# Timing log (CSV). Defaults under the destination root so it lives on the HDD you
+# are already writing to, not on the read-only WSL script path. Append-only with a
+# run id column so re-runs (resume) never overwrite prior rows; dedup in analysis by
+# taking the last row per BatchNumber. This is the data that decides whether the
+# deferred /MT threading change is worth it (see DECISIONS.md).
+if (-not $TimingLogPath) { $TimingLogPath = Join-Path $DestinationRoot "Archive-DropboxTree-timing.csv" }
+$TimingRunId = Get-Date -Format 'yyyyMMdd-HHmmss'
+if (-not (Test-Path -LiteralPath $TimingLogPath)) {
+    # Header names carry units so the CSV is self-describing.
+    Set-Content -LiteralPath $TimingLogPath -Value "RunId,BatchNumber,Label,CopyMode,SizeGB,FileCount,CopySeconds,DehydrateSeconds,CopyMBps" -Encoding UTF8
+}
+Write-Host ("[INFO]  Timing log: {0} (run id {1})" -f $TimingLogPath, $TimingRunId)
+Write-Host ""
+
 foreach ($Batch in $BatchList) {
     $BatchStartTimestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     Write-Host ("---------- [{0}] Batch {1}/{2}: {3} ({4:N2} GB) ----------" -f `
         $BatchStartTimestamp, $Batch.BatchNumber, $BatchList.Count, $Batch.Label, ($Batch.SizeBytes/1GB)) -ForegroundColor Cyan
     Write-Host ("           Progress: {0:N2} of {1:N2} GB copied ({2:N1}%) before this batch" -f `
         ($CumulativeCopiedBytes/1GB), ($TotalBytes/1GB), (100.0 * $CumulativeCopiedBytes / $TotalBytes))
+
+    # ETA for remaining COPY time only (excludes manual dehydration pauses). Shown
+    # only after enough freshly-copied batches to be a non-silly sample; before that,
+    # "calibrating". Uses this run's observed copy rate against remaining planned
+    # bytes. Rough: small-file batches copy slower per GB than large-file ones, so
+    # treat this as an order-of-magnitude guide, not a promise. The CSV holds the
+    # per-batch detail for real analysis.
+    $RemainingBytes = $TotalBytes - $CumulativeCopiedBytes
+    if ($RunCopiedBatchCount -ge $MinBatchesForEta -and $RunCopySeconds -gt 0) {
+        $ObservedCopyBytesPerSecond = $RunCopiedBytes / $RunCopySeconds
+        $EtaCopySeconds = $RemainingBytes / $ObservedCopyBytesPerSecond
+        $EtaHours = [math]::Floor($EtaCopySeconds / 3600)
+        $EtaMinutes = [math]::Round(($EtaCopySeconds - $EtaHours * 3600) / 60, 0)
+        Write-Host ("           ETA: ~{0}h {1}m copy time remaining at {2:N1} MB/s observed (excludes dehydrate pauses)" -f `
+            $EtaHours, $EtaMinutes, ($ObservedCopyBytesPerSecond/1MB)) -ForegroundColor DarkGray
+    } else {
+        Write-Host "           ETA: calibrating (need more copied batches for a rate)" -ForegroundColor DarkGray
+    }
 
     # Foresight line: show C: free against what this batch could hydrate and the
     # floor, BEFORE any copy starts. The per-member guard below is authoritative and
@@ -495,6 +547,10 @@ foreach ($Batch in $BatchList) {
     # /COPY:DAT and /FFT match the settings validated in the Zotero backup tests.
     # Never /MIR -- the archive must not delete from the destination.
     $BatchCopyFailed = $false
+    # Per-batch measurement accumulators (summed across members). CopySeconds is
+    # robocopy wall-clock only; FileCount is files this batch copied, matching mode.
+    $BatchCopySeconds = 0.0
+    $BatchFileCount = 0
     foreach ($Member in $Batch.Members) {
         # Destination mirrors the source's path under the source root.
         $RelativePath = $Member.Substring($ArchiveSourceRoot.Length).TrimStart('\')
@@ -562,8 +618,11 @@ foreach ($Batch in $BatchList) {
         Write-Host ("[INFO]  Copying: {0}" -f $Member)
         Write-Host ("[INFO]  {0:N2} GB across {1} files. This can take several minutes on an external HDD;" -f ($MemberBytes/1GB), $FilesToCopyCount)
         Write-Host "        robocopy runs silent -- no output until this member finishes. Not a stall."
+        $MemberCopyStart = Get-Date
         robocopy @RoboArgs | Out-Null
         $RoboExit = $LASTEXITCODE
+        $BatchCopySeconds += ((Get-Date) - $MemberCopyStart).TotalSeconds
+        $BatchFileCount += $FilesToCopyCount
         if ($RoboExit -ge 8) {
             Write-Host ("[ERROR] Robocopy failed (exit {0}) on {1}" -f $RoboExit, $Member) -ForegroundColor Red
             Write-Host "[HINT]  Fix the issue (space? path?) and re-run; done files will be skipped." -ForegroundColor DarkYellow
@@ -582,10 +641,24 @@ foreach ($Batch in $BatchList) {
     # batches are counted too, not just freshly hydrated ones.
     $CumulativeCopiedBytes += [Int64]$Batch.SizeBytes
 
+    # Feed the ETA rate ONLY from freshly-copied batches. A fast-forwarded batch
+    # ($AnyLocalFiles false) had near-zero robocopy confirm time, so including it
+    # would inflate observed MB/s and understate the ETA. Bytes still count toward
+    # progress above; they just do not count toward the rate here.
+    if ($AnyLocalFiles) {
+        $RunCopiedBytes += [Int64]$Batch.SizeBytes
+        $RunCopySeconds += $BatchCopySeconds
+        $RunCopiedBatchCount++
+    }
+
     # If nothing was local (batch was already online-only from a prior run), the
     # copy above just confirmed the destination; skip the dehydrate pause.
     if (-not $AnyLocalFiles) {
         Write-Host "[INFO]  Batch was already online-only (prior run); no dehydrate needed." -ForegroundColor Green
+        # Timing row for a fast-forwarded batch: copy confirm-scan time, no dehydrate.
+        $RowMBps = if ($BatchCopySeconds -gt 0) { ($Batch.SizeBytes/1MB) / $BatchCopySeconds } else { 0 }
+        Add-Content -LiteralPath $TimingLogPath -Encoding UTF8 -Value ("{0},{1},{2},{3},{4:N2},{5},{6:N1},{7:N1},{8:N1}" -f `
+            $TimingRunId, $Batch.BatchNumber, ('"' + $Batch.Label + '"'), $Batch.CopyMode, ($Batch.SizeBytes/1GB), $BatchFileCount, $BatchCopySeconds, 0.0, $RowMBps)
         Write-Host ""
         continue
     }
@@ -636,6 +709,9 @@ foreach ($Batch in $BatchList) {
     }
     Write-Host ""
     Read-Host "  Press ENTER after clicking 'Make online-only' to watch it complete"
+    # Marker for total dehydrate wall-clock (ENTER to complete). Separate from
+    # PollStart, which is reset on each timeout re-check and so cannot measure total.
+    $DehydrateStart = Get-Date
 
     # Poll until all members are fully online-only. Count matches the copy mode, so
     # a direct-files batch completes when its loose files dehydrate, not when the
@@ -677,6 +753,12 @@ foreach ($Batch in $BatchList) {
     $FreeNowGB = [math]::Round((Get-Volume -DriveLetter C).SizeRemaining/1GB, 1)
     Write-Host ("  [INFO]  === SAFE TO STOP HERE === Batch {0} done. C: free: {1} GB." -f $Batch.BatchNumber, $FreeNowGB) -ForegroundColor Green
     Write-Host "  [INFO]  To stop, just close this window. Re-run to resume from the next batch." -ForegroundColor Green
+
+    # Timing row for a freshly-copied batch: copy seconds, dehydrate seconds, MB/s.
+    $BatchDehydrateSeconds = ((Get-Date) - $DehydrateStart).TotalSeconds
+    $RowMBps = if ($BatchCopySeconds -gt 0) { ($Batch.SizeBytes/1MB) / $BatchCopySeconds } else { 0 }
+    Add-Content -LiteralPath $TimingLogPath -Encoding UTF8 -Value ("{0},{1},{2},{3},{4:N2},{5},{6:N1},{7:N1},{8:N1}" -f `
+        $TimingRunId, $Batch.BatchNumber, ('"' + $Batch.Label + '"'), $Batch.CopyMode, ($Batch.SizeBytes/1GB), $BatchFileCount, $BatchCopySeconds, $BatchDehydrateSeconds, $RowMBps)
     Write-Host ""
 }
 
