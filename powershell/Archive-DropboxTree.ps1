@@ -185,13 +185,26 @@ function Get-FolderSizeBytes {
 }
 
 # Count files still local (placeholder flag clear) in a folder. Used by the
-# dehydrate pause to detect completion.
+# resume fast-path and the dehydrate pause to detect completion.
+#   -DirectFilesOnly: count ONLY the loose files directly in the folder, not the
+#     subtree. Required for direct-files-only batches: robocopy copied only the
+#     direct files (/LEV:1), so only those were hydrated and only those will
+#     dehydrate. Counting the subtree here would count thousands of unrelated
+#     files elsewhere in the tree that this batch never touched, so the count
+#     would never reach zero and the pause would hang until the timeout.
 function Get-LocalFileCount {
-    param([string]$FolderPath)
+    param(
+        [string]$FolderPath,
+        [switch]$DirectFilesOnly
+    )
     $LocalCount = 0
+    $SearchDepth = if ($DirectFilesOnly) {
+        [System.IO.SearchOption]::TopDirectoryOnly
+    } else {
+        [System.IO.SearchOption]::AllDirectories
+    }
     try {
-        $Enumeration = [System.IO.Directory]::EnumerateFiles(
-            $FolderPath, '*', [System.IO.SearchOption]::AllDirectories)
+        $Enumeration = [System.IO.Directory]::EnumerateFiles($FolderPath, '*', $SearchDepth)
         foreach ($FilePath in $Enumeration) {
             $Attrs = [System.IO.File]::GetAttributes($FilePath)
             if (([int]$Attrs -band $RECALL_ON_DATA_ACCESS) -eq 0) { $LocalCount++ }
@@ -464,10 +477,13 @@ foreach ($Batch in $BatchList) {
 
     # Resume fast-path: if every member is already fully online-only AND already
     # present on the destination, skip without hydrating. We check placeholder
-    # status first (cheap, metadata) so a done batch is never re-hydrated.
+    # status first (cheap, metadata) so a done batch is never re-hydrated. The
+    # count must match the copy mode (see Get-LocalFileCount): a direct-files-only
+    # batch only ever hydrated its loose files, so count only those here too.
+    $BatchIsDirectFilesOnly = ($Batch.CopyMode -eq "direct-files-only")
     $AnyLocalFiles = $false
     foreach ($Member in $Batch.Members) {
-        if ((Get-LocalFileCount -FolderPath $Member) -gt 0) { $AnyLocalFiles = $true; break }
+        if ((Get-LocalFileCount -FolderPath $Member -DirectFilesOnly:$BatchIsDirectFilesOnly) -gt 0) { $AnyLocalFiles = $true; break }
     }
     # A batch already online-only was almost certainly copied in a prior run;
     # robocopy below will confirm-and-skip quickly, but if it is online-only we can
@@ -530,7 +546,22 @@ foreach ($Batch in $BatchList) {
         $RoboArgs = @($Member, $MemberDestination, "/COPY:DAT", "/FFT", "/R:2", "/W:5", "/NP", "/NFL", "/NDL")
         if ($Batch.CopyMode -eq "direct-files-only") { $RoboArgs += "/LEV:1" } else { $RoboArgs += "/E" }
 
+        # Count files to copy, matching the copy mode, only to make the note below
+        # accurate. robocopy runs silent (/NFL /NDL /NP + Out-Null), so without this
+        # a multi-minute HDD copy looks like a stall. We deliberately do NOT add a
+        # live progress heartbeat: see DECISIONS.md "copy-time feedback" -- it slows
+        # the copy (dest-size polling contends for HDD head) and adds a silent
+        # exit-code failure path via Start-Process, not worth it when the run pauses
+        # for manual dehydration after every batch anyway.
+        if ($Batch.CopyMode -eq "direct-files-only") {
+            $FilesToCopyCount = (Get-ChildItem -LiteralPath $Member -File -Force -ErrorAction SilentlyContinue).Count
+        } else {
+            $FilesToCopyCount = 0
+            foreach ($FilePath in [System.IO.Directory]::EnumerateFiles($Member, '*', [System.IO.SearchOption]::AllDirectories)) { $FilesToCopyCount++ }
+        }
         Write-Host ("[INFO]  Copying: {0}" -f $Member)
+        Write-Host ("[INFO]  {0:N2} GB across {1} files. This can take several minutes on an external HDD;" -f ($MemberBytes/1GB), $FilesToCopyCount)
+        Write-Host "        robocopy runs silent -- no output until this member finishes. Not a stall."
         robocopy @RoboArgs | Out-Null
         $RoboExit = $LASTEXITCODE
         if ($RoboExit -ge 8) {
@@ -563,31 +594,58 @@ foreach ($Batch in $BatchList) {
     $PauseFolder = $Batch.Members[0]
     Start-Process explorer.exe -ArgumentList "`"$PauseFolder`""
 
+    # Count files that were actually hydrated by this batch, matching the copy mode.
+    # For direct-files-only this is just the loose files in each member folder; using
+    # the recursive count would report the whole tree and never reach zero.
     $TotalInBatch = 0
     foreach ($Member in $Batch.Members) {
-        $Enumeration = [System.IO.Directory]::EnumerateFiles($Member, '*', [System.IO.SearchOption]::AllDirectories)
-        foreach ($FilePath in $Enumeration) { $TotalInBatch++ }
+        if ($BatchIsDirectFilesOnly) {
+            $TotalInBatch += (Get-ChildItem -LiteralPath $Member -File -Force -ErrorAction SilentlyContinue).Count
+        } else {
+            foreach ($FilePath in [System.IO.Directory]::EnumerateFiles($Member, '*', [System.IO.SearchOption]::AllDirectories)) { $TotalInBatch++ }
+        }
     }
 
     Write-Host ""
     Write-Host "  === MAKE ONLINE-ONLY ===" -ForegroundColor Cyan
     Write-Host "  This batch is copied to the HDD. Free the C: space it used:" -ForegroundColor Cyan
-    foreach ($Member in $Batch.Members) {
-        Write-Host ("    - right-click and 'Make online-only': {0}" -f $Member) -ForegroundColor Yellow
-    }
-    if ($Batch.Members.Count -gt 1) {
-        Write-Host "  (These share a parent; you may dehydrate the parent folder once instead.)" -ForegroundColor DarkGray
+    if ($BatchIsDirectFilesOnly) {
+        # Direct-files batch: the member folder also holds SUBFOLDERS that this batch
+        # did NOT copy and that other batches will handle. Dehydrating the folder
+        # would make the whole tree online-only, including data not yet archived. So
+        # name the exact loose files to select instead, and warn off the folder.
+        foreach ($Member in $Batch.Members) {
+            $LooseFiles = Get-ChildItem -LiteralPath $Member -File -Force -ErrorAction SilentlyContinue |
+                Sort-Object -Property Name -Culture ''
+            Write-Host ("    In folder: {0}" -f $Member) -ForegroundColor Yellow
+            Write-Host ("    Select ONLY these {0} loose file(s), right-click, 'Make online-only':" -f $LooseFiles.Count) -ForegroundColor Yellow
+            foreach ($LooseFile in $LooseFiles) {
+                Write-Host ("      - {0}" -f $LooseFile.Name) -ForegroundColor Yellow
+            }
+        }
+        Write-Host "  DO NOT 'Make online-only' on the folder itself or any subfolder --" -ForegroundColor Red
+        Write-Host "  that would dehydrate data other batches have not archived yet." -ForegroundColor Red
+        Write-Host "  (Tip: sort the folder by Type so the loose files group together.)" -ForegroundColor DarkGray
+    } else {
+        foreach ($Member in $Batch.Members) {
+            Write-Host ("    - right-click and 'Make online-only': {0}" -f $Member) -ForegroundColor Yellow
+        }
+        if ($Batch.Members.Count -gt 1) {
+            Write-Host "  (These share a parent; you may dehydrate the parent folder once instead.)" -ForegroundColor DarkGray
+        }
     }
     Write-Host ""
     Read-Host "  Press ENTER after clicking 'Make online-only' to watch it complete"
 
-    # Poll until all members are fully online-only.
+    # Poll until all members are fully online-only. Count matches the copy mode, so
+    # a direct-files batch completes when its loose files dehydrate, not when the
+    # (untouched) rest of the tree does.
     $PollStart = Get-Date
     $LastRemaining = -1
     while ($true) {
         Start-Sleep -Seconds $DehydrationPollIntervalSeconds
         $Remaining = 0
-        foreach ($Member in $Batch.Members) { $Remaining += (Get-LocalFileCount -FolderPath $Member) }
+        foreach ($Member in $Batch.Members) { $Remaining += (Get-LocalFileCount -FolderPath $Member -DirectFilesOnly:$BatchIsDirectFilesOnly) }
 
         if ($Remaining -eq 0) {
             Write-Host ("  [INFO]  All {0} files online-only. Dehydration complete." -f $TotalInBatch) -ForegroundColor Green
