@@ -5,6 +5,39 @@ Archives a Dropbox tree (mostly online-only placeholders) to an external drive,
 one size-bounded batch at a time, pausing after each batch for a MANUAL Dropbox
 "Make online-only" to reclaim C: space before the next batch.
 
+USAGE:
+  # Dot-source / run from PowerShell (adjust the path to where the file lives):
+  #   . "\\wsl.localhost\Ubuntu-22.04\home\luis\personal_repos\my_config\powershell\Archive-DropboxTree.ps1"
+
+  # Dry run -- walk the tree, print the batch plan, copy nothing:
+  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\"
+
+  # Real archive -- copy each batch to the HDD, pausing for manual dehydrate:
+  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\" -Execute
+
+  # Resume (same command) -- completed batches fast-forward:
+  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\" -Execute
+
+PARAMETERS:
+  -WindowsUser        Windows account under C:\Users. Required. (On this machine
+                      it has been seen as both 'Luised94' and 'liusm' -- pass the
+                      one that matches C:\Users on the device you are running on.)
+  -DropboxAccountName Dropbox account folder. Default "Luis Martinez".
+  -DestinationRoot    Root of the external drive (e.g. "E:\"). Required for real
+                      runs. The tree is copied under <DestinationRoot>\<account>.
+  -BatchSizeLimitGB   Max GB per batch. Default 50. See balance note below.
+  -CFreeFloorGB       Minimum C: free space (GB) that must remain after a member is
+                      hydrated. Default 15. Before each copy, a member whose size
+                      would drive C: below this floor is refused and the run stops
+                      with a hint, rather than filling C: mid-copy. See note below.
+  -Execute            Perform real hydration/copy and the dehydrate pauses. Without
+                      it, the script only prints the plan (no copy, no hydration).
+  -MaxRecursionDepth  Safety cap on how deep the batch walk descends into
+                      over-limit folders. Default 8. If a folder is still over the
+                      limit at this depth, it is emitted as one over-limit batch
+                      with a warning rather than descending further.
+  -Help               Print this help and exit.
+
 WHY IT WORKS THIS WAY (the constraints we verified by testing, not assumption):
   - C: has far less free space (~72 GB) than the archive (~680 GB), so the whole
     tree cannot be hydrated at once. Files are copied in batches sized to fit C:.
@@ -21,9 +54,12 @@ WHAT THE BATCH LIMIT BALANCES (why 50 GB is the default):
                      free-space slack and more hydrated data at risk if you stop
                      mid-batch.
   Smaller batches -> more clicks, but more slack and less exposure per batch.
-  50 GB against ~72 GB free keeps a ~20 GB Windows working floor while roughly
-  halving the click count versus 40 GB. Lower it if C: is tighter; do not raise it
-  so high that a batch plus Windows overhead would drop C: below ~15-20 GB free.
+  Pick a limit so that a batch plus Windows overhead never drops C: below the
+  -CFreeFloorGB floor. The per-member guard enforces the floor at copy time even
+  if the batch plan alone would not, but a limit chosen with the floor in mind
+  means fewer refusals mid-run. Note a "direct files" batch is a single member
+  that cannot be split by lowering -BatchSizeLimitGB; if one is large it must fit
+  under the floor on its own or be split by hand.
 
 RESUME: safe to stop between batches and re-run. Robocopy skips files already on
   the HDD, so completed batches fast-forward; a source already online-only is not
@@ -33,31 +69,6 @@ HYDRATION-SAFETY INVARIANT (do not break):
   Only the COPY step (robocopy) may hydrate. All measurement/enumeration reads
   FileInfo.Length and attributes only, which are placeholder metadata and do not
   download. Never add a content read to the walk/measure paths.
-
-USAGE:
-  # Dry run -- walk the tree, print the batch plan, copy nothing:
-  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\"
-
-  # Real archive -- copy each batch to the HDD, pausing for manual dehydrate:
-  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\" -Execute
-
-  # Resume (same command) -- completed batches fast-forward:
-  .\Archive-DropboxTree.ps1 -WindowsUser Luised94 -DestinationRoot "E:\" -Execute
-
-  -WindowsUser        Windows account under C:\Users. Required. (On this machine
-                      it has been seen as both 'Luised94' and 'liusm' -- pass the
-                      one that matches C:\Users on the device you are running on.)
-  -DropboxAccountName Dropbox account folder. Default "Luis Martinez".
-  -DestinationRoot    Root of the external drive (e.g. "E:\"). Required for real
-                      runs. The tree is copied under <DestinationRoot>\<account>.
-  -BatchSizeLimitGB   Max GB per batch. Default 50. See balance note above.
-  -Execute            Perform real hydration/copy and the dehydrate pauses. Without
-                      it, the script only prints the plan (no copy, no hydration).
-  -MaxRecursionDepth  Safety cap on how deep the batch walk descends into
-                      over-limit folders. Default 8. If a folder is still over the
-                      limit at this depth, it is emitted as one over-limit batch
-                      with a warning rather than descending further.
-  -Help               Print this help and exit.
 #>
 
 param(
@@ -65,6 +76,7 @@ param(
     [string]$DropboxAccountName = "Luis Martinez",
     [string]$DestinationRoot,
     [double]$BatchSizeLimitGB = 50,
+    [double]$CFreeFloorGB = 15,
     [switch]$Execute,
     [int]$MaxRecursionDepth = 8,
     [switch]$Help
@@ -99,6 +111,12 @@ Safe to stop between batches and re-run to resume.
 
 $RECALL_ON_DATA_ACCESS = 0x00400000
 $BatchSizeLimitBytes = [Int64]($BatchSizeLimitGB * 1GB)
+
+# Dehydration poll cadence. The loop re-counts still-local files every interval and
+# gives up automatically after the timeout, at which point the user is asked whether
+# to keep waiting or skip. Named here so the loop and its warning read one source.
+$DehydrationPollIntervalSeconds = 5
+$DehydrationPollTimeoutSeconds = 900
 
 # --- Stage 1: validation ---
 if (-not $WindowsUser) {
@@ -201,14 +219,18 @@ $AccumulatedBytes = [Int64]0
 $AccumulatedLabel = ""
 
 function Flush-AccumulatedBatch {
-    if ($AccumulatedMembers.Count -gt 0) {
+    if ($script:AccumulatedMembers.Count -gt 0) {
         $script:BatchList.Add([PSCustomObject]@{
             Members  = @($script:AccumulatedMembers.ToArray())
             SizeBytes= $script:AccumulatedBytes
             CopyMode = "recursive"
             Label    = $script:AccumulatedLabel
         })
-        $script:AccumulatedMembers = [System.Collections.Generic.List[string]]::new()
+        # Clear the existing List in place rather than rebinding to a new object.
+        # Rebinding only updates the script-scope name; any code that had read the
+        # old reference into a local would keep mutating the flushed list. Clearing
+        # keeps the single shared instance authoritative regardless of how it is read.
+        $script:AccumulatedMembers.Clear()
         $script:AccumulatedBytes = [Int64]0
         $script:AccumulatedLabel = ""
     }
@@ -336,14 +358,109 @@ if (-not $Execute) {
     exit 0
 }
 
+# --- Stage 3.5: destination confirmation gate (Execute only) ---
+# The wrong-drive error is the only way this script can cause data loss on the
+# destination (700 GB to a stick or the wrong disk). Test-Path alone passes for
+# any existing letter, so before copying anything we show what we are about to
+# write into, prove there is room for the WHOLE archive, and require an explicit
+# 'yes'. Room check: dest_free + bytes_already_in_archive_subtree >= plan_total.
+# That is algebraically "remaining copy fits in dest free", and stays correct on
+# resume because already-copied batches are counted in the present bytes, not
+# demanded again from free space. Present bytes are measured on the archive
+# subtree only, so unrelated files on the drive are not counted as ours (they
+# already reduced dest_free, which is what we want).
+Write-Host "========== CONFIRM DESTINATION ==========" -ForegroundColor Green
+Write-Host ("[INFO]  Archive will be written under: {0}" -f $DestinationTreeRoot)
+
+$DestinationTreeExists = Test-Path -LiteralPath $DestinationTreeRoot
+$DestinationPresentBytes = [Int64]0
+if ($DestinationTreeExists) {
+    Write-Host "[INFO]  This archive folder already exists on the destination." -ForegroundColor Yellow
+    Write-Host "[INFO]  Existing top-level entries under it (no files are deleted; same-named files are overwritten):"
+    $DestinationTopLevel = Get-ChildItem -LiteralPath $DestinationTreeRoot -Force -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name -Culture ''
+    if ($DestinationTopLevel.Count -eq 0) {
+        Write-Host "          (empty)"
+    } else {
+        foreach ($Entry in $DestinationTopLevel) {
+            $EntryKind = if ($Entry.PSIsContainer) { "DIR " } else { "file" }
+            Write-Host ("          [{0}] {1}" -f $EntryKind, $Entry.Name)
+        }
+    }
+    # Bytes already present in our archive subtree (metadata-only; HDD files, no
+    # Dropbox hydration involved here). Counts toward room-for-whole-archive.
+    $DestinationPresentBytes = Get-FolderSizeBytes -FolderPath $DestinationTreeRoot
+    Write-Host ("[INFO]  Already present in archive subtree: {0:N2} GB" -f ($DestinationPresentBytes/1GB))
+} else {
+    Write-Host "[INFO]  This archive folder does not exist yet; it will be created."
+}
+
+# Destination free space. Guard against a non-drive-letter destination (e.g. UNC)
+# where Get-Volume -DriveLetter cannot answer; warn and skip the space math there.
+$DestinationDriveLetter = $null
+if ($DestinationRoot -match '^([A-Za-z]):') { $DestinationDriveLetter = $Matches[1] }
+
+if ($DestinationDriveLetter) {
+    $DestinationFreeBytes = [Int64](Get-Volume -DriveLetter $DestinationDriveLetter).SizeRemaining
+    Write-Host ("[INFO]  Destination free space: {0:N2} GB on {1}:" -f ($DestinationFreeBytes/1GB), $DestinationDriveLetter)
+    Write-Host ("[INFO]  Plan total to archive:  {0:N2} GB" -f ($TotalBytes/1GB))
+
+    $RoomForWholeArchiveBytes = $DestinationFreeBytes + $DestinationPresentBytes
+    if ($RoomForWholeArchiveBytes -lt $TotalBytes) {
+        $ShortfallGB = ($TotalBytes - $RoomForWholeArchiveBytes) / 1GB
+        Write-Host ("[ERROR] Destination cannot hold the whole archive. Short by {0:N2} GB." -f $ShortfallGB) -ForegroundColor Red
+        Write-Host ("        Room for archive = free {0:N2} GB + already-present {1:N2} GB = {2:N2} GB < plan {3:N2} GB." -f `
+            ($DestinationFreeBytes/1GB), ($DestinationPresentBytes/1GB), ($RoomForWholeArchiveBytes/1GB), ($TotalBytes/1GB)) -ForegroundColor Red
+        Write-Host "[HINT]  Free space on the destination or use a larger drive, then re-run." -ForegroundColor DarkYellow
+        exit 1
+    }
+    Write-Host ("[INFO]  Room check OK: free + already-present = {0:N2} GB >= plan {1:N2} GB." -f `
+        ($RoomForWholeArchiveBytes/1GB), ($TotalBytes/1GB)) -ForegroundColor Green
+} else {
+    Write-Host "[WARN]  Destination is not a drive letter; cannot check free space automatically." -ForegroundColor Yellow
+    Write-Host ("[INFO]  Plan total to archive: {0:N2} GB -- ensure the destination has room." -f ($TotalBytes/1GB)) -ForegroundColor Yellow
+}
+
+Write-Host ""
+$ConfirmDestination = Read-Host "Type 'yes' to archive to the destination above, anything else to abort"
+if ($ConfirmDestination -ne 'yes') {
+    Write-Host "[INFO]  Aborted before copying. Nothing was hydrated or copied." -ForegroundColor DarkYellow
+    exit 0
+}
+Write-Host ""
+
 # --- Stage 4: execute each batch (copy -> dehydrate pause) ---
 Write-Host "========== EXECUTING ARCHIVE ==========" -ForegroundColor Green
 Write-Host "[INFO]  You will be asked to 'Make online-only' after each batch." -ForegroundColor Cyan
 Write-Host ""
 
+# Running total of bytes confirmed copied, for the cross-batch progress line. A
+# batch is added to this AFTER its copy succeeds (not when it starts), so a guard
+# refusal or robocopy failure never overstates progress. On resume, batches that
+# fast-forward (already online-only) are still counted here once robocopy confirms
+# them, so the progress line reflects true bytes-on-destination, not just this run.
+$CumulativeCopiedBytes = [Int64]0
+
 foreach ($Batch in $BatchList) {
-    Write-Host ("---------- Batch {0}/{1}: {2} ({3:N2} GB) ----------" -f `
-        $Batch.BatchNumber, $BatchList.Count, $Batch.Label, ($Batch.SizeBytes/1GB)) -ForegroundColor Cyan
+    $BatchStartTimestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Write-Host ("---------- [{0}] Batch {1}/{2}: {3} ({4:N2} GB) ----------" -f `
+        $BatchStartTimestamp, $Batch.BatchNumber, $BatchList.Count, $Batch.Label, ($Batch.SizeBytes/1GB)) -ForegroundColor Cyan
+    Write-Host ("           Progress: {0:N2} of {1:N2} GB copied ({2:N1}%) before this batch" -f `
+        ($CumulativeCopiedBytes/1GB), ($TotalBytes/1GB), (100.0 * $CumulativeCopiedBytes / $TotalBytes))
+
+    # Foresight line: show C: free against what this batch could hydrate and the
+    # floor, BEFORE any copy starts. The per-member guard below is authoritative and
+    # enforced per member; this is only a heads-up so a coming refusal is not a
+    # surprise mid-batch. Batch.SizeBytes is the whole-batch total, which bounds peak
+    # C: use during the copy (all members stay hydrated until the dehydrate pause),
+    # so if free minus it clears the floor the batch will sail; if not, expect the
+    # guard to stop on whichever member crosses the floor first.
+    $CFreeBeforeBatchGB = [math]::Round((Get-Volume -DriveLetter C).SizeRemaining/1GB, 1)
+    $BatchWouldLeaveGB = [math]::Round($CFreeBeforeBatchGB - ($Batch.SizeBytes/1GB), 1)
+    $FloorNote = if ($BatchWouldLeaveGB -lt $CFreeFloorGB) { " -- may trip the guard" } else { "" }
+    Write-Host ("           C: free {0} GB; batch up to {1:N2} GB; floor {2} GB{3}" -f `
+        $CFreeBeforeBatchGB, ($Batch.SizeBytes/1GB), $CFreeFloorGB, $FloorNote) `
+        -ForegroundColor $(if ($FloorNote) {'Yellow'} else {'Gray'})
 
     # Resume fast-path: if every member is already fully online-only AND already
     # present on the destination, skip without hydrating. We check placeholder
@@ -367,6 +484,49 @@ foreach ($Batch in $BatchList) {
         $RelativePath = $Member.Substring($ArchiveSourceRoot.Length).TrimStart('\')
         $MemberDestination = if ($RelativePath) { Join-Path $DestinationTreeRoot $RelativePath } else { $DestinationTreeRoot }
 
+        # Per-member C: free-space guard. Hydrating this member pulls its bytes onto
+        # C: before robocopy writes them to the HDD; if that would drop C: below the
+        # floor, refuse now rather than filling C: mid-copy (which can destabilize
+        # Windows).
+        #
+        # MemberBytes must match WHAT ROBOCOPY WILL COPY, which depends on CopyMode:
+        #   direct-files-only -> robocopy runs /LEV:1 and copies only the direct files
+        #                        in this folder, so measure ONLY those (non-recursive).
+        #                        Measuring the whole subtree here is wrong: it would
+        #                        report the entire tree (e.g. the 711 GB root) for a
+        #                        near-empty direct-files batch and refuse it, and the
+        #                        recursive walk of tens of thousands of placeholders is
+        #                        also needlessly slow.
+        #   recursive         -> robocopy runs /E, so measure the whole subtree.
+        # This mirrors exactly how the batch plan sized each mode (direct files summed
+        # non-recursively; whole folders summed recursively).
+        #
+        # Either way MemberBytes is the FULL placeholder size: on resume a partially
+        # online member reports full size but needs less hydration, so this guard is
+        # deliberately conservative and may refuse a copy that would in fact fit --
+        # the safe direction. A direct-files-only member cannot be split by lowering
+        # -BatchSizeLimitGB, so if one trips the floor it must be split by hand or the
+        # floor lowered with eyes open.
+        if ($Batch.CopyMode -eq "direct-files-only") {
+            $MemberBytes = [Int64]0
+            $MemberDirectFiles = Get-ChildItem -LiteralPath $Member -File -Force -ErrorAction SilentlyContinue
+            foreach ($MemberDirectFile in $MemberDirectFiles) { $MemberBytes += [Int64]$MemberDirectFile.Length }
+        } else {
+            $MemberBytes = Get-FolderSizeBytes -FolderPath $Member
+        }
+        $CFreeBytesNow = [Int64](Get-Volume -DriveLetter C).SizeRemaining
+        $CFreeFloorBytes = [Int64]($CFreeFloorGB * 1GB)
+        if (($CFreeBytesNow - $MemberBytes) -lt $CFreeFloorBytes) {
+            Write-Host ("[ERROR] Copying this member would drop C: below the {0} GB floor." -f $CFreeFloorGB) -ForegroundColor Red
+            Write-Host ("        Member:   {0}" -f $Member) -ForegroundColor Red
+            Write-Host ("        Needs:    {0:N2} GB hydrated on C:" -f ($MemberBytes/1GB)) -ForegroundColor Red
+            Write-Host ("        C: free:  {0:N2} GB (floor {1} GB)" -f ($CFreeBytesNow/1GB), $CFreeFloorGB) -ForegroundColor Red
+            Write-Host "[HINT]  Make an earlier batch's folder 'online-only' to reclaim C: space, then re-run to resume." -ForegroundColor DarkYellow
+            Write-Host "[HINT]  Or, if this is a large single 'direct files' member, lower -CFreeFloorGB with eyes open, or split it by hand." -ForegroundColor DarkYellow
+            $BatchCopyFailed = $true
+            break
+        }
+
         $RoboArgs = @($Member, $MemberDestination, "/COPY:DAT", "/FFT", "/R:2", "/W:5", "/NP", "/NFL", "/NDL")
         if ($Batch.CopyMode -eq "direct-files-only") { $RoboArgs += "/LEV:1" } else { $RoboArgs += "/E" }
 
@@ -384,6 +544,12 @@ foreach ($Batch in $BatchList) {
         Write-Host "[ERROR] Stopping so you can resolve the copy failure. Re-run to resume." -ForegroundColor Red
         exit 1
     }
+
+    # Copy for this batch succeeded (or fast-forwarded on resume). Count it now, so
+    # the progress line on the next batch reflects true bytes confirmed on the
+    # destination. Placed before the fast-forward continue below so already-online
+    # batches are counted too, not just freshly hydrated ones.
+    $CumulativeCopiedBytes += [Int64]$Batch.SizeBytes
 
     # If nothing was local (batch was already online-only from a prior run), the
     # copy above just confirmed the destination; skip the dehydrate pause.
@@ -419,7 +585,7 @@ foreach ($Batch in $BatchList) {
     $PollStart = Get-Date
     $LastRemaining = -1
     while ($true) {
-        Start-Sleep -Seconds 5
+        Start-Sleep -Seconds $DehydrationPollIntervalSeconds
         $Remaining = 0
         foreach ($Member in $Batch.Members) { $Remaining += (Get-LocalFileCount -FolderPath $Member) }
 
@@ -431,10 +597,21 @@ foreach ($Batch in $BatchList) {
             Write-Host ("  [INFO]  Dehydrating... {0} of {1} files still local" -f $Remaining, $TotalInBatch)
             $LastRemaining = $Remaining
         }
-        if (((Get-Date) - $PollStart).TotalSeconds -ge 900) {
-            Write-Host ("  [WARN]  {0} files still local after 15 min." -f $Remaining) -ForegroundColor Yellow
-            $Choice = Read-Host "  Type 'w' to keep waiting, 'c' to continue anyway, ENTER to re-check"
-            if ($Choice -eq 'c') { break }
+        if (((Get-Date) - $PollStart).TotalSeconds -ge $DehydrationPollTimeoutSeconds) {
+            $TimeoutMinutes = [math]::Round($DehydrationPollTimeoutSeconds / 60.0, 0)
+            Write-Host ("  [WARN]  {0} of {1} files still local after {2} min." -f $Remaining, $TotalInBatch, $TimeoutMinutes) -ForegroundColor Yellow
+            # Skipping here proceeds with C: NOT fully reclaimed: those still-local
+            # files keep occupying C:. The next batch's per-member guard will refuse
+            # if that leftover pushes C: below the floor, so a skip is bounded, not
+            # catastrophic -- but it is a real decision, so require the whole word
+            # 'skip' rather than a single keystroke that is easy to hit by reflex.
+            Write-Host ("  [WARN]  Continuing now leaves {0} files hydrated on C:. C: free right now: {1} GB." -f `
+                $Remaining, ([math]::Round((Get-Volume -DriveLetter C).SizeRemaining/1GB, 1))) -ForegroundColor Yellow
+            $DehydrationTimeoutChoice = Read-Host "  Type 'wait' to keep waiting, 'skip' to continue anyway, ENTER to re-check"
+            if ($DehydrationTimeoutChoice -eq 'skip') {
+                Write-Host ("  [WARN]  Skipping with {0} files still local, by request." -f $Remaining) -ForegroundColor Yellow
+                break
+            }
             $PollStart = Get-Date
         }
     }
