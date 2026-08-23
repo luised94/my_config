@@ -155,3 +155,64 @@ diagnostic, not part of the archive's integrity, and a broken row loses only one
 batch's timing. Full CSV escaping was judged not worth the code for a diagnostic
 artifact. Revisit only if a real folder name breaks parsing and the timing data
 matters enough to need every row.
+
+---
+
+## Dehydration no-progress detector (stuck at a tiny remainder)
+
+### Context
+Observed: a batch flipped 3946 -> 1 files online-only in seconds, then sat at "1 of
+3946 still local" until the 15-minute timeout. The disk was idle; the loop was
+correctly re-counting a number that would never reach zero.
+
+### Cause
+Dropbox will not dehydrate a file it considers not fully uploaded, or one that is
+locked/open (indexer, antivirus, an open handle). Its recall bit never flips, so
+the poll's still-local count sticks at that file forever. Waiting out the full
+timeout for it is pointless.
+
+### Decision
+Added a no-progress detector: if the still-local count has not decreased for
+NoProgressPollsBeforePrompt polls (6 x 5s = ~30s) AND the remainder is at or below
+CloseEnoughFileCount (5), prompt immediately instead of waiting the full timeout.
+The hard timeout is KEPT for the flat-at-a-large-remainder case (Dropbox not
+dehydrating at all), so that genuinely-wrong situation is still noticed, not
+silently skipped. Prompt (not auto-continue) per the user's preference that a skip
+stay a deliberate choice; choosing 'wait' resets both the flat counter and the
+timeout window for a fresh budget.
+
+### Tuning signals
+- If the ~30s wait still feels long and a stuck remainder of 1-5 is always benign,
+  lower NoProgressPollsBeforePrompt. If it ever prompts on a batch that was still
+  legitimately progressing (count decreasing slowly), raise it.
+- CloseEnoughFileCount is the "a few files won't dehydrate is fine" threshold; keep
+  it small so a large stuck remainder still waits for the real timeout.
+
+---
+
+## Batch-attention notification (non-blocking tray balloon)
+
+### Context
+The run pauses for a manual "Make online-only" after every batch. The user wants to
+work in another window and be notified when a batch needs attention, without the
+notification gating the run.
+
+### Decision
+A single reusable System.Windows.Forms.NotifyIcon (created once before the loop,
+disposed once after) shows an auto-dismissing tray balloon plus a console beep at
+the "Make online-only" step. It does NOT gate the run -- the console Read-Host
+remains the real continue gate. Everything is best-effort and wrapped: if the
+assembly cannot load the icon stays $null and the balloon block no-ops; if Focus
+Assist / Do Not Disturb suppresses the balloon, the beep still fires.
+
+### Rejected alternative
+A blocking MessageBox.Show was rejected: it would gate continuation, the opposite
+of "show up, stay a few seconds, leave" and of letting the user work while waiting.
+
+### Known limitation
+If the run is stopped by closing the window (invited at "SAFE TO STOP") or exits via
+a guard/copy-failure exit, the after-loop Dispose does not run and the tray icon
+lingers until hovered (Windows clears orphaned tray icons on hover / shell
+restart). Guaranteeing disposal would need a try/finally around all of Stage 4, a
+larger structural change than this cosmetic aid warrants. Revisit only if lingering
+icons become a real annoyance.

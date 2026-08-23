@@ -123,6 +123,17 @@ $BatchSizeLimitBytes = [Int64]($BatchSizeLimitGB * 1GB)
 $DehydrationPollIntervalSeconds = 5
 $DehydrationPollTimeoutSeconds = 900
 
+# No-progress detector. Dropbox will not dehydrate a file it considers not fully
+# uploaded, or one that is locked/open, so a batch often flips thousands of files
+# in seconds then sticks at a tiny remainder forever. Waiting out the full timeout
+# for those is pointless. If the still-local count has NOT decreased for this many
+# consecutive polls AND the remainder is at or below the close-enough count, prompt
+# right away instead of waiting DehydrationPollTimeoutSeconds. Flat at a LARGE
+# remainder is a different problem (Dropbox not dehydrating at all) and is left to
+# the full timeout so it is noticed, not skipped.
+$NoProgressPollsBeforePrompt = 6
+$CloseEnoughFileCount = 5
+
 # Minimum number of completed copying batches before showing a numeric ETA. One
 # batch is a single noisy throughput sample, so below this we print "calibrating"
 # rather than a wild estimate. ETA covers COPY time only, never the human-paced
@@ -486,6 +497,19 @@ if (-not (Test-Path -LiteralPath $TimingLogPath)) {
     Set-Content -LiteralPath $TimingLogPath -Value "RunId,BatchNumber,Label,CopyMode,SizeGB,FileCount,CopySeconds,DehydrateSeconds,CopyMBps" -Encoding UTF8
 }
 Write-Host ("[INFO]  Timing log: {0} (run id {1})" -f $TimingLogPath, $TimingRunId)
+
+# One reusable tray icon for the per-batch "needs you" balloon (see the pause
+# below). Created once here and disposed once after the loop so nothing accumulates
+# in the tray. Best-effort: on a host where System.Windows.Forms cannot load, this
+# stays $null and the balloon block simply does nothing. Never affects the archive.
+$AttentionNotifyIcon = $null
+try {
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+    Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+    $AttentionNotifyIcon = New-Object System.Windows.Forms.NotifyIcon
+    $AttentionNotifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+    $AttentionNotifyIcon.Visible = $true
+} catch { $AttentionNotifyIcon = $null }
 Write-Host ""
 
 foreach ($Batch in $BatchList) {
@@ -680,6 +704,23 @@ foreach ($Batch in $BatchList) {
     }
 
     Write-Host ""
+    # Non-blocking attention cue: the script now needs a manual action, so surface a
+    # tray balloon that shows for a few seconds and dismisses itself, plus an audible
+    # beep, so you can work in another window and glance over. This does NOT gate the
+    # run -- the console Read-Host below is the real continue gate. Best-effort:
+    # notifications can be swallowed by Focus Assist / Do Not Disturb. We reuse one
+    # tray icon ($AttentionNotifyIcon, created once before the loop) rather than a new
+    # one per batch, so nothing accumulates in the tray and there is no object to
+    # dispose across a runspace boundary.
+    try { [console]::Beep(880, 300) } catch { }
+    if ($AttentionNotifyIcon) {
+        try {
+            $AttentionNotifyIcon.BalloonTipTitle = ("Batch {0}/{1} needs you" -f $Batch.BatchNumber, $BatchList.Count)
+            $AttentionNotifyIcon.BalloonTipText = ("{0} copied. Make it online-only, then press ENTER in the script." -f $Batch.Label)
+            $AttentionNotifyIcon.ShowBalloonTip(4000)
+        } catch { }
+    }
+
     Write-Host "  === MAKE ONLINE-ONLY ===" -ForegroundColor Cyan
     Write-Host "  This batch is copied to the HDD. Free the C: space it used:" -ForegroundColor Cyan
     if ($BatchIsDirectFilesOnly) {
@@ -718,6 +759,7 @@ foreach ($Batch in $BatchList) {
     # (untouched) rest of the tree does.
     $PollStart = Get-Date
     $LastRemaining = -1
+    $FlatPollCount = 0   # consecutive polls where Remaining did not decrease
     while ($true) {
         Start-Sleep -Seconds $DehydrationPollIntervalSeconds
         $Remaining = 0
@@ -727,18 +769,43 @@ foreach ($Batch in $BatchList) {
             Write-Host ("  [INFO]  All {0} files online-only. Dehydration complete." -f $TotalInBatch) -ForegroundColor Green
             break
         }
+
+        # Track progress vs flatness. A decrease resets the flat counter; no decrease
+        # (same or, defensively, higher) increments it. Only a print when the number
+        # actually changed, to keep the log quiet.
+        if ($Remaining -lt $LastRemaining -or $LastRemaining -eq -1) {
+            $FlatPollCount = 0
+        } else {
+            $FlatPollCount++
+        }
         if ($Remaining -ne $LastRemaining) {
             Write-Host ("  [INFO]  Dehydrating... {0} of {1} files still local" -f $Remaining, $TotalInBatch)
             $LastRemaining = $Remaining
         }
-        if (((Get-Date) - $PollStart).TotalSeconds -ge $DehydrationPollTimeoutSeconds) {
+
+        # Decide whether to prompt now. Two independent reasons:
+        #   no-progress: flat for NoProgressPollsBeforePrompt polls AND remainder is
+        #     small (a few files Dropbox will not dehydrate -- locked or not yet fully
+        #     uploaded). No point waiting the full timeout for a count that will not
+        #     reach zero.
+        #   timeout: the hard cap, kept for the flat-at-a-LARGE-remainder case so a
+        #     Dropbox-not-dehydrating-at-all problem is noticed rather than skipped.
+        $PromptReason = ""
+        if ($FlatPollCount -ge $NoProgressPollsBeforePrompt -and $Remaining -le $CloseEnoughFileCount) {
+            $FlatSeconds = [math]::Round($FlatPollCount * $DehydrationPollIntervalSeconds, 0)
+            $PromptReason = ("no-progress: {0} file(s) still local, unchanged for {1}s (likely locked or not fully uploaded to Dropbox, so they will not dehydrate)" -f $Remaining, $FlatSeconds)
+        } elseif (((Get-Date) - $PollStart).TotalSeconds -ge $DehydrationPollTimeoutSeconds) {
             $TimeoutMinutes = [math]::Round($DehydrationPollTimeoutSeconds / 60.0, 0)
-            Write-Host ("  [WARN]  {0} of {1} files still local after {2} min." -f $Remaining, $TotalInBatch, $TimeoutMinutes) -ForegroundColor Yellow
-            # Skipping here proceeds with C: NOT fully reclaimed: those still-local
-            # files keep occupying C:. The next batch's per-member guard will refuse
-            # if that leftover pushes C: below the floor, so a skip is bounded, not
+            $PromptReason = ("timeout: {0} of {1} files still local after {2} min" -f $Remaining, $TotalInBatch, $TimeoutMinutes)
+        }
+
+        if ($PromptReason) {
+            Write-Host ("  [WARN]  {0}." -f $PromptReason) -ForegroundColor Yellow
+            # Skipping proceeds with C: NOT fully reclaimed: those still-local files
+            # keep occupying C:. The next batch's per-member guard will refuse if that
+            # leftover pushes C: below the floor, so a skip is bounded, not
             # catastrophic -- but it is a real decision, so require the whole word
-            # 'skip' rather than a single keystroke that is easy to hit by reflex.
+            # 'skip' rather than a single keystroke easy to hit by reflex.
             Write-Host ("  [WARN]  Continuing now leaves {0} files hydrated on C:. C: free right now: {1} GB." -f `
                 $Remaining, ([math]::Round((Get-Volume -DriveLetter C).SizeRemaining/1GB, 1))) -ForegroundColor Yellow
             $DehydrationTimeoutChoice = Read-Host "  Type 'wait' to keep waiting, 'skip' to continue anyway, ENTER to re-check"
@@ -746,7 +813,11 @@ foreach ($Batch in $BatchList) {
                 Write-Host ("  [WARN]  Skipping with {0} files still local, by request." -f $Remaining) -ForegroundColor Yellow
                 break
             }
+            # 'wait', ENTER, or anything else: keep polling. Reset both the timeout
+            # window and the flat counter so a chosen wait gets a fresh full budget
+            # before prompting again.
             $PollStart = Get-Date
+            $FlatPollCount = 0
         }
     }
 
@@ -761,6 +832,9 @@ foreach ($Batch in $BatchList) {
         $TimingRunId, $Batch.BatchNumber, ('"' + $Batch.Label + '"'), $Batch.CopyMode, ($Batch.SizeBytes/1GB), $BatchFileCount, $BatchCopySeconds, $BatchDehydrateSeconds, $RowMBps)
     Write-Host ""
 }
+
+# Remove the tray icon now that no more batches will ask for attention.
+if ($AttentionNotifyIcon) { try { $AttentionNotifyIcon.Visible = $false; $AttentionNotifyIcon.Dispose() } catch { } }
 
 Write-Host "========== ARCHIVE COMPLETE ==========" -ForegroundColor Green
 Write-Host ("[INFO]  All {0} batches copied to {1}." -f $BatchList.Count, $DestinationTreeRoot)
