@@ -11,6 +11,7 @@
 #   If file is in the local windows directory:
 #   . .\capture-clipboard.ps1
 #   Or point to the wsl path:
+#   wslpath -w capture-clipboard.ps1 # to get the path just in case. Should be same as below.
 #   . "\\wsl.localhost\Ubuntu-22.04\home\lius\personal_repos\my_config\powershell\capture-clipboard.ps1"
 #
 # WORKFLOW
