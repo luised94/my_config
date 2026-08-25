@@ -52,8 +52,12 @@ echo "manifest identity: OK"
 # is fine; the .python-version pin is 3.12, reconcile on that, not the manifest
 # patch string -- noted in the peruse).
 echo "== toolchain reconcile =="
-RECORDED_UV_VERSION="$(grep -o '\"uv_version\": \"[^\"]*\"' "$MANIFEST_PATH" | cut -d'\"' -f4)"
-RECORDED_PYTHON_VERSION="$(grep -o '\"python_version\": \"[^\"]*\"' "$MANIFEST_PATH" | cut -d'\"' -f4)"
+# Parse the manifest with python's json, not grep/cut: the manifest contains
+# Windows paths with backslashes and quoted values, and a shell delimiter split
+# cannot handle the escaping robustly (an earlier grep|cut version broke on the
+# backslash-quote). python is already required downstream, so this adds nothing.
+RECORDED_UV_VERSION="$(python3 -c "import json; print(json.load(open('$MANIFEST_PATH'))['uv_version'])")"
+RECORDED_PYTHON_VERSION="$(python3 -c "import json; print(json.load(open('$MANIFEST_PATH'))['python_version'])")"
 OBSERVED_UV_VERSION="$(uv --version 2>/dev/null | awk '{print $2}')"
 OBSERVED_PYTHON_VERSION="$(cd "$EXPERIMENT_DIRECTORY" && uv run python -c 'import platform; print(platform.python_version())' 2>/dev/null)"
 
@@ -73,7 +77,7 @@ echo "toolchain: OK (patch-level uv/python drift, if any, is acceptable)"
 # a different value here is expected, not a halt. The frozen identity comes from
 # the COPY, captured by slice1_cold_copy.ps1, not from this live file.
 echo "== live zotero.sqlite identity (informational; drift here is expected) =="
-RECORDED_DATA_DIR="$(grep -o '\"zotero_data_directory\": \"[^\"]*\"' "$MANIFEST_PATH" | cut -d'\"' -f4)"
+RECORDED_DATA_DIR="$(python3 -c "import json; print(json.load(open('$MANIFEST_PATH'))['zotero_data_directory'])")"
 echo "zotero_data_directory_recorded=$RECORDED_DATA_DIR"
 
 # Ask Windows for the live file's identity via the same PowerShell-from-WSL bridge
