@@ -355,14 +355,44 @@ def main():
     # written until the human confirms the sample matches the Zotero UI.
     # ------------------------------------------------------------------
     if PROBE_ITEM_IDS:
+        # Report the fate of EVERY probe id, not just the ones that printed. A
+        # silent miss (probe id filtered out as attachment/note/trashed, or a
+        # typo'd id that does not exist) previously looked identical to a clean
+        # run, defeating the hand-check gate: you would think you validated N
+        # items and actually saw fewer. Now each id is accounted for explicitly.
+        assembled_by_item_id = {
+            record["itemID"]: record for record in assembled_records
+        }
+        printed_item_ids = []
+        missing_item_ids = []
+        for probe_item_id in PROBE_ITEM_IDS:
+            if probe_item_id in assembled_by_item_id:
+                printed_item_ids.append(probe_item_id)
+            else:
+                missing_item_ids.append(probe_item_id)
+
         print(
-            "== PROBE MODE: printing %d probe records; corpus NOT written =="
-            % len(PROBE_ITEM_IDS)
+            "== PROBE MODE: %d requested, %d found, %d MISSING; corpus NOT written =="
+            % (len(PROBE_ITEM_IDS), len(printed_item_ids), len(missing_item_ids))
         )
-        probe_set = set(PROBE_ITEM_IDS)
-        for record in assembled_records:
-            if record["itemID"] in probe_set:
-                print(json.dumps(record, sort_keys=True, ensure_ascii=False, indent=2))
+        if missing_item_ids:
+            # A miss is not necessarily an error: an id may be an attachment/note/
+            # trashed row deliberately filtered out. But it MUST be surfaced so the
+            # human can tell "correctly filtered" from "typo'd id" from "extraction
+            # dropped a real item". The human decides; the gate does not guess.
+            print(
+                "MISSING probe itemIDs (filtered out, or do not exist): %s"
+                % missing_item_ids
+            )
+        for probe_item_id in printed_item_ids:
+            print(
+                json.dumps(
+                    assembled_by_item_id[probe_item_id],
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         print("== end probe. Clear PROBE_ITEM_IDS to run the bulk extraction. ==")
         return
 
