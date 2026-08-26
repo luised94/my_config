@@ -97,14 +97,18 @@ keeps a late surprise from silently corrupting everything downstream.
 A fresh thread should treat everything else in this document as decided and this
 list as the outstanding input. Resolve the item before or at the start of the
 slice that needs it; record the answer in the environment manifest or the relevant
-carry-forward note so later threads see it as settled.
+carry-forward note so later threads see it as settled. Items marked [CLOSED] are
+resolved and recorded in DECISIONS.md (in this directory) with their rationale;
+they remain here for traceability, struck through by the [CLOSED] tag.
 
-- Repo working directory path in WSL -> Slice 0.
-- Zotero data directory path on Windows (or confirm default) -> Slice 0.
-- Copy mechanism: script cold copy via PowerShell-from-WSL, or manual on Windows
-  each time -> Slice 0.
-- Corpus file format: JSONL (recommended) vs CSV -> Slice 1.
-- Snapshot discipline: frozen snapshot (recommended) vs moving library -> Slice 1.
+- [CLOSED -> DECISIONS.md] Repo working directory path in WSL -> Slice 0.
+- [CLOSED -> DECISIONS.md] Zotero data directory path on Windows (or confirm
+  default) -> Slice 0.
+- [CLOSED -> DECISIONS.md] Copy mechanism: script cold copy via
+  PowerShell-from-WSL, or manual on Windows each time -> Slice 0.
+- [CLOSED -> DECISIONS.md] Corpus file format: JSONL (recommended) vs CSV -> Slice 1.
+- [CLOSED -> DECISIONS.md] Snapshot discipline: frozen snapshot (recommended) vs
+  moving library -> Slice 1.
 - Acceptable to copy BBT's actual skipword/fold lists verbatim for parity -> Slice 2.
 - Query models acceptable, and whether a from-memory model (author-forward vs
   title-forward, per how the human actually recalls items) replaces the neutral
@@ -115,6 +119,8 @@ carry-forward note so later threads see it as settled.
 - Willingness to re-key pinned items (stated low-cost; confirm) -> Slice 4.
 - Whether, after the descriptive map, to open a separate optimization task with a
   chosen target axis -> Slice 5 (and beyond, out of current scope).
+- [ADDED, CLOSED -> DECISIONS.md] Live-DB script re-validation (read-only): fold
+  into Slice 5 as a labeled sub-step -> Slice 5.
 
 ---
 
@@ -135,6 +141,25 @@ carry-forward note so later threads see it as settled.
   what gets deployed. They must be kept in parity (see Slice 2).
 - Dependency ceiling: no more than five Python packages outside the standard
   library across the whole experiment. Track usage; flag before crossing.
+- Constants over arguments. A value that does not vary across runs is a
+  module-level constant edited in place, never a command-line argument. There is
+  one repo, one WSL user, one frozen copy at one path; parameterizing them is
+  abstraction before a second call site and adds an error-prone command line.
+  This is a specialization of the "no abstraction before a second real call site"
+  rule above: promote a constant to an argument only when a second real call site
+  needs a different value (e.g. the Slice 5 live-DB re-validation reads a
+  different copy path than the frozen one).
+- Prefer measurement over passed-in assertion. When a script needs a fact about a
+  file it operates on (size, mtime, checksum), it measures the file directly
+  rather than accepting a hand-carried value: a measurement cannot disagree with
+  the artifact actually used, while a transcribed number can silently corrupt an
+  integrity anchor. A separate step may echo the value for a human cross-check,
+  but the operating script's own reading is authoritative.
+- Gates must account for every input, not silently drop misses. A hand-check or
+  reconciliation step that skips an item it cannot find (filtered out, mistyped,
+  absent) looks identical to a clean pass and defeats its own purpose. Report the
+  fate of each input explicitly (found / filtered / missing) and let the human
+  judge; the gate does not guess.
 
 ---
 
