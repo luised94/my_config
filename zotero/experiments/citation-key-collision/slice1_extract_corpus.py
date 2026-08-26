@@ -11,21 +11,32 @@
 # against the same frozen copy yields byte-identical output. (Integrity plan.)
 #
 # Dependencies: stdlib only (sqlite3, json, unicodedata, hashlib, collections,
-# argparse, os, sys). Zero external. Budget untouched.
+# datetime, os, sys). Zero external. Budget untouched.
 
 import sqlite3
 import json
 import unicodedata
 import hashlib
 import collections
-import argparse
+import datetime
 import os
 import sys
 
 # ----------------------------------------------------------------------------
-# In-script toggles (edited in place; no argument parsing for one-off switches,
-# per the working style). argparse is used ONLY for the two real path inputs.
+# In-script constants and toggles (edited in place; no argument parsing). There is
+# one repo, one WSL user, one frozen copy at one path -- these do not vary across
+# runs, so parameterizing them would be abstraction before a second call site and
+# would only add a long, error-prone command line. Override heuristic: promote a
+# constant to an argument only when a SECOND real invocation needs a different
+# value (e.g. the end-stage live-DB re-validation reads a different copy path).
 # ----------------------------------------------------------------------------
+
+# The cold copy produced by slice1_cold_copy.ps1, and the corpus it writes. Both
+# live in the out-of-repo working dir (~/zotero-experiments), not the versioned
+# tree: the ~2.98 GB copy and the ~50 MB corpus are regenerable artifacts, not
+# committed. Expanduser so a leading ~ resolves.
+COLD_COPY_PATH = os.path.expanduser("~/zotero-experiments/zotero.sqlite")
+CORPUS_OUTPUT_PATH = os.path.expanduser("~/zotero-experiments/corpus.jsonl")
 
 # If more than one library is found, halt rather than silently extracting one.
 # The plan states a single personal library; a second library violates a stated
@@ -46,6 +57,8 @@ NON_BIBLIOGRAPHIC_ITEM_TYPE_NAMES = ("attachment", "note", "annotation")
 # they are known from Zotero. When non-empty, the extractor prints these records
 # in full and exits WITHOUT writing the corpus, so the human can eyeball them
 # against the Zotero UI before trusting a bulk run. Empty list => bulk mode.
+# Probe itemIDs must be REAL bibliographic items; attachment/note/trashed ids are
+# filtered out and will be reported as MISSING, not printed.
 PROBE_ITEM_IDS = []
 
 
@@ -63,43 +76,28 @@ def fold_to_ascii(text):
 
 
 def main():
-    argument_parser = argparse.ArgumentParser(
-        description="Extract the frozen Zotero corpus to JSONL (Slice 1)."
-    )
-    argument_parser.add_argument(
-        "--cold-copy-path",
-        required=True,
-        help="Path to the COLD COPY of zotero.sqlite in the WSL working dir.",
-    )
-    argument_parser.add_argument(
-        "--corpus-output-path",
-        required=True,
-        help="Path to write the JSONL corpus (regenerable; not committed).",
-    )
-    argument_parser.add_argument(
-        "--frozen-snapshot-size-bytes",
-        required=True,
-        type=int,
-        help="Frozen snapshot size from the cold-copy step, recorded in the sidecar.",
-    )
-    argument_parser.add_argument(
-        "--frozen-snapshot-mtime-epoch-utc",
-        required=True,
-        type=int,
-        help="Frozen snapshot mtime from the cold-copy step, recorded in the sidecar.",
-    )
-    arguments = argument_parser.parse_args()
-
-    if not os.path.exists(arguments.cold_copy_path):
-        print("HALT: cold copy not found at", arguments.cold_copy_path)
+    if not os.path.exists(COLD_COPY_PATH):
+        print("HALT: cold copy not found at", COLD_COPY_PATH)
         sys.exit(1)
+
+    # Frozen snapshot identity: measure the cold copy this extractor actually reads,
+    # rather than accepting it as a passed-in number. A measurement cannot disagree
+    # with the file being extracted; a hand-carried value can be transcribed wrong
+    # and would silently corrupt the integrity anchor. The cold-copy step also
+    # echoes these for a human cross-check, but the extractor's own reading is
+    # authoritative here. mtime as UTC Unix epoch seconds to match the cold-copy
+    # step's format (locale-independent, cross-device comparable).
+    frozen_snapshot_size_bytes = os.path.getsize(COLD_COPY_PATH)
+    frozen_snapshot_mtime_epoch_utc = int(
+        datetime.datetime.fromtimestamp(
+            os.path.getmtime(COLD_COPY_PATH), tz=datetime.timezone.utc
+        ).timestamp()
+    )
 
     # Read-only connection to the COPY. immutable=1 tells SQLite the file will not
     # change, which both speeds the read and refuses accidental writes; the copy is
     # the immutable source of truth for the whole experiment.
-    connection = sqlite3.connect(
-        "file:%s?immutable=1" % arguments.cold_copy_path, uri=True
-    )
+    connection = sqlite3.connect("file:%s?immutable=1" % COLD_COPY_PATH, uri=True)
     connection.row_factory = sqlite3.Row
     cursor = connection.cursor()
 
@@ -403,9 +401,7 @@ def main():
     # ------------------------------------------------------------------
     hasher = hashlib.sha256()
     corpus_row_count = 0
-    with open(
-        arguments.corpus_output_path, "w", encoding="utf-8", newline="\n"
-    ) as corpus_file:
+    with open(CORPUS_OUTPUT_PATH, "w", encoding="utf-8", newline="\n") as corpus_file:
         for record in assembled_records:
             line = json.dumps(record, sort_keys=True, ensure_ascii=True)
             corpus_file.write(line)
@@ -415,7 +411,7 @@ def main():
             corpus_row_count += 1
 
     corpus_sha256_full = hasher.hexdigest()
-    corpus_size_bytes = os.path.getsize(arguments.corpus_output_path)
+    corpus_size_bytes = os.path.getsize(CORPUS_OUTPUT_PATH)
 
     # ------------------------------------------------------------------
     # Sidecar integrity manifest. The next slice's gate recomputes the corpus
@@ -426,13 +422,13 @@ def main():
     # ------------------------------------------------------------------
     corpus_manifest = {
         "corpus_schema": "citation-key-collision/corpus/v1",
-        "corpus_path": os.path.abspath(arguments.corpus_output_path),
+        "corpus_path": os.path.abspath(CORPUS_OUTPUT_PATH),
         "corpus_row_count": corpus_row_count,
         "corpus_size_bytes": corpus_size_bytes,
         "corpus_sha256_full": corpus_sha256_full,
         "corpus_sha256_first12": corpus_sha256_full[:12],
-        "frozen_snapshot_size_bytes": arguments.frozen_snapshot_size_bytes,
-        "frozen_snapshot_mtime_epoch_utc": arguments.frozen_snapshot_mtime_epoch_utc,
+        "frozen_snapshot_size_bytes": frozen_snapshot_size_bytes,
+        "frozen_snapshot_mtime_epoch_utc": frozen_snapshot_mtime_epoch_utc,
         "funnel_raw_items_in_library": raw_item_count,
         "funnel_non_bibliographic_removed": non_biblio_count,
         "funnel_trashed_removed": trashed_count,
@@ -444,7 +440,7 @@ def main():
         "distinct_library_ids": distinct_library_ids,
         "library_extracted": library_filter_id,
     }
-    corpus_manifest_path = arguments.corpus_output_path + ".manifest.json"
+    corpus_manifest_path = CORPUS_OUTPUT_PATH + ".manifest.json"
     with open(
         corpus_manifest_path, "w", encoding="utf-8", newline="\n"
     ) as manifest_file:
@@ -471,7 +467,7 @@ def main():
     print("corpus_row_count=%d" % corpus_row_count)
     print("corpus_size_bytes=%d" % corpus_size_bytes)
     print("corpus_sha256_first12=%s" % corpus_sha256_full[:12])
-    print("corpus_path=%s" % os.path.abspath(arguments.corpus_output_path))
+    print("corpus_path=%s" % os.path.abspath(CORPUS_OUTPUT_PATH))
     print("corpus_manifest_path=%s" % corpus_manifest_path)
 
 

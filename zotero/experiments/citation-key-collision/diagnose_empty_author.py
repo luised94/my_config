@@ -9,16 +9,13 @@
 
 import sqlite3
 import collections
-import argparse
-import sys
+import os
 
-argument_parser = argparse.ArgumentParser(
-    description="Classify empty-author items (read-only diagnostic)."
-)
-argument_parser.add_argument("--cold-copy-path", required=True)
-arguments = argument_parser.parse_args()
+# Same constant as the extractor: one frozen copy at one path (see the extractor's
+# override heuristic). Edited in place, not passed as an argument.
+COLD_COPY_PATH = os.path.expanduser("~/zotero-experiments/zotero.sqlite")
 
-connection = sqlite3.connect("file:%s?immutable=1" % arguments.cold_copy_path, uri=True)
+connection = sqlite3.connect("file:%s?immutable=1" % COLD_COPY_PATH, uri=True)
 connection.row_factory = sqlite3.Row
 cursor = connection.cursor()
 
