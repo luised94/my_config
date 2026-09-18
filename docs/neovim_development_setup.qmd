@@ -4,7 +4,7 @@ title: Neovim development setup
 
 This documents contains the instructions for installing neovim and some additional dependencies required for my configuration.
 
-## Install neovim kickstart, quarto, and zotero
+## Install neovim kickstart
 
 Install treesitter cli binary
 ```{bash}
