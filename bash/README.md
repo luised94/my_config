@@ -21,7 +21,6 @@ controls load order. Each file is a plain sourced script (no shebang; a
 | `12_browser.sh` | `view_files` - open files in batches in the system browser (WSL). |
 | `13_friction.sh` | Friction log: `friction_log`/`friction_show`/`friction_open`/`friction_archive`/`friction_undo` (aliases `flog`, `fshow`, `fopen`, `farchive`, `fundo`). |
 | `14_c_utils.sh` | `cr` - compile and run a C file. |
-| `15_job_hunt.sh` | Job-application workflow: the `job*` commands (`jobinit`, `jobinfo`, `jobsave`, `jobstatus`, ...) plus `jobcd`/`jobls` aliases. |
 | `99_extensions.sh` | Loads optional user extensions: `mc_extensions_status`, `mc_link_extension`. |
 
 ## Settings and the `##` documentation convention
