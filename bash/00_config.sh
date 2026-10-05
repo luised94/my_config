@@ -169,6 +169,7 @@ MC_ALIASES=(
 ## Directory names skipped by file-scanning utilities (e.g. vimall).
 # shellcheck disable=SC2034  # consumed by 10_vim_utils.sh
 MC_EXCLUDE_DIRS=(
+    ".hypothesis" ".pytest_cache"
     ".git" "node_modules" ".next" ".nuxt" ".venv" "venv" "env" "__pycache__"
     "renv" ".Rproj.user" "build" "dist" "target" "out" "bin" "vendor" "deps"
     ".idea" ".ruff_cache" ".vscode" ".cache" "tmp" "temp" "coverage"
